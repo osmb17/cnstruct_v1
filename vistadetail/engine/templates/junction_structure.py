@@ -33,11 +33,11 @@ class JunctionStructureTemplate(BaseTemplate):
             # ── Wall reinforcement ─────────────────────────────────────────
             InputField("wall_bar_size",     str,   label="Wall Bar Size",       choices=BAR_SIZES, default="#5",
                        hint="Used for all 4 walls, EF horiz and vert"),
-            InputField("horiz_spacing_in",  float, label="Wall Horiz Spacing (in)", min=6.0, max=18.0, default=12.0),
-            InputField("vert_spacing_in",   float, label="Wall Vert Spacing (in)",  min=6.0, max=18.0, default=12.0),
+            InputField("horiz_spacing_in",  float, label="Wall Horiz Spacing (in)", min=3.0, max=18.0, default=12.0),
+            InputField("vert_spacing_in",   float, label="Wall Vert Spacing (in)",  min=3.0, max=18.0, default=12.0),
             # ── Floor reinforcement ────────────────────────────────────────
             InputField("floor_bar_size",    str,   label="Floor Bar Size",      choices=BAR_SIZES, default="#5"),
-            InputField("floor_spacing_in",  float, label="Floor Spacing (in)",  min=6.0, max=18.0, default=12.0),
+            InputField("floor_spacing_in",  float, label="Floor Spacing (in)",  min=3.0, max=18.0, default=12.0),
         ]
 
         self.rules = [

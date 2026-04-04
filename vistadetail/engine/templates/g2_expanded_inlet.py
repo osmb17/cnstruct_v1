@@ -71,11 +71,11 @@ class G2ExpandedInletTemplate(BaseTemplate):
             InputField(
                 "horiz_bar_size",   str,   label="Horiz Bar Size",      choices=BAR_SIZES,  default="#5"),
             InputField(
-                "horiz_spacing_in", float, label="Horiz Spacing (in)",  min=6.0, max=18.0, default=12.0),
+                "horiz_spacing_in", float, label="Horiz Spacing (in)",  min=3.0, max=18.0, default=12.0),
             InputField(
                 "vert_bar_size",    str,   label="Vert Bar Size",       choices=BAR_SIZES,  default="#5"),
             InputField(
-                "vert_spacing_in",  float, label="Vert Spacing (in)",   min=6.0, max=18.0, default=12.0),
+                "vert_spacing_in",  float, label="Vert Spacing (in)",   min=3.0, max=18.0, default=12.0),
             InputField(
                 "hook_type",        str,   label="Hook Type",           choices=HOOK_TYPES, default="std_90"),
             InputField(

@@ -178,10 +178,13 @@ def build_system_prompt(
         context_parts.append(f"\n**Input Values:**\n{_fmt_params(params_raw)}")
 
     if bars is not None:
-        wt = f"{cost.total_weight_lb:,.1f} lb" if cost else "—"
-        cs = f"${cost.total_cost_usd:,.2f}" if cost else "—"
+        try:
+            from vistadetail.engine.calculator import barlist_total_weight_lb
+            wt = f"{barlist_total_weight_lb(bars):,.1f} lb"
+        except Exception:
+            wt = "—"
         context_parts.append(
-            f"\n**Generated Barlist** (weight: {wt}, est. cost: {cs}):\n"
+            f"\n**Generated Barlist** (total weight: {wt}):\n"
             f"```\n{_fmt_barlist(bars)}\n```"
         )
     else:
