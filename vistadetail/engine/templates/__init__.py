@@ -27,27 +27,33 @@ from vistadetail.engine.templates.g2_expanded_inlet_top import TEMPLATE as G2_EX
 from vistadetail.engine.templates.junction_structure import TEMPLATE as JUNCTION_STRUCTURE
 
 TEMPLATE_REGISTRY: dict = {
-    INLET_9IN_WALL.name:  INLET_9IN_WALL,
-    SPREAD_FOOTING.name:  SPREAD_FOOTING,
-    HEADWALL.name:        HEADWALL,
-    WING_WALL.name:       WING_WALL,
-    BOX_CULVERT.name:     BOX_CULVERT,
-    RETAINING_WALL.name:  RETAINING_WALL,
-    FLAT_SLAB.name:       FLAT_SLAB,
-    CAGE.name:            CAGE,
-    COLLAR.name:          COLLAR,
-    SLAB_ON_GRADE.name:   SLAB_ON_GRADE,
-    EQUIPMENT_PAD.name:   EQUIPMENT_PAD,
-    SWITCHBOARD_PAD.name: SWITCHBOARD_PAD,
-    SEATWALL.name:        SEATWALL,
-    CONCRETE_HEADER.name: CONCRETE_HEADER,
-    PIPE_ENCASEMENT.name: PIPE_ENCASEMENT,
-    FUEL_FOUNDATION.name: FUEL_FOUNDATION,
-    DUAL_SLAB.name:           DUAL_SLAB,
-    G2_EXPANDED_INLET.name:   G2_EXPANDED_INLET,
-    G2_INLET_TOP.name:        G2_INLET_TOP,
-    G2_EXPANDED_INLET_TOP.name: G2_EXPANDED_INLET_TOP,
-    JUNCTION_STRUCTURE.name:  JUNCTION_STRUCTURE,
+    # ── G2 Inlets ─────────────────────────────────────────────────────────────
+    INLET_9IN_WALL.name:         INLET_9IN_WALL,
+    G2_EXPANDED_INLET.name:      G2_EXPANDED_INLET,
+    G2_INLET_TOP.name:           G2_INLET_TOP,
+    G2_EXPANDED_INLET_TOP.name:  G2_EXPANDED_INLET_TOP,
+    # ── Headwalls ─────────────────────────────────────────────────────────────
+    HEADWALL.name:               HEADWALL,
+    WING_WALL.name:              WING_WALL,
+    # ── Junction & Pipe ───────────────────────────────────────────────────────
+    JUNCTION_STRUCTURE.name:     JUNCTION_STRUCTURE,
+    COLLAR.name:                 COLLAR,
+    PIPE_ENCASEMENT.name:        PIPE_ENCASEMENT,
+    # ── Culverts & Walls ──────────────────────────────────────────────────────
+    BOX_CULVERT.name:            BOX_CULVERT,
+    RETAINING_WALL.name:         RETAINING_WALL,
+    # ── Slabs & Pads ──────────────────────────────────────────────────────────
+    FLAT_SLAB.name:              FLAT_SLAB,
+    DUAL_SLAB.name:              DUAL_SLAB,
+    SLAB_ON_GRADE.name:          SLAB_ON_GRADE,
+    EQUIPMENT_PAD.name:          EQUIPMENT_PAD,
+    SWITCHBOARD_PAD.name:        SWITCHBOARD_PAD,
+    FUEL_FOUNDATION.name:        FUEL_FOUNDATION,
+    # ── Misc Concrete ─────────────────────────────────────────────────────────
+    SPREAD_FOOTING.name:         SPREAD_FOOTING,
+    SEATWALL.name:               SEATWALL,
+    CONCRETE_HEADER.name:        CONCRETE_HEADER,
+    CAGE.name:                   CAGE,
 }
 
 TEMPLATE_NAMES: list[str] = list(TEMPLATE_REGISTRY.keys())

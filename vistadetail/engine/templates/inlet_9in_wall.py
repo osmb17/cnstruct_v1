@@ -88,7 +88,7 @@ class InletWallTemplate(BaseTemplate):
             InputField(
                 "horiz_spacing_in", float,
                 label="Horiz Spacing (in)",
-                min=6.0, max=18.0, default=12.0,
+                min=3.0, max=18.0, default=12.0,
                 hint="Center-to-center spacing of horizontal bars",
             ),
             InputField(
@@ -100,7 +100,7 @@ class InletWallTemplate(BaseTemplate):
             InputField(
                 "vert_spacing_in", float,
                 label="Vert Spacing (in)",
-                min=6.0, max=18.0, default=12.0,
+                min=3.0, max=18.0, default=12.0,
                 hint="Center-to-center spacing of vertical bars",
             ),
             InputField(
