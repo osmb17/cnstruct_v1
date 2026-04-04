@@ -670,23 +670,24 @@ if generate_btn or refresh_btn:
 st.markdown("---")
 
 # ═════════════════════════════════════════════════════════════════════════════
-# MAIN CONTENT — left: diagram + inputs   right: barlist
+# MAIN CONTENT — diagram | inputs (side by side), results full-width below
 # ═════════════════════════════════════════════════════════════════════════════
 
-left, right = st.columns([2, 3], gap="large")
+diag_col, inp_col = st.columns([1.3, 1], gap="large")
 
-# ── LEFT PANEL ────────────────────────────────────────────────────────────────
-with left:
-    # Template diagram
+# ── DIAGRAM ───────────────────────────────────────────────────────────────────
+with diag_col:
     diag = _get_diagram(template_name)
     if diag:
         st.image(diag, use_container_width=True)
     if template.description:
         st.caption(template.description)
 
+# ── INPUTS ────────────────────────────────────────────────────────────────────
+with inp_col:
     st.markdown(
         "<div style='font-size:0.78rem;font-weight:700;text-transform:uppercase;"
-        "letter-spacing:0.8px;color:#6c737a;margin:0.75rem 0 0.4rem'>Dimensions</div>",
+        "letter-spacing:0.8px;color:#6c737a;margin:0 0 0.4rem'>Dimensions</div>",
         unsafe_allow_html=True,
     )
 
@@ -791,101 +792,83 @@ with left:
     # Store params for refresh
     st.session_state._last_params = params_raw
 
-# ── RIGHT PANEL ───────────────────────────────────────────────────────────────
-with right:
-    if st.session_state.get("error"):
-        st.error(f"**Error:** {st.session_state.error}")
+# ── RESULTS — full width below diagram + inputs ───────────────────────────────
+if st.session_state.get("error"):
+    st.error(f"**Error:** {st.session_state.error}")
 
-    if bars is not None:
-        weight_lb = barlist_total_weight_lb(bars)
+if bars is not None:
+    st.markdown("---")
+    weight_lb = barlist_total_weight_lb(bars)
 
-        # Metrics
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Marks",      len({b.mark for b in bars}))
-        m2.metric("Total Bars", f"{sum(b.qty for b in bars):,}")
-        m3.metric("Weight",     f"{weight_lb:,.1f} lb")
+    # Metrics
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Marks",      len({b.mark for b in bars}))
+    m2.metric("Total Bars", f"{sum(b.qty for b in bars):,}")
+    m3.metric("Weight",     f"{weight_lb:,.1f} lb")
 
-        st.markdown("")
+    st.markdown("")
 
-        # Barlist table
-        df = pd.DataFrame([{
-            "Mark":   b.mark,  "Size":   b.size,   "Qty":    b.qty,
-            "Length": b.length_ft_in,
-            "Type":   SHAPE_SYMBOLS.get(b.shape, b.shape),
-            "Leg A":  b.leg_a_ft_in, "Leg B":  b.leg_b_ft_in, "Leg C":  b.leg_c_ft_in,
-            "Notes":  b.notes, "Ref":    b.ref,    "Review": b.review_flag,
-        } for b in bars])
+    # Barlist table
+    df = pd.DataFrame([{
+        "Mark":   b.mark,  "Size":   b.size,   "Qty":    b.qty,
+        "Length": b.length_ft_in,
+        "Type":   SHAPE_SYMBOLS.get(b.shape, b.shape),
+        "Leg A":  b.leg_a_ft_in, "Leg B":  b.leg_b_ft_in, "Leg C":  b.leg_c_ft_in,
+        "Notes":  b.notes, "Ref":    b.ref,    "Review": b.review_flag,
+    } for b in bars])
 
-        def _hl(row):
-            return ["background-color:#fff3cd"]*len(row) if row["Review"] else [""]*len(row)
+    def _hl(row):
+        return ["background-color:#fff3cd"]*len(row) if row["Review"] else [""]*len(row)
 
-        st.dataframe(df.style.apply(_hl, axis=1),
-                     use_container_width=True, hide_index=True, height=320)
+    st.dataframe(df.style.apply(_hl, axis=1),
+                 use_container_width=True, hide_index=True, height=320)
 
-        # ── AI Explanation card ───────────────────────────────────────────────
-        explanation = st.session_state.get("explanation")
-        _api_ready  = _api_key_available()
+    # ── AI Explanation card ───────────────────────────────────────────────────
+    explanation = st.session_state.get("explanation")
+    _api_ready  = _api_key_available()
 
+    st.markdown(
+        "<div style='display:flex;align-items:center;gap:8px;margin:1rem 0 0.4rem'>"
+        "<span style='background:#1c3461;color:#fff;border-radius:5px;padding:2px 8px;"
+        "font-size:0.7rem;font-weight:700;letter-spacing:0.5px'>AI</span>"
+        "<span style='font-size:0.78rem;font-weight:700;text-transform:uppercase;"
+        "letter-spacing:0.8px;color:#6c737a'>Barlist Explanation</span>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    if explanation:
         st.markdown(
-            "<div style='display:flex;align-items:center;gap:8px;margin:1rem 0 0.4rem'>"
-            "<span style='background:#1c3461;color:#fff;border-radius:5px;padding:2px 8px;"
-            "font-size:0.7rem;font-weight:700;letter-spacing:0.5px'>AI</span>"
-            "<span style='font-size:0.78rem;font-weight:700;text-transform:uppercase;"
-            "letter-spacing:0.8px;color:#6c737a'>Barlist Explanation</span>"
-            "</div>",
+            f"<div style='background:#ffffff;border:1px solid #e8eaed;border-left:4px solid #1c3461;"
+            f"border-radius:0 10px 10px 0;padding:1.1rem 1.3rem;line-height:1.7;"
+            f"font-size:0.87rem;color:#1a1d23'>{explanation}</div>",
             unsafe_allow_html=True,
         )
-
-        if explanation:
-            st.markdown(
-                f"<div style='background:#ffffff;border:1px solid #e8eaed;border-left:4px solid #1c3461;"
-                f"border-radius:0 10px 10px 0;padding:1.1rem 1.3rem;line-height:1.7;"
-                f"font-size:0.87rem;color:#1a1d23'>{explanation}</div>",
-                unsafe_allow_html=True,
-            )
-            if st.button("Re-explain", key="btn_reexplain", help="Generate a fresh explanation"):
-                st.session_state.explanation = None
-                with st.spinner("Re-generating explanation…"):
-                    try:
-                        chunks = []
-                        for chunk in asst.explain_barlist_stream(
-                            template_name=template_name,
-                            params_raw=st.session_state.get("_last_params"),
-                            bars=bars,
-                            warnings=st.session_state.get("warnings", []),
-                        ):
-                            chunks.append(chunk)
-                        st.session_state.explanation = "".join(chunks)
-                        st.rerun()
-                    except Exception as exc:
-                        st.error(f"Explanation error: {exc}")
-        elif not _api_ready:
-            st.markdown(
-                "<div style='background:#f8f9fa;border:1px solid #e8eaed;border-radius:8px;"
-                "padding:0.9rem 1.1rem;color:#6c737a;font-size:0.84rem'>"
-                "Set <code>ANTHROPIC_API_KEY</code> to enable AI explanations.</div>",
-                unsafe_allow_html=True,
-            )
-        else:
-            st.info("Explanation will appear after the next generate.")
-
+        if st.button("Re-explain", key="btn_reexplain", help="Generate a fresh explanation"):
+            st.session_state.explanation = None
+            with st.spinner("Re-generating explanation…"):
+                try:
+                    chunks = []
+                    for chunk in asst.explain_barlist_stream(
+                        template_name=template_name,
+                        params_raw=st.session_state.get("_last_params"),
+                        bars=bars,
+                        warnings=st.session_state.get("warnings", []),
+                    ):
+                        chunks.append(chunk)
+                    st.session_state.explanation = "".join(chunks)
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"Explanation error: {exc}")
+    elif not _api_ready:
+        st.markdown(
+            "<div style='background:#f8f9fa;border:1px solid #e8eaed;border-radius:8px;"
+            "padding:0.9rem 1.1rem;color:#6c737a;font-size:0.84rem'>"
+            "Set <code>ANTHROPIC_API_KEY</code> to enable AI explanations.</div>",
+            unsafe_allow_html=True,
+        )
     else:
-        # Empty state
-        st.markdown(
-            "<div style='text-align:center;padding:3rem 1rem;color:#8a909a'>"
-            "<div style='font-size:1rem;font-weight:600;color:#374151;margin-bottom:0.25rem'>"
-            "Ready to generate</div>"
-            "<div style='font-size:0.85rem'>Set dimensions and click "
-            "<strong>Generate</strong></div>"
-            "</div>",
-            unsafe_allow_html=True,
-        )
-        rows = [{"Template": nm,
-                 "Primary Inputs": len(dflt.PRIMARY_INPUTS.get(nm, [])),
-                 "Total Inputs": len(TEMPLATE_REGISTRY[nm].inputs),
-                 "Rules": len(TEMPLATE_REGISTRY[nm].rules)}
-                for nm in TEMPLATE_NAMES]
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.info("Explanation will appear after the next generate.")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # BOTTOM TABS — always visible
