@@ -109,25 +109,12 @@ class InletWallTemplate(BaseTemplate):
                 choices=HOOK_TYPES, default="std_90",
                 hint="Hook type for horizontal bar ends",
             ),
-            InputField(
-                "corner_bars", str,
-                label="Corner L-Bars",
-                choices=["yes", "no"], default="yes",
-                hint="Include corner L-bars at wall edges",
-            ),
-            InputField(
-                "corner_bar_size", str,
-                label="Corner Bar Size",
-                choices=BAR_SIZES, default="#4",
-                hint="Size for corner L-bars (if enabled)",
-            ),
         ]
 
         self.rules = [
             "rule_g2_inlet_geometry",       # FIRST — derives T, L1, sets wall_length_ft alias
             "rule_horizontal_bars_EF",
             "rule_vertical_bars_EF",
-            "rule_corner_L_bars",
             "rule_validate_min_cover",
             "rule_validate_max_spacing_ACI",
         ]

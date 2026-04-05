@@ -90,39 +90,118 @@ def _to_png(fig) -> bytes:
 # ── Individual diagram functions ──────────────────────────────────────────────
 
 def _diag_g2_inlet() -> bytes:
-    """Plan view of G2 inlet box — X (width) × Y (depth), T wall thickness."""
-    X, Y, T = 5.5, 4.5, 0.9   # proportional, not real units
+    """Plan view of G2 inlet — matches Caltrans standard plan drawing.
+    Shows outer X/Y, inside X/Y dimensions, T wall thickness, L1 area, grate."""
+    # Proportional dimensions (drawing units, not real)
+    OX, OY = 6.0, 5.0         # outer rectangle
+    T  = 0.5                   # wall thickness
+    IX, IY = OX - 2*T, OY - 2*T   # inner rectangle
 
-    fig, ax = _fig(6, 5)
-    ax.set_xlim(-1.2, X + 1.5)
-    ax.set_ylim(-0.9, Y + 1.1)
+    # L1 area (left) vs grate (right) — roughly 45/55 split
+    l1_w    = IX * 0.45
+    grate_w = IX - l1_w
 
-    # Outer concrete box
-    _rect(ax, 0, 0, X, Y, fc=_CONCRETE)
-    # Inner void
-    _rect(ax, T, T, X - 2*T, Y - 2*T, fc="white", ec=_OUTLINE, lw=1.0)
+    fig, ax = _fig(8.5, 7.0)
+    ax.set_xlim(-2.2, OX + 3.0)
+    ax.set_ylim(-2.8, OY + 2.0)
 
-    # Grate opening indication (top of interior)
-    grate_w = (X - 2*T) * 0.45
-    gx = T + (X - 2*T - grate_w) / 2
-    _rect(ax, gx, T + (Y - 2*T)*0.65, grate_w, (Y - 2*T)*0.3,
-          fc="#aab8c2", ec=_OUTLINE, lw=0.8, hatch="----")
+    # ── Concrete walls (outer box with inner void) ────────────────────
+    _rect(ax, 0, 0, OX, OY, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
+    _rect(ax, T, T, IX, IY, fc="white", ec=_OUTLINE, lw=1.5)
 
-    # Rebar hint lines
-    for i in [0.5, 1.5]:
-        ax.plot([T*0.3, T*0.7], [Y*i/3, Y*i/3], color=_REBAR, lw=1.2, zorder=4)
+    # ── L1 shaded area (left portion of interior) ─────────────────────
+    _rect(ax, T, T, l1_w, IY, fc="#c8c8c8", ec=_OUTLINE, lw=0.5)
+    # Dashed border on L1 region (matches drawing style)
+    for yy in [T, T + IY]:
+        ax.plot([T, T + l1_w], [yy, yy], color=_OUTLINE, lw=0.8, ls="--", zorder=3)
 
-    # Dimension arrows
-    _dim_h(ax, 0, X, -0.55, "X")
-    _dim_v(ax, 0, Y, X + 0.45, "Y")
+    # ── Grate area (right portion — vertical bar hatching) ────────────
+    gx = T + l1_w
+    _rect(ax, gx, T, grate_w, IY, fc="white", ec=_OUTLINE, lw=1.2)
+    n_grate_bars = 12
+    for i in range(n_grate_bars):
+        bx = gx + grate_w * (i + 1) / (n_grate_bars + 1)
+        ax.plot([bx, bx], [T + 0.08, T + IY - 0.08],
+                color=_OUTLINE, lw=0.7, zorder=3)
 
-    # T callout (wall thickness)
-    _callout(ax, T/2, Y/2, "T", "auto", angle=200, dist=0.7)
+    # ── L1 dimension (inside shaded area) ─────────────────────────────
+    _dim_h(ax, T, T + l1_w, T + IY * 0.5, "L1", gap=0.15, fontsize=9)
 
-    ax.text(X/2, Y/2 - 0.3, "Interior", ha="center", va="center",
-            fontsize=7, color="#888", style="italic")
+    # ── X dimension (outer, at top) ───────────────────────────────────
+    # Extension lines
+    ext_y = OY + 0.6
+    for x_pos in [0, OX]:
+        ax.plot([x_pos, x_pos], [OY, ext_y + 0.15], color=_DIM, lw=0.5)
+    ax.annotate("", xy=(OX, ext_y), xytext=(0, ext_y),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0, mutation_scale=9))
+    ax.text(OX / 2, ext_y + 0.18, "X", ha="center", va="bottom",
+            fontsize=11, color=_LABEL, fontweight="bold")
 
-    _title(ax, "G2 Inlet — Plan View")
+    # ── Y dimension (outer, on left) ──────────────────────────────────
+    ext_x = -0.7
+    for y_pos in [0, OY]:
+        ax.plot([0, ext_x - 0.15], [y_pos, y_pos], color=_DIM, lw=0.5)
+    ax.annotate("", xy=(ext_x, OY), xytext=(ext_x, 0),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0, mutation_scale=9))
+    ax.text(ext_x - 0.25, OY / 2, "Y", ha="right", va="center",
+            fontsize=11, color=_LABEL, fontweight="bold", rotation=90)
+
+    # ── Inside Y dimension (right side) ───────────────────────────────
+    ins_x = OX + 0.9
+    for y_pos in [T, T + IY]:
+        ax.plot([OX, ins_x + 0.15], [y_pos, y_pos], color=_DIM, lw=0.5)
+    ax.annotate("", xy=(ins_x, T + IY), xytext=(ins_x, T),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0, mutation_scale=9))
+    ax.text(ins_x + 0.25, T + IY * 0.65, "Inside Y\nDimension",
+            ha="left", va="center", fontsize=7.5, color=_LABEL, fontweight="bold")
+    ax.text(ins_x + 0.25, T + IY * 0.35, "2'-11 3/8\"",
+            ha="left", va="center", fontsize=7, color=_DIM)
+
+    # ── Inside X dimension (bottom) ───────────────────────────────────
+    ins_y = -1.1
+    for x_pos in [T, T + IX]:
+        ax.plot([x_pos, x_pos], [0, ins_y - 0.15], color=_DIM, lw=0.5)
+    ax.annotate("", xy=(T + IX, ins_y), xytext=(T, ins_y),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0, mutation_scale=9))
+    ax.text(T + IX / 2, ins_y - 0.2, "Inside X Dimension",
+            ha="center", va="top", fontsize=7.5, color=_LABEL, fontweight="bold")
+    ax.text(T + IX / 2, ins_y + 0.25, "2'-11 3/8\"  Min OR",
+            ha="center", va="bottom", fontsize=7, color=_DIM)
+
+    # ── T labels (wall thickness at 4 edges) ──────────────────────────
+    # Bottom-left T
+    ax.annotate("", xy=(T, -0.35), xytext=(0, -0.35),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.8, mutation_scale=7))
+    ax.text(T / 2, -0.55, "T", ha="center", va="top", fontsize=8,
+            color=_LABEL, fontweight="bold")
+    ax.plot([0, 0], [0, -0.45], color=_DIM, lw=0.4)
+    ax.plot([T, T], [0, -0.45], color=_DIM, lw=0.4)
+
+    # Bottom-right T
+    ax.annotate("", xy=(OX, -0.35), xytext=(OX - T, -0.35),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.8, mutation_scale=7))
+    ax.text(OX - T / 2, -0.55, "T", ha="center", va="top", fontsize=8,
+            color=_LABEL, fontweight="bold")
+    ax.plot([OX - T, OX - T], [0, -0.45], color=_DIM, lw=0.4)
+    ax.plot([OX, OX], [0, -0.45], color=_DIM, lw=0.4)
+
+    # Top-right T (vertical)
+    tr_x = OX + 0.2
+    ax.annotate("", xy=(tr_x, OY), xytext=(tr_x, OY - T),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.8, mutation_scale=7))
+    ax.text(tr_x + 0.15, OY - T / 2, "T", ha="left", va="center", fontsize=8,
+            color=_LABEL, fontweight="bold")
+
+    # Bottom-right T (vertical)
+    ax.annotate("", xy=(tr_x, T), xytext=(tr_x, 0),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.8, mutation_scale=7))
+    ax.text(tr_x + 0.15, T / 2, "T", ha="left", va="center", fontsize=8,
+            color=_LABEL, fontweight="bold")
+
+    # ── Title ─────────────────────────────────────────────────────────
+    ax.text(OX / 2, -2.3, "PLAN VIEW", ha="center", va="top",
+            fontsize=12, color="#1a1d23", fontweight="bold")
+
     return _to_png(fig)
 
 
@@ -541,7 +620,7 @@ def _diag_collar() -> bytes:
 _DIAGRAM_FN: dict[str, callable] = {
     "G2 Inlet":              _diag_g2_inlet,
     "G2 Expanded Inlet":     _diag_g2_inlet,
-    "G2 Inlet Top":          lambda: _diag_rect_plan("G2 Inlet Top — Plan View"),
+    "G2 Inlet Top":          _diag_g2_inlet,
     "G2 Expanded Inlet Top": lambda: _diag_rect_plan("G2 Expanded Inlet Top — Plan View"),
     "Straight Headwall":     _diag_headwall,
     "Wing Wall":             _diag_wing_wall,
