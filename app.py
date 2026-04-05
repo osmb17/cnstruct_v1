@@ -381,8 +381,36 @@ def _make_pdf(bars, template_name, job_info=None) -> bytes:
             elems.append(Paragraph("  |  ".join(parts), styles["Normal"]))
     weight_lb = barlist_total_weight_lb(bars)
     elems.append(Paragraph(
-        f"Date: {date.today()}  |  Weight: {weight_lb:,.1f} lb",
+        f"Date: {date.today()}  |  Total Weight: {weight_lb:,.1f} lb",
         styles["Normal"]))
+    elems.append(Spacer(1, 0.15*inch))
+
+    # Weight breakdown by bar size
+    from collections import defaultdict as _dd
+    from vistadetail.engine.hooks import BAR_WEIGHT_LB_FT as _WLBFT
+    _sz_wt: dict = _dd(float)
+    for _b in bars:
+        _sz_wt[_b.size] += _WLBFT.get(_b.size, 0.0) * (_b.length_in / 12.0) * _b.qty
+    _sorted_sz = sorted(_sz_wt.keys(), key=lambda s: int(s.lstrip("#")))
+    wt_rows = [["Bar Size", "Weight (lb)"]]
+    for _s in _sorted_sz:
+        wt_rows.append([_s, f"{_sz_wt[_s]:,.1f}"])
+    wt_rows.append(["Total", f"{weight_lb:,.1f}"])
+    wt_tbl = Table(wt_rows, colWidths=[1.1*inch, 1.1*inch])
+    wt_tbl.setStyle(TableStyle([
+        ("BACKGROUND",  (0, 0), (-1,  0), _NAVY),
+        ("TEXTCOLOR",   (0, 0), (-1,  0), colors.white),
+        ("FONTNAME",    (0, 0), (-1,  0), "Helvetica-Bold"),
+        ("FONTNAME",    (0,-1), (-1, -1), "Helvetica-Bold"),
+        ("FONTSIZE",    (0, 0), (-1, -1), 8),
+        ("BACKGROUND",  (0,-1), (-1, -1), _STRIPE),
+        ("ROWBACKGROUNDS", (0,1), (-1,-2), [colors.white, _STRIPE]),
+        ("GRID",        (0, 0), (-1, -1), 0.25, colors.lightgrey),
+        ("VALIGN",      (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING",  (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING",(0, 0),(-1, -1), 2),
+    ]))
+    elems.append(wt_tbl)
     elems.append(Spacer(1, 0.2*inch))
 
     header = ["Mark","Size","Qty","Length","Shape","Leg A","Leg B","Leg C","Notes"]
@@ -470,6 +498,7 @@ def _cut_optimize(bars, stock_len_in):
                 sticks_r.append(stock_len_in - length)
         manifest = [{"Size": size, "Stick #": i+1,
                      "Cuts": " | ".join(_fmt_in(l) for l in sorted(c, reverse=True)),
+                     "_cuts_raw": sorted(c, reverse=True),
                      "# Pcs": len(c), "Waste": _fmt_in(r), "Waste (in)": round(r, 2)}
                     for i, (c, r) in enumerate(zip(sticks_c, sticks_r))]
         n = len(sticks_c)
@@ -493,6 +522,64 @@ def _manifest_csv(results) -> str:
             w.writerow([row["Size"],row["Stick #"],row["Cuts"],row["# Pcs"],row["Waste"],row["Waste (in)"]])
         w.writerow([])
     return buf.getvalue()
+
+
+def _draw_cuts_chart(results, stock_len_in):
+    """Horizontal bar chart showing each stick's cut layout. Returns a matplotlib Figure."""
+    import matplotlib.pyplot as plt
+
+    _PALETTE = ["#1c3461","#2e6fce","#4ca3dd","#7ec8e3","#a8d8ea","#f4a261","#e76f51","#9b59b6"]
+    _WASTE_CLR = "#e8eaed"
+    _WASTE_EDGE = "#c8cdd4"
+
+    total_rows = sum(len(r["_manifest"]) for r in results)
+    fig_h = max(2.5, min(total_rows * 0.38 + len(results) * 0.5, 14))
+    fig, ax = plt.subplots(figsize=(9, fig_h), facecolor="#f5f6fa")
+    ax.set_facecolor("#f5f6fa")
+
+    y = 0
+    yticks, ytick_labels = [], []
+
+    for r in results:
+        for stick in r["_manifest"]:
+            cuts = stick["_cuts_raw"]
+            waste_in = stick["Waste (in)"]
+            x = 0.0
+            for j, cut in enumerate(cuts):
+                frac = cut / stock_len_in
+                ax.barh(y, frac, left=x / stock_len_in,
+                        color=_PALETTE[j % len(_PALETTE)], height=0.65,
+                        edgecolor="white", linewidth=0.4)
+                if frac > 0.06:
+                    ax.text(x / stock_len_in + frac / 2, y,
+                            f"{cut/12:.1f}'", va="center", ha="center",
+                            fontsize=6.5, color="white", fontweight="bold")
+                x += cut
+            if waste_in > 0:
+                wfrac = waste_in / stock_len_in
+                ax.barh(y, wfrac, left=x / stock_len_in,
+                        color=_WASTE_CLR, height=0.65,
+                        edgecolor=_WASTE_EDGE, linewidth=0.4)
+                if wfrac > 0.06:
+                    ax.text(x / stock_len_in + wfrac / 2, y,
+                            f"W {waste_in/12:.1f}'", va="center", ha="center",
+                            fontsize=5.5, color="#888")
+            yticks.append(y)
+            ytick_labels.append(f"{r['Size']} #{stick['Stick #']}")
+            y += 1
+
+    ax.set_xlim(0, 1)
+    ax.set_yticks(yticks)
+    ax.set_yticklabels(ytick_labels, fontsize=7, color="#374151")
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.0%}"))
+    ax.set_xlabel("Fraction of stock length", fontsize=8, color="#6c737a")
+    ax.tick_params(axis="x", colors="#6c737a", labelsize=7)
+    ax.tick_params(axis="y", length=0)
+    for spine in ax.spines.values():
+        spine.set_color("#e8eaed")
+    ax.set_title("Stick Cut Layout", fontsize=9, fontweight="bold", color="#1a1d23", pad=8)
+    plt.tight_layout(pad=1.2)
+    return fig
 
 
 # ── Template usage stats (from history) ──────────────────────────────────────
@@ -726,6 +813,19 @@ with inp_col:
     _ct_result = caltrans_lookup(template_name, params_raw)
     _ct_src    = _ct_result.pop("_source", "")
     _ov_name   = dflt.OVERRIDEABLE.get(template_name, "")
+
+    # Caltrans source badge — visible pill so the user always knows which table ran
+    if _ct_src:
+        st.markdown(
+            f"<div style='display:inline-flex;align-items:center;gap:6px;"
+            f"background:#eef2fc;color:#1c3461;border:1px solid #c5d5f8;"
+            f"border-radius:20px;padding:3px 12px 3px 8px;font-size:0.72rem;"
+            f"font-weight:600;margin:6px 0 2px;letter-spacing:0.2px'>"
+            f"<span style='width:7px;height:7px;background:#1c3461;border-radius:50%;"
+            f"display:inline-block;flex-shrink:0'></span>"
+            f"Caltrans {_ct_src}</div>",
+            unsafe_allow_html=True,
+        )
     # Exclude the overrideable field — it's handled separately below
     _ct_secondary = {k: v for k, v in _ct_result.items() if k != _ov_name}
 
@@ -913,11 +1013,16 @@ with tab_log:
 # ── Cut Optimizer ─────────────────────────────────────────────────────────────
 with tab_cut:
     if bars is not None:
-        ca, cb = st.columns([1, 3])
+        ca, cb, cc = st.columns([1, 1, 3])
         with ca:
             stock_ft = st.selectbox("Stock Length", [20, 40, 60], index=0,
                                     format_func=lambda x: f"{x} ft", key="cut_stock")
             st.caption("FFD bin-packing")
+        with cb:
+            price_lb = st.number_input("Price per lb ($)", min_value=0.0, max_value=10.0,
+                                       value=0.80, step=0.05, format="%.2f", key="cut_price_lb")
+            st.caption("Material cost estimate")
+
         results = _cut_optimize(bars, stock_ft * 12)
         disp_cols = ["Size","Sticks","Stock (ft)","Ordered (ft)","Used (ft)","Waste (ft)","Waste %"]
         df_cut = pd.DataFrame([{c: r[c] for c in disp_cols} for r in results])
@@ -925,7 +1030,7 @@ with tab_cut:
         def _hl_waste(row):
             return ["background-color:#fff3cd"]*len(row) if row["Waste %"] > 20 else [""]*len(row)
 
-        with cb:
+        with cc:
             st.dataframe(df_cut.style.apply(_hl_waste, axis=1),
                          use_container_width=True, hide_index=True)
 
@@ -933,12 +1038,22 @@ with tab_cut:
             if r["_oversized"]:
                 st.warning(f"**{r['Size']}**: {r['_oversized']} bar(s) exceed {stock_ft} ft — special order required.")
 
+        # Summary + cost estimate
+        from vistadetail.engine.hooks import BAR_WEIGHT_LB_FT as _WLBFT
         total_sticks = sum(r["Sticks"] for r in results)
         total_waste  = round(sum(r["Waste (ft)"] for r in results), 1)
         avg_waste    = round(sum(r["Waste %"] for r in results) / len(results), 1) if results else 0
+        total_ordered_lb = sum(
+            r["Sticks"] * stock_ft * _WLBFT.get(r["Size"], 0.0)
+            for r in results
+        )
+        est_cost = total_ordered_lb * price_lb
 
-        inf_c, dl_c = st.columns([4, 1])
-        inf_c.info(f"**{total_sticks}** sticks  |  **{total_waste} ft** waste  |  **{avg_waste}%** avg waste")
+        sm1, sm2, sm3, sm4, dl_c = st.columns([1, 1, 1, 1, 1])
+        sm1.metric("Sticks",      total_sticks)
+        sm2.metric("Waste",       f"{total_waste} ft  ({avg_waste}%)")
+        sm3.metric("Ordered Wt",  f"{total_ordered_lb:,.0f} lb")
+        sm4.metric("Est. Cost",   f"${est_cost:,.2f}")
         dl_c.download_button("Cut List CSV", data=_manifest_csv(results),
                              file_name="cut_list.csv", mime="text/csv", key="btn_cutcsv")
 
@@ -947,6 +1062,13 @@ with tab_cut:
             mdf = pd.DataFrame(r["_manifest"])[["Stick #","Cuts","# Pcs","Waste"]]
             with st.expander(f"{r['Size']} — {r['Sticks']} sticks  ({r['Waste %']}% waste)"):
                 st.dataframe(mdf, use_container_width=True, hide_index=True)
+
+        # Visual stick layout
+        with st.expander("Stick Cut Layout Chart", expanded=False):
+            import matplotlib.pyplot as plt
+            _fig = _draw_cuts_chart(results, stock_ft * 12)
+            st.pyplot(_fig, use_container_width=True)
+            plt.close(_fig)
     else:
         st.info("Generate a barlist to use the cut optimizer.")
 
@@ -1006,6 +1128,83 @@ with tab_hist:
                     hist.delete_run(run["id"])
                     _template_stats.clear()
                     st.rerun()
+
+        # ── Compare two runs ──────────────────────────────────────────────────
+        if len(runs) >= 2:
+            st.markdown("---")
+            st.markdown(
+                "<div style='font-size:0.78rem;font-weight:700;text-transform:uppercase;"
+                "letter-spacing:0.8px;color:#6c737a;margin-bottom:0.5rem'>Compare Two Runs</div>",
+                unsafe_allow_html=True,
+            )
+            comp_opts = {
+                f"#{r['id']}  {r['timestamp']}  —  {r['template_name']}  —  {r['job_name'] or 'no job'}": r["id"]
+                for r in runs
+            }
+            _keys = list(comp_opts.keys())
+            cc1, cc2 = st.columns(2)
+            run_a_key = cc1.selectbox("Run A", _keys, index=0, key="comp_run_a")
+            run_b_key = cc2.selectbox("Run B", _keys, index=min(1, len(_keys)-1), key="comp_run_b")
+
+            if run_a_key != run_b_key:
+                _ra = hist.load_run(comp_opts[run_a_key])
+                _rb = hist.load_run(comp_opts[run_b_key])
+                if _ra and _rb:
+                    _wa = barlist_total_weight_lb(_ra["bars"])
+                    _wb = barlist_total_weight_lb(_rb["bars"])
+                    _marks_a = len({b.mark for b in _ra["bars"]})
+                    _marks_b = len({b.mark for b in _rb["bars"]})
+                    _qty_a   = sum(b.qty for b in _ra["bars"])
+                    _qty_b   = sum(b.qty for b in _rb["bars"])
+
+                    cm1, cm2, cm3, cm4, cm5, cm6 = st.columns(6)
+                    cm1.metric("A: Marks",  _marks_a)
+                    cm2.metric("A: Bars",   _qty_a)
+                    cm3.metric("A: Weight", f"{_wa:,.1f} lb")
+                    cm4.metric("B: Marks",  _marks_b,  delta=_marks_b - _marks_a)
+                    cm5.metric("B: Bars",   _qty_b,    delta=_qty_b - _qty_a)
+                    cm6.metric("B: Weight", f"{_wb:,.1f} lb",
+                               delta=f"{_wb - _wa:+,.1f} lb")
+
+                    # Aligned diff by mark
+                    _ma = {b.mark: b for b in _ra["bars"]}
+                    _mb = {b.mark: b for b in _rb["bars"]}
+                    _all_marks = sorted(set(_ma) | set(_mb))
+                    _comp_rows = []
+                    for m in _all_marks:
+                        a, b_ = _ma.get(m), _mb.get(m)
+                        changed = (
+                            "Added"   if not a else
+                            "Removed" if not b_ else
+                            "" if (a.size == b_.size and a.qty == b_.qty and a.length_in == b_.length_in)
+                            else "Changed"
+                        )
+                        _comp_rows.append({
+                            "Mark":     m,
+                            "A Size":   a.size       if a  else "—",
+                            "A Qty":    a.qty        if a  else "—",
+                            "A Length": a.length_ft_in if a else "—",
+                            "B Size":   b_.size      if b_ else "—",
+                            "B Qty":    b_.qty       if b_ else "—",
+                            "B Length": b_.length_ft_in if b_ else "—",
+                            "Status":   changed,
+                        })
+
+                    def _hl_comp(row):
+                        if row["Status"] == "Added":
+                            return ["background-color:#d4edda"] * len(row)
+                        if row["Status"] == "Removed":
+                            return ["background-color:#f8d7da"] * len(row)
+                        if row["Status"] == "Changed":
+                            return ["background-color:#fff3cd"] * len(row)
+                        return [""] * len(row)
+
+                    _comp_df = pd.DataFrame(_comp_rows)
+                    st.dataframe(_comp_df.style.apply(_hl_comp, axis=1),
+                                 use_container_width=True, hide_index=True)
+                    st.caption("Green = added in B  |  Red = removed in B  |  Yellow = changed")
+            else:
+                st.info("Select two different runs to compare.")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # AI ASSISTANT — full-width chat section
