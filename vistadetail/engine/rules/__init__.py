@@ -12,6 +12,14 @@ from vistadetail.engine.rules.inlet_wall_rules import (
     rule_validate_max_spacing_ACI,
     rule_validate_min_cover,
     rule_vertical_bars_EF,
+    # Vista Excel-matched G2 Inlet rules
+    rule_g2_geometry,
+    rule_g2_bottom_mat,
+    rule_g2_horizontals,
+    rule_g2_verticals,
+    rule_g2_ab_bars,
+    rule_g2_right_angle,
+    rule_g2_hoops,
 )
 from vistadetail.engine.rules.footing_rules import (
     rule_bottom_transverse,
@@ -143,6 +151,14 @@ RULE_REGISTRY: dict = {
     "rule_corner_L_bars":            rule_corner_L_bars,
     "rule_validate_min_cover":       rule_validate_min_cover,
     "rule_validate_max_spacing_ACI": rule_validate_max_spacing_ACI,
+    # G2 Inlet — Vista Excel-matched
+    "rule_g2_geometry":              rule_g2_geometry,
+    "rule_g2_bottom_mat":            rule_g2_bottom_mat,
+    "rule_g2_horizontals":           rule_g2_horizontals,
+    "rule_g2_verticals":             rule_g2_verticals,
+    "rule_g2_ab_bars":               rule_g2_ab_bars,
+    "rule_g2_right_angle":           rule_g2_right_angle,
+    "rule_g2_hoops":                 rule_g2_hoops,
     # Spread Footing
     "rule_bottom_transverse":        rule_bottom_transverse,
     "rule_bottom_longitudinal":      rule_bottom_longitudinal,
