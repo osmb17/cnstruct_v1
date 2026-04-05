@@ -587,15 +587,15 @@ if bars is not None:
                        mime="text/csv", use_container_width=True, key="btn_csv")
     try:
         ji = {"Project": job_name, "Job #": job_number, "Detailer": detailer}
-        b5.download_button("Compose Hoja",
+        b5.download_button("Barlist Sheet",
                            data=_make_pdf(bars, template_name, ji),
                            file_name=f"{template_name.replace(' ','_')}_barlist.pdf",
                            mime="application/pdf", use_container_width=True, key="btn_pdf")
     except ImportError:
-        b5.button("Compose Hoja", disabled=True, use_container_width=True, key="btn_pdf_na")
+        b5.button("Barlist Sheet", disabled=True, use_container_width=True, key="btn_pdf_na")
 else:
     b4.button("Export CSV",   disabled=True, use_container_width=True, key="btn_csv_na")
-    b5.button("Compose Hoja", disabled=True, use_container_width=True, key="btn_pdf_na")
+    b5.button("Barlist Sheet", disabled=True, use_container_width=True, key="btn_pdf_na")
 
 show_cut_tab  = b6.button("Cut Optimizer", use_container_width=True, key="btn_cut")
 show_hist_tab = b7.button("History",       use_container_width=True, key="btn_hist")
