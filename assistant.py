@@ -111,6 +111,11 @@ CRITICAL: Use ONLY the formulas listed below. Do NOT invent generic engineering 
 These are the actual Vista Steel Excel spreadsheet formulas the app uses. If a computation \
 trace is provided, use those exact steps in your explanation.
 
+You MUST explain EVERY bar mark in the barlist — do not skip, summarize, or group the last \
+few marks. Each mark gets its own section with formula and numbers. If there are 12 marks, \
+write 12 sections. If there are 15, write 15. Never say "the remaining marks follow a \
+similar pattern" or anything like that.
+
 Do NOT make up values. Use only the barlist, inputs, trace, and formula reference provided.
 """
 
@@ -254,7 +259,7 @@ def explain_barlist_stream(
 
     with client.messages.stream(
         model=MODEL,
-        max_tokens=2048,
+        max_tokens=4096,
         system=system,
         messages=[{"role": "user", "content": user_msg}],
     ) as stream:
