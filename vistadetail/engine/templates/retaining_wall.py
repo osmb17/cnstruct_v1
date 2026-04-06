@@ -18,11 +18,13 @@ class RetainingWallTemplate(BaseTemplate):
         )
 
         self.inputs = [
+            InputField("wall_length_ft",     float, label="Wall Length (ft)",
+                       min=4.0,  max=200.0, default=20.0),
             InputField("stem_height_ft",     float, label="Stem Height (ft)",
                        min=2.0,  max=30.0,  default=10.0),
             InputField("stem_thick_in",      float, label="Stem Thickness (in)",
                        min=8.0,  max=36.0,  default=12.0),
-            InputField("footing_length_ft",  float, label="Footing Length (ft)",
+            InputField("footing_length_ft",  float, label="Footing Width (ft)",
                        min=4.0,  max=30.0,  default=8.0),
             InputField("footing_depth_in",   float, label="Footing Depth (in)",
                        min=12.0, max=48.0,  default=18.0),

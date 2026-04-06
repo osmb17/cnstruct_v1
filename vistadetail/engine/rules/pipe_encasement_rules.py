@@ -74,34 +74,68 @@ def rule_encasement_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
     )]
 
 
+_MAX_STOCK_FT = 60       # max rebar stock length (industry standard)
+
+
 def rule_encasement_longitudinals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     Longitudinal bars running the full length of the encasement.
 
-    Length = encasement_length_in - 2 × cover_in
-    Qty    = n_long_bars  (user-specified; based on cross-section bar arrangement)
-    Mark   = E2
-
-    Note: for long encasements, bars will be spliced in the field. The length
-    here is the full run length; the contractor will lap-splice at delivery lengths.
+    For encasements longer than 60ft, bars are broken into stock-length
+    pieces with Class B lap splices. Qty = n_long_bars * pieces_per_run.
+    ACI 318-19 S25.5.2: Class B tension splice = 1.3 * ld.
     """
-    length_in = p.encasement_length_ft * 12
-    bar_len   = length_in - 2 * p.cover_in
-    qty       = int(p.n_long_bars)
+    from vistadetail.engine.hooks import bar_diameter, development_length_tension
+
+    length_in  = p.encasement_length_ft * 12
+    total_run  = length_in - 2 * p.cover_in
+    n_bars     = int(p.n_long_bars)
+    max_stock_in = _MAX_STOCK_FT * 12  # 720 in
+
+    if total_run <= max_stock_in:
+        # Single piece per bar position
+        bar_len = total_run
+        qty = n_bars
+        n_pieces = 1
+        lap_in = 0
+        log.step(
+            f"Longitudinal bars (E2): {fmt_inches(total_run)} <= {_MAX_STOCK_FT}ft stock"
+            f" -- single piece per position",
+            source="PipeEncasementRules",
+        )
+    else:
+        # Break into stock lengths with lap splices
+        ld_in = development_length_tension(p.long_bar_size, cover_in=p.cover_in)
+        lap_in = math.ceil(1.3 * ld_in)  # Class B splice
+
+        # Each piece covers (stock - lap) of effective run
+        effective_per_piece = max_stock_in - lap_in
+        n_pieces = math.ceil(total_run / effective_per_piece)
+        bar_len = max_stock_in  # each piece is a full stock bar
+        qty = n_bars * n_pieces
+
+        log.step(
+            f"Longitudinal run = {fmt_inches(total_run)} > {_MAX_STOCK_FT}ft stock"
+            f" -- breaking into {n_pieces} pieces per position",
+            source="PipeEncasementRules",
+        )
+        log.step(
+            f"Class B lap splice = 1.3 x {ld_in:.1f} = {lap_in} in"
+            f" | effective per piece = {fmt_inches(effective_per_piece)}",
+            source="PipeEncasementRules",
+        )
 
     log.step(
-        f"Longitudinal bars (E2): {length_in:.1f} − 2×{p.cover_in} cover = {bar_len:.1f} in"
-        f" = {fmt_inches(bar_len)}",
-        detail="encasement_length_in − 2×cover_in",
+        f"Qty E2 = {n_bars} positions x {n_pieces} pieces = {qty} bars"
+        f" @ {fmt_inches(bar_len)}",
         source="PipeEncasementRules",
     )
-    log.step(
-        f"Qty E2 = {qty} bars (longitudinal count per cross-section detail)",
-        detail="user-specified n_long_bars",
-        source="PipeEncasementRules",
-    )
-    log.result("E2", f"{p.long_bar_size} × {qty} @ {fmt_inches(bar_len)} [longitudinals]",
+    log.result("E2", f"{p.long_bar_size} x {qty} @ {fmt_inches(bar_len)} [longitudinals]",
                detail="encasement longitudinal bars", source="PipeEncasementRules")
+
+    notes = "longitudinal along pipe"
+    if total_run > max_stock_in:
+        notes += f" (spliced, {lap_in}\" lap)"
 
     return [BarRow(
         mark="E2",
@@ -109,7 +143,7 @@ def rule_encasement_longitudinals(p: Params, log: ReasoningLogger) -> list[BarRo
         qty=qty,
         length_in=bar_len,
         shape="Str",
-        notes="longitudinal along pipe",
+        notes=notes,
         source_rule="rule_encasement_longitudinals",
     )]
 
