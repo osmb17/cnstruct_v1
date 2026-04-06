@@ -30,87 +30,68 @@ import math
 from vistadetail.engine.reasoning_logger import ReasoningLogger
 from vistadetail.engine.schema import BarRow, Params, fmt_inches
 
+_MAX_STOCK_FT = 60  # max rebar stock length
+
+
+def _long_bar_calc(p, mark, bar_size, qty_count, label, wall_len_ft, log):
+    """Shared logic for top/bottom longitudinal bars with stock-length splicing."""
+    from vistadetail.engine.hooks import development_length_tension
+
+    wall_in = wall_len_ft * 12
+    total_run = wall_in - 2 * p.cover_in
+    qty_per_pos = int(qty_count)
+    max_stock_in = _MAX_STOCK_FT * 12
+
+    if total_run <= max_stock_in:
+        bar_len = total_run
+        qty = qty_per_pos
+        notes = f"{label} longitudinal"
+        log.step(
+            f"{label} long bars ({mark}): {fmt_inches(total_run)} <= {_MAX_STOCK_FT}ft -- single piece",
+            source="SeatwallRules",
+        )
+    else:
+        ld_in = development_length_tension(bar_size, cover_in=p.cover_in)
+        lap_in = math.ceil(1.3 * ld_in)
+        effective = max_stock_in - lap_in
+        n_pieces = math.ceil(total_run / effective)
+        bar_len = max_stock_in
+        qty = qty_per_pos * n_pieces
+        notes = f"{label} longitudinal (spliced, {lap_in}\" lap)"
+        log.step(
+            f"{label} long bars ({mark}): {fmt_inches(total_run)} > {_MAX_STOCK_FT}ft"
+            f" -- {n_pieces} pieces x {qty_per_pos} = {qty} bars",
+            source="SeatwallRules",
+        )
+
+    log.step(f"Qty {mark} = {qty} @ {fmt_inches(bar_len)}", source="SeatwallRules")
+    log.result(mark, f"{bar_size} x {qty} @ {fmt_inches(bar_len)} [{label} long]",
+               source="SeatwallRules")
+
+    return [BarRow(
+        mark=mark, size=bar_size, qty=qty, length_in=bar_len,
+        shape="Str", notes=notes, source_rule=f"rule_seatwall_{label}_long",
+    )]
+
 
 # ---------------------------------------------------------------------------
-# S1 — top longitudinal bars
+# S1 -- top longitudinal bars
 # ---------------------------------------------------------------------------
 
 def rule_seatwall_top_long(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """
-    Longitudinal bars at the top of the seatwall cross-section.
-
-    Length = wall_length_in - 2 × cover_in
-    Qty    = top_bar_count  (typically 2)
-    Mark   = S1
-    """
-    wall_in = p.wall_length_ft * 12
-    bar_len = wall_in - 2 * p.cover_in
-    qty     = int(p.top_bar_count)
-
-    log.step(
-        f"Top long bars (S1): {wall_in:.2f} − 2×{p.cover_in} cover = {bar_len:.2f} in"
-        f" = {fmt_inches(bar_len)}",
-        detail="wall_length_ft×12 − 2×cover_in",
-        source="SeatwallRules",
-    )
-    log.step(
-        f"Qty S1 = {qty} bars (top longitudinal count)",
-        detail="user-specified top_bar_count",
-        source="SeatwallRules",
-    )
-    log.result("S1", f"{p.top_bar_size} × {qty} @ {fmt_inches(bar_len)} [top long]",
-               detail="seatwall top longitudinal bars", source="SeatwallRules")
-
-    return [BarRow(
-        mark="S1",
-        size=p.top_bar_size,
-        qty=qty,
-        length_in=bar_len,
-        shape="Str",
-        notes="top longitudinal",
-        source_rule="rule_seatwall_top_long",
-    )]
+    """Top longitudinal bars -- spliced if wall > 60ft."""
+    return _long_bar_calc(p, "S1", p.top_bar_size, p.top_bar_count, "top",
+                          p.wall_length_ft, log)
 
 
 # ---------------------------------------------------------------------------
-# S2 — bottom longitudinal bars
+# S2 -- bottom longitudinal bars
 # ---------------------------------------------------------------------------
 
 def rule_seatwall_bot_long(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """
-    Longitudinal bars at the bottom of the seatwall cross-section.
-
-    Length = wall_length_in - 2 × cover_in
-    Qty    = bot_bar_count  (typically 2)
-    Mark   = S2
-    """
-    wall_in = p.wall_length_ft * 12
-    bar_len = wall_in - 2 * p.cover_in
-    qty     = int(p.bot_bar_count)
-
-    log.step(
-        f"Bot long bars (S2): {wall_in:.2f} − 2×{p.cover_in} cover = {bar_len:.2f} in"
-        f" = {fmt_inches(bar_len)}",
-        detail="wall_length_ft×12 − 2×cover_in",
-        source="SeatwallRules",
-    )
-    log.step(
-        f"Qty S2 = {qty} bars (bottom longitudinal count)",
-        detail="user-specified bot_bar_count",
-        source="SeatwallRules",
-    )
-    log.result("S2", f"{p.bot_bar_size} × {qty} @ {fmt_inches(bar_len)} [bot long]",
-               detail="seatwall bottom longitudinal bars", source="SeatwallRules")
-
-    return [BarRow(
-        mark="S2",
-        size=p.bot_bar_size,
-        qty=qty,
-        length_in=bar_len,
-        shape="Str",
-        notes="bottom longitudinal",
-        source_rule="rule_seatwall_bot_long",
-    )]
+    """Bottom longitudinal bars -- spliced if wall > 60ft."""
+    return _long_bar_calc(p, "S2", p.bot_bar_size, p.bot_bar_count, "bottom",
+                          p.wall_length_ft, log)
 
 
 # ---------------------------------------------------------------------------

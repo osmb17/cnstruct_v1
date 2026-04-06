@@ -2,27 +2,26 @@
 Rule functions for Retaining Wall template.
 
 Caltrans-style cantilever retaining wall:
-  SW1 — stem wall horizontal bars EF (temperature/shrinkage + lateral distribution)
+  SW1 — stem wall horizontal bars EF (temperature/shrinkage running ALONG wall length)
   SW2 — stem wall vertical bars EF (primary flexural steel, tension on soil side)
-  TW1 — toe bars (bottom footing, toe side, transverse, primary tension under toe)
-  HW1 — heel bars (bottom footing, heel side, transverse, primary tension over heel)
+  TW1 — toe bars (bottom footing, transverse, primary tension under toe)
+  HW1 — heel bars (top footing, transverse, primary tension over heel)
   DW1 — stem-to-footing dowels (continuity bars across construction joint)
   KW1 — shear key bars (if shear key requested, vertical U-bars through key)
 
 Geometry conventions:
-  - stem_height_ft:   wall stem height above top of footing
-  - stem_thick_in:    stem wall thickness
+  - wall_length_ft:    length of wall (out-of-plane dimension)
+  - stem_height_ft:    wall stem height above top of footing
+  - stem_thick_in:     stem wall thickness
   - footing_length_ft: full horizontal footing length (toe + heel + stem thickness)
-  - footing_depth_in: footing thickness (vertical dimension)
-  - cover_in:         clear cover, all faces
+  - footing_depth_in:  footing thickness (vertical dimension)
+  - cover_in:          clear cover, all faces
 
 Notes:
-  - SW1/SW2 are each-face (EF), so qty counts one face then caller understands EF.
-    Here we compute EF directly as the total bar count for both faces combined
-    on transverse (horiz) and track as a single EF mark.
-  - SW2 vertical bars: total qty across footing length, spaced at vert_spacing_in.
+  - SW1 horizontal bars run ALONG the wall length. Qty per face = floor(stem_height/spacing)+1.
+  - SW2 vertical bars are spaced along the wall length. Qty per face = floor(wall_length/spacing)+1.
   - Dowel length: footing_depth_in (embed into footing) + lap splice into stem.
-  - Lap splice = 1.3 × ld (Class B tension splice per ACI 318-19 §25.5.2).
+  - Lap splice = 1.3 x ld (Class B tension splice per ACI 318-19 S25.5.2).
 """
 
 from __future__ import annotations
@@ -41,23 +40,25 @@ from vistadetail.engine.schema import BarRow, Params, fmt_inches
 
 def rule_stem_horiz(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    Stem horizontal bars, each face.
+    Stem horizontal bars, each face — temperature/shrinkage steel running
+    ALONG the wall length (ACI 318-19 S11.7.2).
 
-    Qty = bars per face × 2 faces.
-    One face: floor(usable_height / horiz_spacing) + 1 bars.
-    Bar length = stem thickness - 2 × cover (transverse bar, no hooks).
+    Qty per face = floor(usable_stem_height / horiz_spacing) + 1.
+    Bar length = wall_length - 2 * cover (runs the full length of the wall).
+    Total qty = qty_per_face * 2 faces.
     """
+    wall_len_in = p.wall_length_ft * 12.0
     usable_h_in = (p.stem_height_ft * 12.0) - (2.0 * p.cover_in)
     qty_per_face = math.floor(usable_h_in / p.horiz_spacing_in) + 1
     qty_total = qty_per_face * 2   # each face
 
-    # Horizontal bar spans the stem thickness (transverse direction)
-    bar_len_in = p.stem_thick_in - (2.0 * p.cover_in)
-    bar_len_in = max(bar_len_in, 6.0)
+    # Horizontal bar runs the full wall length
+    bar_len_in = wall_len_in - (2.0 * p.cover_in)
+    bar_len_in = max(bar_len_in, 12.0)
 
-    log.step(f"Stem usable height = {usable_h_in:.1f} in → {qty_per_face} bars/face × 2 faces = {qty_total}")
-    log.step(f"Bar length = {p.stem_thick_in} - 2×{p.cover_in} = {bar_len_in:.1f} in (transverse)")
-    log.result("SW1", f"{p.horiz_bar_size} × {qty_total} @ {fmt_inches(bar_len_in)}")
+    log.step(f"Stem usable height = {usable_h_in:.1f} in  ->  {qty_per_face} bars/face x 2 faces = {qty_total}")
+    log.step(f"Bar length = {fmt_inches(wall_len_in)} - 2x{p.cover_in} = {fmt_inches(bar_len_in)} (along wall)")
+    log.result("SW1", f"{p.horiz_bar_size} x {qty_total} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
         mark="SW1", size=p.horiz_bar_size, qty=qty_total, length_in=bar_len_in,
@@ -73,22 +74,23 @@ def rule_stem_horiz(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_stem_vert(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    Stem vertical bars, each face.
+    Stem vertical bars, each face — primary flexural steel (ACI 318-19 S11.7.3.1).
 
-    Qty = bars per face × 2 faces.
-    One face: floor(usable_footing_length / vert_spacing) + 1 bars.
-    Bar length = stem height + 90° hook at base (into footing) + 6 in top dev.
+    Qty per face = floor(usable_wall_length / vert_spacing) + 1.
+    Bar length = stem_height + 90-deg hook at base (into footing) + 6 in top dev.
+    Total qty = qty_per_face * 2 faces.
     """
-    usable_len_in = (p.footing_length_ft * 12.0) - (2.0 * p.cover_in)
+    wall_len_in = p.wall_length_ft * 12.0
+    usable_len_in = wall_len_in - (2.0 * p.cover_in)
     qty_per_face = math.floor(usable_len_in / p.vert_spacing_in) + 1
     qty_total = qty_per_face * 2   # each face
 
     bot_hook_in = hook_add("std_90", p.vert_bar_size)
     bar_len_in = (p.stem_height_ft * 12.0) + bot_hook_in + 6.0
 
-    log.step(f"Stem usable footing length = {usable_len_in:.1f} in → {qty_per_face} bars/face × 2 = {qty_total}")
-    log.step(f"Bar length = {p.stem_height_ft * 12:.0f} + {bot_hook_in} hook + 6 top dev = {bar_len_in:.1f} in")
-    log.result("SW2", f"{p.vert_bar_size} × {qty_total} @ {fmt_inches(bar_len_in)}")
+    log.step(f"Wall length = {fmt_inches(wall_len_in)}, usable = {usable_len_in:.1f} in  ->  {qty_per_face} bars/face x 2 = {qty_total}")
+    log.step(f"Bar length = {p.stem_height_ft * 12:.0f} + {bot_hook_in} hook + 6 top dev = {fmt_inches(bar_len_in)}")
+    log.result("SW2", f"{p.vert_bar_size} x {qty_total} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
         mark="SW2", size=p.vert_bar_size, qty=qty_total, length_in=bar_len_in,
@@ -104,24 +106,25 @@ def rule_stem_vert(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_toe_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    Toe transverse bars at bottom of footing, toe side.
+    Toe transverse bars at bottom of footing (ACI 318-19 S13.3.1).
 
-    Toe projection ≈ (footing_length - stem_thick) / 2 assuming equal toe/heel.
-    Qty spans the footing length (longitudinal direction of wall).
-    Bar length = toe projection + stem thickness + cover development.
+    Bars run transverse (across the footing width = footing_length_ft).
+    Qty = spaced along the wall length at footing_spacing_in.
+    Bar length = footing_length - cover + hook at toe end.
     """
+    wall_len_in = p.wall_length_ft * 12.0
     footing_len_in = p.footing_length_ft * 12.0
-    # Number of bars across the footing length at given spacing
-    qty = math.floor((footing_len_in - 2.0 * p.cover_in) / p.footing_spacing_in) + 1
 
-    # Toe bar spans from toe edge into and under the stem — full footing width
-    # Hook at free end for development; straight at heel side
+    # Bars spaced along the wall length
+    qty = math.floor((wall_len_in - 2.0 * p.cover_in) / p.footing_spacing_in) + 1
+
+    # Bar spans the full footing cross-section width with hook at toe
     hook_in = hook_add("std_90", p.footing_bar_size)
-    bar_len_in = footing_len_in - p.cover_in + hook_in  # extend to toe edge with hook
+    bar_len_in = footing_len_in - p.cover_in + hook_in
 
-    log.step(f"Footing length = {footing_len_in:.0f} in → {qty} bars at {p.footing_spacing_in} in spacing")
-    log.step(f"Toe bar length = {footing_len_in:.0f} - {p.cover_in} + {hook_in} hook = {bar_len_in:.1f} in")
-    log.result("TW1", f"{p.footing_bar_size} × {qty} @ {fmt_inches(bar_len_in)}")
+    log.step(f"Toe bars spaced along wall length {fmt_inches(wall_len_in)}: {qty} bars @ {p.footing_spacing_in}\" oc")
+    log.step(f"Bar length = {fmt_inches(footing_len_in)} - {p.cover_in} + {hook_in} hook = {fmt_inches(bar_len_in)}")
+    log.result("TW1", f"{p.footing_bar_size} x {qty} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
         mark="TW1", size=p.footing_bar_size, qty=qty, length_in=bar_len_in,
@@ -137,22 +140,22 @@ def rule_toe_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_heel_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    Heel transverse bars at bottom of footing, heel side.
+    Heel transverse bars at top of footing (ACI 318-19 S13.3.1).
 
-    Same count as toe bars; heel bars are top face bars over heel projection.
-    Bar length = footing depth - 2×cover (transverse through depth) + hooks.
-    Conservative: same layout as toe bars, top of footing slab.
+    Same spacing as toe bars (along wall length). Sits on top face of footing.
+    Bar length = footing_length - cover + hook at heel free end.
     """
+    wall_len_in = p.wall_length_ft * 12.0
     footing_len_in = p.footing_length_ft * 12.0
-    qty = math.floor((footing_len_in - 2.0 * p.cover_in) / p.footing_spacing_in) + 1
+
+    qty = math.floor((wall_len_in - 2.0 * p.cover_in) / p.footing_spacing_in) + 1
 
     hook_in = hook_add("std_90", p.footing_bar_size)
-    # Heel bar also runs footing length — sits on top face, hooks at heel free end
     bar_len_in = footing_len_in - p.cover_in + hook_in
 
-    log.step(f"Heel bars: {qty} @ {p.footing_spacing_in} in spacing across footing length")
-    log.step(f"Heel bar length = {footing_len_in:.0f} - {p.cover_in} + {hook_in} hook = {bar_len_in:.1f} in")
-    log.result("HW1", f"{p.footing_bar_size} × {qty} @ {fmt_inches(bar_len_in)}")
+    log.step(f"Heel bars spaced along wall length {fmt_inches(wall_len_in)}: {qty} bars @ {p.footing_spacing_in}\" oc")
+    log.step(f"Bar length = {fmt_inches(footing_len_in)} - {p.cover_in} + {hook_in} hook = {fmt_inches(bar_len_in)}")
+    log.result("HW1", f"{p.footing_bar_size} x {qty} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
         mark="HW1", size=p.footing_bar_size, qty=qty, length_in=bar_len_in,
@@ -175,20 +178,20 @@ def rule_stem_dowels(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     Class B splice = 1.3 × ld (ACI 318-19 §25.5.2).
     """
-    footing_len_in = p.footing_length_ft * 12.0
-    qty = math.floor((footing_len_in - 2.0 * p.cover_in) / p.vert_spacing_in) + 1
+    wall_len_in = p.wall_length_ft * 12.0
+    qty = math.floor((wall_len_in - 2.0 * p.cover_in) / p.vert_spacing_in) + 1
 
     # Embed into footing: footing depth minus top cover
     embed_in = p.footing_depth_in - p.cover_in
 
-    # Lap splice into stem: Class B = 1.3 × ld
+    # Lap splice into stem: Class B = 1.3 x ld
     ld_in = development_length_tension(p.vert_bar_size, cover_in=p.cover_in)
     lap_in = math.ceil(1.3 * ld_in)
 
     bar_len_in = embed_in + lap_in
 
-    log.step(f"Dowel qty = {qty} at {p.vert_spacing_in} in spacing across footing {footing_len_in:.0f} in")
-    log.step(f"Embed = {embed_in:.1f} in  |  Class B lap = 1.3×{ld_in:.1f} = {lap_in} in")
+    log.step(f"Dowel qty = {qty} at {p.vert_spacing_in}\" oc along wall length {fmt_inches(wall_len_in)}")
+    log.step(f"Embed = {embed_in:.1f} in  |  Class B lap = 1.3 x {ld_in:.1f} = {lap_in} in")
     log.step(f"Total dowel length = {bar_len_in:.1f} in")
     log.result("DW1", f"{p.vert_bar_size} × {qty} @ {fmt_inches(bar_len_in)}")
 
@@ -214,11 +217,11 @@ def rule_shear_key(p: Params, log: ReasoningLogger) -> list[BarRow]:
     U-bar length = 2 × (key_depth + cover) + footing bar diameter bend allowance.
     """
     if p.shear_key != "yes":
-        log.step("Shear key = no — skipping KW1")
+        log.step("Shear key = no -- skipping KW1")
         return []
 
-    footing_len_in = p.footing_length_ft * 12.0
-    qty = math.floor((footing_len_in - 2.0 * p.cover_in) / p.footing_spacing_in) + 1
+    wall_len_in = p.wall_length_ft * 12.0
+    qty = math.floor((wall_len_in - 2.0 * p.cover_in) / p.footing_spacing_in) + 1
 
     # U-bar: two legs each = key_depth_in + cover; bend at bottom adds ~4db
     from vistadetail.engine.hooks import bar_diameter
