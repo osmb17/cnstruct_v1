@@ -686,8 +686,8 @@ else:
 
 show_cut_tab  = b6.button("Cut Optimizer", use_container_width=True, key="btn_cut")
 show_hist_tab = b7.button("History",       use_container_width=True, key="btn_hist")
-call_ai       = b8.toggle("AI Notes", value=False, key="opt_ai",
-                           help="AI reviewer notes on bars (requires ANTHROPIC_API_KEY)")
+call_ai       = b8.toggle("AI Review", value=False, key="opt_ai",
+                           help="Add per-bar AI review notes flagging potential issues")
 
 # ── Button actions ────────────────────────────────────────────────────────────
 
@@ -719,21 +719,54 @@ if generate_btn or refresh_btn:
         else:
             params_raw[f.name] = f.default
 
-    log = ReasoningLogger(None)
-    with st.spinner("Running engine…"):
-        try:
-            b = generate_barlist(template, params_raw, log, call_ai=call_ai)
-            st.session_state.bars        = b
-            st.session_state.log_lines   = log.get_lines()
-            st.session_state.warnings    = [ln for ln in log.get_lines() if ln[1].strip()=="WARN"]
-            st.session_state.error       = None
-            st.session_state.explanation = None   # clear old explanation
-            hist.save_run(template_name, job_name, job_number, detailer,
-                          params_raw, b, barlist_total_weight_lb(b), 0.0)
-            _template_stats.clear()
-        except Exception as exc:
-            st.session_state.error = str(exc)
-            st.session_state.bars  = None
+    # ── Pre-flight input validation ───────────────────────────────────────
+    _validation_errors: list[str] = []
+    for f in template.inputs:
+        val = params_raw.get(f.name)
+        if val is None:
+            continue
+        if f.dtype in (int, float):
+            num = float(val) if val != "" else 0.0
+            if f.name.endswith("_ft") and num <= 0:
+                _label = f.label if hasattr(f, "label") else f.name.replace("_", " ").title()
+                _validation_errors.append(f"{_label} must be greater than zero (got {val})")
+            if f.name == "wall_height_ft" and num <= 0:
+                _validation_errors.append(f"Wall height must be greater than zero (got {val})")
+            if f.name == "num_structures" and num < 1:
+                _validation_errors.append(f"Number of structures must be at least 1 (got {val})")
+
+    # Expanded inlet: expanded Y must be larger than standard Y
+    if template_name == "G2 Expanded Inlet":
+        _y_std = float(params_raw.get("y_dim_ft", 0))
+        _y_exp = float(params_raw.get("y_expanded_ft", 0))
+        if _y_exp > 0 and _y_std > 0 and _y_exp <= _y_std:
+            _validation_errors.append(
+                f"Expanded Y ({_y_exp} ft) must be larger than standard Y ({_y_std} ft)")
+
+    if _validation_errors:
+        st.session_state.error = "**Input problems:**\n" + "\n".join(
+            f"- {e}" for e in _validation_errors)
+        st.session_state.bars = None
+    else:
+        # ── Run engine ────────────────────────────────────────────────────
+        log = ReasoningLogger(None)
+        with st.spinner("Running engine..."):
+            try:
+                b = generate_barlist(template, params_raw, log, call_ai=call_ai)
+                st.session_state.bars        = b
+                st.session_state.log_lines   = log.get_lines()
+                st.session_state.warnings    = [ln for ln in log.get_lines() if ln[1].strip()=="WARN"]
+                st.session_state.error       = None
+                st.session_state.explanation = None   # clear old explanation
+                st.session_state._gen_params_hash = hashlib.md5(
+                    json.dumps(params_raw, sort_keys=True, default=str).encode()
+                ).hexdigest()[:12]
+                hist.save_run(template_name, job_name, job_number, detailer,
+                              params_raw, b, barlist_total_weight_lb(b), 0.0)
+                _template_stats.clear()
+            except Exception as exc:
+                st.session_state.error = str(exc)
+                st.session_state.bars  = None
 
     # Stream AI explanation immediately after engine run (if API key is set)
     if st.session_state.get("bars") and _api_key_available():
@@ -745,6 +778,7 @@ if generate_btn or refresh_btn:
                     params_raw=params_raw,
                     bars=st.session_state.bars,
                     warnings=st.session_state.warnings,
+                    log_lines=st.session_state.get("log_lines"),
                 ):
                     chunks.append(chunk)
                 st.session_state.explanation = "".join(chunks)
@@ -889,12 +923,23 @@ with inp_col:
                 name, val = _widget(f, key_prefix=f"adv_{template.name}", container=st)
                 params_raw[name] = val
 
-    # Store params for refresh
+    # Store current params (used by refresh and re-explain)
     st.session_state._last_params = params_raw
+    # Hash for staleness detection (has the user changed inputs since last generate?)
+    _cur_phash = hashlib.md5(json.dumps(params_raw, sort_keys=True, default=str).encode()).hexdigest()[:12]
+    st.session_state._cur_params_hash = _cur_phash
 
 # ── RESULTS — full width below diagram + inputs ───────────────────────────────
 if st.session_state.get("error"):
-    st.error(f"**Error:** {st.session_state.error}")
+    _err = st.session_state.error
+    if _err.startswith("**Input problems:**"):
+        st.warning(_err)
+    else:
+        st.error(
+            f"**Generation failed:** {_err}\n\n"
+            "_Check that all dimensions are positive and the template inputs make sense, "
+            "then click Generate again._"
+        )
 
 if bars is not None:
     st.markdown("---")
@@ -923,6 +968,67 @@ if bars is not None:
     st.dataframe(df.style.apply(_hl, axis=1),
                  use_container_width=True, hide_index=True, height=320)
 
+    # ── Computation Trace (deterministic) ─────────────────────────────────────
+    _trace_lines = st.session_state.get("log_lines", [])
+    if _trace_lines:
+        with st.expander("Computation Trace", expanded=False):
+            _trace_html_parts = []
+            for _ts, _tag, _msg, _detail, _src in _trace_lines:
+                _tag = _tag.strip()
+                _msg = html.escape(_msg.strip())
+                _detail = html.escape((_detail or "").strip())
+
+                if not _tag and not _msg:
+                    _trace_html_parts.append("<div style='height:6px'></div>")
+                    continue
+                if _tag == "────":
+                    _trace_html_parts.append(
+                        "<hr style='border:none;border-top:1px solid #d0d5dd;margin:8px 0'>"
+                    )
+                    continue
+
+                # Color-code by tag type
+                if _tag == "WARN":
+                    _color = "#c62828"
+                    _bg = "#fff3e0"
+                    _prefix = "[!] "
+                elif _tag == "OUT":
+                    _color = "#1565c0"
+                    _bg = "#e3f2fd"
+                    _prefix = ""
+                elif _tag == "RULE":
+                    _color = "#37474f"
+                    _bg = "#eceff1"
+                    _prefix = ""
+                elif _tag == "DONE":
+                    _color = "#2e7d32"
+                    _bg = "#e8f5e9"
+                    _prefix = ""
+                else:
+                    _color = "#1a1d23"
+                    _bg = "transparent"
+                    _prefix = ""
+
+                _detail_span = (
+                    f"<span style='color:#78909c;font-size:0.78rem;margin-left:8px'>{_detail}</span>"
+                    if _detail else ""
+                )
+                _trace_html_parts.append(
+                    f"<div style='background:{_bg};padding:2px 8px;margin:1px 0;"
+                    f"font-family:monospace;font-size:0.82rem;color:{_color};"
+                    f"border-radius:3px;line-height:1.5'>"
+                    f"<b style='min-width:50px;display:inline-block'>{html.escape(_tag)}</b> "
+                    f"{_prefix}{_msg}{_detail_span}</div>"
+                )
+
+            st.markdown(
+                "<div style='max-height:400px;overflow-y:auto;border:1px solid #e8eaed;"
+                "border-radius:8px;padding:6px'>"
+                + "".join(_trace_html_parts)
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+
     # ── AI Explanation card ───────────────────────────────────────────────────
     explanation = st.session_state.get("explanation")
     _api_ready  = _api_key_available()
@@ -938,6 +1044,14 @@ if bars is not None:
     )
 
     if explanation:
+        # Detect if inputs changed since the barlist was generated
+        _gen_hash = st.session_state.get("_gen_params_hash", "")
+        _cur_hash = st.session_state.get("_cur_params_hash", "")
+        if _gen_hash and _cur_hash and _gen_hash != _cur_hash:
+            st.caption(
+                "Inputs have changed since this barlist was generated. "
+                "Click **Generate** to update the results and explanation."
+            )
         st.markdown(
             f"<div style='background:#ffffff;border:1px solid #e8eaed;border-left:4px solid #1c3461;"
             f"border-radius:0 10px 10px 0;padding:1.1rem 1.3rem;line-height:1.7;"
@@ -954,6 +1068,7 @@ if bars is not None:
                         params_raw=st.session_state.get("_last_params"),
                         bars=bars,
                         warnings=st.session_state.get("warnings", []),
+                        log_lines=st.session_state.get("log_lines"),
                     ):
                         chunks.append(chunk)
                     st.session_state.explanation = "".join(chunks)
@@ -1124,10 +1239,27 @@ with tab_hist:
                 } for b in hbars])
                 st.dataframe(hdf, use_container_width=True, hide_index=True)
 
-                if st.button(f"Delete run #{run['id']}", key=f"hdel_{run['id']}"):
-                    hist.delete_run(run["id"])
-                    _template_stats.clear()
-                    st.rerun()
+                _del_col1, _del_col2 = st.columns([1, 4])
+                with _del_col1:
+                    _del_clicked = st.button(
+                        f"Delete run #{run['id']}", key=f"hdel_{run['id']}",
+                        type="secondary")
+                if _del_clicked:
+                    _confirm_key = f"_confirm_del_{run['id']}"
+                    st.session_state[_confirm_key] = True
+                if st.session_state.get(f"_confirm_del_{run['id']}"):
+                    with _del_col2:
+                        st.warning("Are you sure? This cannot be undone.")
+                    _c1, _c2, _c3 = st.columns([1, 1, 4])
+                    if _c1.button("Yes, delete", key=f"hdelyes_{run['id']}",
+                                  type="primary"):
+                        hist.delete_run(run["id"])
+                        st.session_state.pop(f"_confirm_del_{run['id']}", None)
+                        _template_stats.clear()
+                        st.rerun()
+                    if _c2.button("Cancel", key=f"hdelno_{run['id']}"):
+                        st.session_state.pop(f"_confirm_del_{run['id']}", None)
+                        st.rerun()
 
         # ── Compare two runs ──────────────────────────────────────────────────
         if len(runs) >= 2:
