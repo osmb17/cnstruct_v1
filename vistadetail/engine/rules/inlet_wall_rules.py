@@ -546,3 +546,311 @@ def rule_g2_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
         shape="Rect", notes="Hoops @5oc",
         source_rule="rule_g2_hoops",
     )]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# G2 EXPANDED INLET — Vista Excel-matched rules
+#
+# Reproduces "expanded G2 inlet 9in walls.xlsx".
+# Shares rule_g2_bottom_mat, rule_g2_horizontals, rule_g2_right_angle with
+# the standard G2 Inlet.  Has different vertical formula and adds notched
+# A&B bar and hoop variants for the expansion room.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def rule_g2exp_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
+    """Derive expanded G2 inlet geometry.
+
+    Same as standard G2 but adds an expanded Y dimension used for notched
+    A&B bars and notched hoops.
+
+    Additional input on p:
+      y_expanded_ft  — expanded-section exterior depth (ft)
+    """
+    x_ext = p.x_dim_ft * 12.0
+    y_ext = p.y_dim_ft * 12.0
+    y_exp_ext = p.y_expanded_ft * 12.0
+
+    # ── Wall thickness auto-derive ──────────────────────────────────────
+    t = float(getattr(p, "wall_thick_in", 0))
+    if t <= 0:
+        trial_inside = x_ext - 2 * 9.0
+        t = 9.0 if trial_inside <= 54.0 else 11.0
+        setattr(p, "wall_thick_in", t)
+        log.step(f"Auto T: trial interior X = {fmt_inches(trial_inside)} -> T = {t:.0f}\"")
+    else:
+        log.step(f"User T = {t:.0f}\"")
+
+    x_inside = x_ext - 2 * t
+    y_inside = y_ext - 2 * t
+    y_exp_inside = y_exp_ext - 2 * t
+    n = int(getattr(p, "num_structures", 1)) or 1
+
+    grate_type = str(getattr(p, "grate_type", "Type 24"))
+    grate_ded = _GRATE_DEDUCTION.get(grate_type, 24.0)
+
+    h_adj = p.wall_height_ft * 12.0 + 4.0
+    y_bar = y_ext - 6.0
+    x_bar = x_ext - 6.0
+
+    # ── Gut / notch dimensions (Excel formulas) ──────────────────────────
+    gut_dim = x_inside + t - (grate_ded + 5.0)       # =F4+F5-29
+    notch_dim = y_exp_ext / 2.0 - 23.0               # =(F3+2*F5)/2-23
+
+    ab_bar_len_reg = x_ext - 4.5                      # =F4+2*F5-4.5
+    ab_bar_len_notch = y_exp_ext - 4.5                # =F3+2*F5-4.5
+
+    # ── Store on p ────────────────────────────────────────────────────────
+    setattr(p, "x_ext_in", x_ext)
+    setattr(p, "y_ext_in", y_ext)           # main box Y exterior
+    setattr(p, "y_exp_ext_in", y_exp_ext)   # expanded Y exterior
+    setattr(p, "x_inside_in", x_inside)
+    setattr(p, "y_inside_in", y_inside)
+    setattr(p, "y_exp_inside_in", y_exp_inside)
+    setattr(p, "h_adj", h_adj)
+    setattr(p, "y_bar", y_bar)
+    setattr(p, "x_bar", x_bar)
+    setattr(p, "gut_dim", gut_dim)
+    setattr(p, "notch_dim", notch_dim)
+    setattr(p, "ab_bar_len", ab_bar_len_reg)   # for reuse by shared rules
+    setattr(p, "ab_bar_len_reg", ab_bar_len_reg)
+    setattr(p, "ab_bar_len_notch", ab_bar_len_notch)
+    setattr(p, "grate_ded", grate_ded)
+    setattr(p, "n_struct", n)
+    setattr(p, "t_in", t)
+
+    if gut_dim <= 0:
+        log.warn(f"Gut dimension = {fmt_inches(gut_dim)} <= 0")
+    if notch_dim <= 0:
+        log.warn(f"Notch dimension = {fmt_inches(notch_dim)} <= 0")
+
+    log.result("GEOMETRY",
+        f"X={fmt_inches(x_ext)} (int {fmt_inches(x_inside)}), "
+        f"Y={fmt_inches(y_ext)} (int {fmt_inches(y_inside)}), "
+        f"Y_exp={fmt_inches(y_exp_ext)} (int {fmt_inches(y_exp_inside)}), "
+        f"T={t:.0f}\", H_adj={fmt_inches(h_adj)}, "
+        f"Gut={fmt_inches(gut_dim)}, Notch={fmt_inches(notch_dim)}")
+    return []
+
+
+def rule_g2exp_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
+    """Expanded G2 verticals -- uses T-based formula (not grate_ded).
+
+    Excel formulas:
+      V1: ROUNDUP((X_bar*2 + Y_bar + 6*T) / 5, 0)
+      V2: ROUNDUP((Y_bar + 2*T) / 5, 0)
+    """
+    t = p.t_in
+    qty_v1 = math.ceil((p.x_bar * 2 + p.y_bar + 6 * t) / 5.0)
+    qty_v2 = math.ceil((p.y_bar + 2 * t) / 5.0)
+
+    log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}*2 + {fmt_inches(p.y_bar)} + 6*{t:.0f})/ 5) = {qty_v1}")
+    log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + 2*{t:.0f})/5) = {qty_v2}")
+
+    return [
+        BarRow(mark="V1", size="#5", qty=qty_v1, length_in=p.h_adj,
+               shape="Str", notes="Verticals @5oc",
+               source_rule="rule_g2exp_verticals"),
+        BarRow(mark="V2", size="#5", qty=qty_v2, length_in=p.h_adj,
+               shape="Str", notes="Verticals Grate Side @5oc",
+               source_rule="rule_g2exp_verticals"),
+    ]
+
+
+def rule_g2exp_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
+    """Expanded G2 A&B bars -- regular + notched variants.
+
+    Regular bars span X (over grate), notched bars span expanded Y.
+    """
+    bars: list[BarRow] = []
+
+    if p.gut_dim > 0:
+        qty_a_reg = math.ceil(p.gut_dim / 5.0)
+        qty_b_reg = math.ceil(p.gut_dim / 6.0)
+        log.step(f"A1 reg: CEIL({fmt_inches(p.gut_dim)}/5) = {qty_a_reg}, len {fmt_inches(p.ab_bar_len_reg)}")
+        log.step(f"B1 reg: CEIL({fmt_inches(p.gut_dim)}/6) = {qty_b_reg}, len {fmt_inches(p.ab_bar_len_reg)}")
+        bars += [
+            BarRow(mark="A1", size="#5", qty=qty_a_reg, length_in=p.ab_bar_len_reg,
+                   shape="Str", notes="A Bars Reg @5oc",
+                   source_rule="rule_g2exp_ab_bars"),
+            BarRow(mark="B1", size="#4", qty=qty_b_reg, length_in=p.ab_bar_len_reg,
+                   shape="Str", notes="B Bars Reg @6oc",
+                   source_rule="rule_g2exp_ab_bars"),
+        ]
+    else:
+        log.step("A/B bars (reg): skipped (gut_dim <= 0)")
+
+    if p.notch_dim > 0:
+        qty_a_notch = math.ceil(p.notch_dim / 5.0)
+        qty_b_notch = math.ceil(p.notch_dim / 6.0)
+        log.step(f"A2 notch: CEIL({fmt_inches(p.notch_dim)}/5) = {qty_a_notch}, len {fmt_inches(p.ab_bar_len_notch)}")
+        log.step(f"B2 notch: CEIL({fmt_inches(p.notch_dim)}/6) = {qty_b_notch}, len {fmt_inches(p.ab_bar_len_notch)}")
+        bars += [
+            BarRow(mark="A2", size="#5", qty=qty_a_notch, length_in=p.ab_bar_len_notch,
+                   shape="Str", notes="A Bars Notched @5oc",
+                   source_rule="rule_g2exp_ab_bars"),
+            BarRow(mark="B2", size="#4", qty=qty_b_notch, length_in=p.ab_bar_len_notch,
+                   shape="Str", notes="B Bars Notched @6oc",
+                   source_rule="rule_g2exp_ab_bars"),
+        ]
+    else:
+        log.step("A/B bars (notch): skipped (notch_dim <= 0)")
+
+    return bars
+
+
+def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
+    """Expanded G2 hoops -- regular + notched.
+
+    Excel formulas:
+      Reg:    ROUNDUP((Y_exp_ext) / 5 * n, 0)       dim = gut_dim
+      Notch:  ROUNDUP((X_ext) / 5 * 2 * n, 0)       dim = notch_dim
+    """
+    bars: list[BarRow] = []
+    n = p.n_struct
+
+    if p.gut_dim > 0:
+        qty_reg = math.ceil(p.y_exp_ext_in / 5.0 * n)
+        log.step(f"HP1 reg: CEIL({fmt_inches(p.y_exp_ext_in)}/5*{n}) = {qty_reg}, "
+                 f"dim {fmt_inches(p.gut_dim)}")
+        bars.append(BarRow(
+            mark="HP1", size="#5", qty=qty_reg, length_in=p.gut_dim,
+            shape="Rect", notes="Reg Hoops @5oc",
+            source_rule="rule_g2exp_hoops",
+        ))
+
+    if p.notch_dim > 0:
+        qty_notch = math.ceil(p.x_ext_in / 5.0 * 2 * n)
+        log.step(f"HP2 notch: CEIL({fmt_inches(p.x_ext_in)}/5*2*{n}) = {qty_notch}, "
+                 f"dim {fmt_inches(p.notch_dim)}")
+        bars.append(BarRow(
+            mark="HP2", size="#5", qty=qty_notch, length_in=p.notch_dim,
+            shape="Rect", notes="Notched Hoops @5oc",
+            source_rule="rule_g2exp_hoops",
+        ))
+
+    return bars
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# G2 INLET TOP — Vista Excel-matched rules
+#
+# Reproduces "G2 inlet Top 9in walls.xlsx".
+# Shares rule_g2_horizontals, rule_g2_ab_bars, rule_g2_hoops with the
+# standard G2 Inlet.  Has different vertical length and right-angle formula.
+# No bottom mat (top slab, not a box).
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def rule_g2top_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
+    """Derive G2 Inlet Top geometry.
+
+    Same base X/Y/T as standard G2 inlet.  Two height parameters:
+      wall_height_ft    — full wall height (for horizontal bar qty)
+      vert_extension_in — top-slab extension (for vertical bar length & RA leg)
+    """
+    x_ext = p.x_dim_ft * 12.0
+    y_ext = p.y_dim_ft * 12.0
+
+    # ── Wall thickness auto-derive ──────────────────────────────────────
+    t = float(getattr(p, "wall_thick_in", 0))
+    if t <= 0:
+        trial_inside = x_ext - 2 * 9.0
+        t = 9.0 if trial_inside <= 54.0 else 11.0
+        setattr(p, "wall_thick_in", t)
+        log.step(f"Auto T: trial interior X = {fmt_inches(trial_inside)} -> T = {t:.0f}\"")
+    else:
+        log.step(f"User T = {t:.0f}\"")
+
+    x_inside = x_ext - 2 * t
+    y_inside = y_ext - 2 * t
+    n = int(getattr(p, "num_structures", 1)) or 1
+
+    grate_type = str(getattr(p, "grate_type", "Type 24"))
+    grate_ded = _GRATE_DEDUCTION.get(grate_type, 24.0)
+
+    h_adj = p.wall_height_ft * 12.0 + 4.0   # for horizontals
+
+    vert_ext = float(getattr(p, "vert_extension_in", 20.0))
+    vert_height = vert_ext + 10.0            # Excel: =D6*12+E6+10
+    ra_vert_leg = vert_ext - 2.0             # Excel: =D6*12+E6-2
+
+    y_bar = y_ext - 6.0
+    x_bar = x_ext - 6.0
+
+    gut_dim = x_inside + t - (grate_ded + 5.0)
+    ab_bar_len = x_ext - 4.5
+
+    # ── Store on p ────────────────────────────────────────────────────────
+    setattr(p, "x_ext_in", x_ext)
+    setattr(p, "y_ext_in", y_ext)
+    setattr(p, "x_inside_in", x_inside)
+    setattr(p, "y_inside_in", y_inside)
+    setattr(p, "h_adj", h_adj)
+    setattr(p, "y_bar", y_bar)
+    setattr(p, "x_bar", x_bar)
+    setattr(p, "gut_dim", gut_dim)
+    setattr(p, "ab_bar_len", ab_bar_len)
+    setattr(p, "grate_ded", grate_ded)
+    setattr(p, "n_struct", n)
+    setattr(p, "vert_height", vert_height)
+    setattr(p, "ra_vert_leg", ra_vert_leg)
+
+    if gut_dim <= 0:
+        log.warn(f"Gut dimension = {fmt_inches(gut_dim)} <= 0")
+
+    log.result("GEOMETRY",
+        f"X={fmt_inches(x_ext)}, Y={fmt_inches(y_ext)}, T={t:.0f}\", "
+        f"H_adj={fmt_inches(h_adj)}, Vert_ext={fmt_inches(vert_ext)}, "
+        f"Vert_len={fmt_inches(vert_height)}, Gut={fmt_inches(gut_dim)}")
+    return []
+
+
+def rule_g2top_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
+    """G2 Inlet Top verticals -- same qty formulas as standard, shorter length.
+
+    Qty uses the standard -48/+52 constants (grate_ded parameterized).
+    Length = vert_extension_in + 10 (top-slab extension, NOT full wall H_adj).
+    """
+    gd2 = 2 * p.grate_ded
+    qty_v1 = math.ceil((p.x_bar * 2 - gd2 + p.y_bar + 6) / 5.0)
+    qty_v2 = math.ceil((p.y_bar + gd2 + 4) / 5.0)
+
+    log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}*2 - {gd2:.0f} + {fmt_inches(p.y_bar)} + 6)/5) = {qty_v1}")
+    log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + {gd2:.0f} + 4)/5) = {qty_v2}")
+    log.step(f"Vert bar length = {fmt_inches(p.vert_height)}")
+
+    return [
+        BarRow(mark="V1", size="#5", qty=qty_v1, length_in=p.vert_height,
+               shape="Str", notes="Verticals @5oc",
+               source_rule="rule_g2top_verticals"),
+        BarRow(mark="V2", size="#5", qty=qty_v2, length_in=p.vert_height,
+               shape="Str", notes="Verticals Grate Side @5oc",
+               source_rule="rule_g2top_verticals"),
+    ]
+
+
+def rule_g2top_right_angle(p: Params, log: ReasoningLogger) -> list[BarRow]:
+    """G2 Inlet Top right angle -- different vert leg and qty formula.
+
+    Excel formulas:
+      Deck leg  = gut_dim  (same as standard)
+      Vert leg  = vert_extension_in - 2  (NOT gut*1.5)
+      Qty       = ROUNDUP((Y_ext + 7) / 6 * n, 0)  (has +7 offset)
+    """
+    if p.gut_dim <= 0:
+        log.step("Right angle bars: skipped (gut_dim <= 0)")
+        return []
+
+    deck_leg = p.gut_dim
+    vert_leg = p.ra_vert_leg
+    qty = math.ceil((p.y_ext_in + 7.0) / 6.0 * p.n_struct)
+
+    log.step(f"RA1: deck={fmt_inches(deck_leg)}, vert={fmt_inches(vert_leg)}, "
+             f"qty=CEIL(({fmt_inches(p.y_ext_in)}+7)/6*{p.n_struct})={qty}")
+
+    return [BarRow(
+        mark="RA1", size="#5", qty=qty,
+        length_in=deck_leg + vert_leg,
+        shape="L", leg_a_in=deck_leg, leg_b_in=vert_leg,
+        notes="Outside Right Angle @6oc",
+        source_rule="rule_g2top_right_angle",
+    )]
