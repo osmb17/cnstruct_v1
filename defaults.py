@@ -13,8 +13,8 @@ from __future__ import annotations
 
 PRIMARY_INPUTS: dict[str, list[str]] = {
     "G2 Inlet":              ["x_dim_ft", "y_dim_ft", "wall_height_ft", "grate_type"],
-    "G2 Expanded Inlet":     ["x_dim_ft", "y_dim_ft", "wall_height_ft", "grate_type"],
-    "G2 Inlet Top":          ["slab_length_ft", "slab_width_ft"],
+    "G2 Expanded Inlet":     ["x_dim_ft", "y_dim_ft", "y_expanded_ft", "wall_height_ft", "grate_type"],
+    "G2 Inlet Top":          ["x_dim_ft", "y_dim_ft", "wall_height_ft", "grate_type"],
     "G2 Expanded Inlet Top": ["slab_length_ft", "slab_width_ft"],
     "Straight Headwall":     ["wall_width_ft", "wall_height_ft"],
     "Wing Wall":             ["wing_length_ft", "hw_height_ft", "tip_height_ft"],
@@ -39,6 +39,7 @@ PRIMARY_INPUTS: dict[str, list[str]] = {
 OVERRIDEABLE: dict[str, str] = {
     "G2 Inlet":              "wall_thick_in",
     "G2 Expanded Inlet":     "wall_thick_in",
+    "G2 Inlet Top":          "wall_thick_in",
     "Straight Headwall":     "wall_thick_in",
     "Box Culvert":           "wall_thick_in",
     "Junction Structure":    "wall_thick_in",
@@ -47,8 +48,8 @@ OVERRIDEABLE: dict[str, str] = {
 # ── Diagram axis labels (what each primary field represents on the diagram) ───
 DIAGRAM_LABELS: dict[str, dict[str, str]] = {
     "G2 Inlet":              {"x_dim_ft": "X", "y_dim_ft": "Y", "wall_thick_in": "T"},
-    "G2 Expanded Inlet":     {"x_dim_ft": "X", "y_dim_ft": "Y", "wall_thick_in": "T"},
-    "G2 Inlet Top":          {"slab_length_ft": "L", "slab_width_ft": "W"},
+    "G2 Expanded Inlet":     {"x_dim_ft": "X", "y_dim_ft": "Y", "y_expanded_ft": "Y_exp", "wall_thick_in": "T"},
+    "G2 Inlet Top":          {"x_dim_ft": "X", "y_dim_ft": "Y", "wall_thick_in": "T"},
     "G2 Expanded Inlet Top": {"slab_length_ft": "L", "slab_width_ft": "W"},
     "Straight Headwall":     {"wall_width_ft": "W", "wall_height_ft": "H", "wall_thick_in": "T"},
     "Wing Wall":             {"wing_length_ft": "L", "hw_height_ft": "H₁", "tip_height_ft": "H₂"},

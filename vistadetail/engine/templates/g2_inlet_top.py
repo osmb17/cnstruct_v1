@@ -1,8 +1,16 @@
-"""Template: G2 Inlet Top — cover/top slab for a standard G2 inlet."""
+"""
+Template: G2 Inlet Top  (v2.0)
+
+Top extension / cover slab rebar for a Caltrans G2 standard inlet.
+Uses the same X/Y base dimensions as the inlet below.
+
+Bar sizes/spacings per Vista Steel spreadsheet
+("G2 inlet Top 9in walls.xlsx").
+"""
 
 from __future__ import annotations
 
-from vistadetail.engine.schema import BAR_SIZES, InputField, Params
+from vistadetail.engine.schema import InputField, Params
 from vistadetail.engine.templates.base import BaseTemplate
 
 
@@ -11,38 +19,72 @@ class G2InletTopTemplate(BaseTemplate):
     def __init__(self):
         super().__init__()
         self.name = "G2 Inlet Top"
-        self.version = "1.0"
+        self.version = "2.0"
         self.description = (
-            "Top/cover slab for a Caltrans G2 inlet. "
-            "Bars each way; length matches inlet opening width, "
-            "width matches inlet depth front-to-back."
+            "Top extension rebar for a G2 inlet -- horizontals, verticals, "
+            "A&B bars, right angle, and hoops. "
+            "Bar sizes/spacings per Vista Steel spreadsheet."
         )
 
         self.inputs = [
-            InputField("slab_length_ft",   float, label="Slab Length (ft)",    min=2.0, max=40.0, default=8.0,
-                       hint="Matches inlet box inside width (long direction)"),
-            InputField("slab_width_ft",    float, label="Slab Width (ft)",     min=1.0, max=20.0, default=4.0,
-                       hint="Inlet depth front-to-back"),
-            InputField("slab_thick_in",    int,   label="Slab Thickness (in)", min=6,   max=24,   default=9),
-            InputField("cover_in",         float, label="Clear Cover (in)",    min=1.5, max=4.0,  default=2.0),
-            InputField("long_bar_size",    str,   label="Long Bar Size",       choices=BAR_SIZES, default="#5"),
-            InputField("long_spacing_in",  float, label="Long Spacing (in)",   min=6.0, max=18.0, default=12.0),
-            InputField("short_bar_size",   str,   label="Short Bar Size",      choices=BAR_SIZES, default="#4"),
-            InputField("short_spacing_in", float, label="Short Spacing (in)",  min=6.0, max=18.0, default=12.0),
+            InputField(
+                "x_dim_ft", float,
+                label="X -- Exterior Width (ft)",
+                min=2.5, max=20.0, default=5.667,
+                hint="Same exterior width as the inlet below",
+            ),
+            InputField(
+                "y_dim_ft", float,
+                label="Y -- Exterior Depth (ft)",
+                min=2.5, max=10.0, default=5.0,
+                hint="Same exterior depth as the inlet below",
+            ),
+            InputField(
+                "wall_height_ft", float,
+                label="Wall Height (ft)",
+                min=2.0, max=20.0, default=7.0,
+                hint="Full wall height (for horizontal bar counts)",
+            ),
+            InputField(
+                "vert_extension_in", float,
+                label="Vertical Extension (in)",
+                min=6.0, max=60.0, default=20.0,
+                hint="Height of vertical bars extending into top slab (inches)",
+            ),
+            InputField(
+                "wall_thick_in", int,
+                label="Wall Thickness (in)",
+                min=0, max=24, default=0,
+                hint="0 = auto (9\" if interior X<=54\", 11\" otherwise)",
+            ),
+            InputField(
+                "grate_type", str,
+                label="Grate Type",
+                choices=["Type 24", "Type 18"], default="Type 24",
+                hint="Controls grate deduction: Type 24 = 24\", Type 18 = 18\"",
+            ),
+            InputField(
+                "num_structures", int,
+                label="Number of Structures",
+                min=1, max=50, default=1,
+                hint="Multiplier for quantities",
+            ),
         ]
 
         self.rules = [
-            "rule_inlet_top_long_bars",
-            "rule_inlet_top_short_bars",
-            "rule_validate_inlet_top",
+            "rule_g2top_geometry",
+            "rule_g2_horizontals",      # shared with standard G2
+            "rule_g2top_verticals",
+            "rule_g2_ab_bars",          # shared with standard G2
+            "rule_g2top_right_angle",
+            "rule_g2_hoops",            # shared with standard G2
         ]
 
     def evaluate_triggers(self, params: Params) -> list[str]:
         triggers: list[str] = []
-        if params.cover_in < 2.0:
-            triggers.append("cover_unusual")
-        ratio = params.slab_length_ft / max(params.slab_width_ft, 0.1)
-        if ratio > 5.0:
+        x_ft = getattr(params, "x_dim_ft", 5.667)
+        ratio = params.wall_height_ft / max(x_ft, 0.1)
+        if ratio > 2.5:
             triggers.append("aspect_ratio_high")
         return triggers
 
