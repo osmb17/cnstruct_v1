@@ -177,6 +177,25 @@ from vistadetail.engine.rules.caltrans_headwall_rules import (
     rule_ct_hw_pipe_hoops,
     rule_validate_ct_hw,
 )
+from vistadetail.engine.rules.d84_wingwall_rules import (
+    rule_d84_validate,
+    rule_d84_geometry,
+    rule_d84_face_horiz,
+    rule_d84_longitudinals,
+    rule_d84_top_bars,
+    rule_d84_footing_mat,
+    rule_d84_cutoff_wall,
+)
+from vistadetail.engine.rules.d85_wingwall_rules import (
+    rule_d85_validate,
+    rule_d85_geometry,
+    rule_d85_n_bars,
+    rule_d85_o_bars,
+    rule_d85_l_bars,
+    rule_d85_hoops,
+    rule_d85_top_bars,
+    rule_d85_footing_mat,
+)
 
 RULE_REGISTRY: dict = {
     # G2 Inlet / G2 Expanded Inlet
@@ -330,4 +349,21 @@ RULE_REGISTRY: dict = {
     "rule_ct_hw_footing":            rule_ct_hw_footing,
     "rule_ct_hw_pipe_hoops":         rule_ct_hw_pipe_hoops,
     "rule_validate_ct_hw":           rule_validate_ct_hw,
+    # D84 Wingwall (Types A/B/C)
+    "rule_d84_validate":             rule_d84_validate,
+    "rule_d84_geometry":             rule_d84_geometry,
+    "rule_d84_face_horiz":           rule_d84_face_horiz,
+    "rule_d84_longitudinals":        rule_d84_longitudinals,
+    "rule_d84_top_bars":             rule_d84_top_bars,
+    "rule_d84_footing_mat":          rule_d84_footing_mat,
+    "rule_d84_cutoff_wall":          rule_d84_cutoff_wall,
+    # D85 Wingwall (Types D/E)
+    "rule_d85_validate":             rule_d85_validate,
+    "rule_d85_geometry":             rule_d85_geometry,
+    "rule_d85_n_bars":               rule_d85_n_bars,
+    "rule_d85_o_bars":               rule_d85_o_bars,
+    "rule_d85_l_bars":               rule_d85_l_bars,
+    "rule_d85_hoops":                rule_d85_hoops,
+    "rule_d85_top_bars":             rule_d85_top_bars,
+    "rule_d85_footing_mat":          rule_d85_footing_mat,
 }

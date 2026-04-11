@@ -28,6 +28,8 @@ from vistadetail.engine.templates.junction_structure import TEMPLATE as JUNCTION
 from vistadetail.engine.templates.sound_wall import TEMPLATE as SOUND_WALL
 from vistadetail.engine.templates.caltrans_ret_wall import TEMPLATE as CALTRANS_RET_WALL
 from vistadetail.engine.templates.caltrans_headwall import TEMPLATE as CALTRANS_HEADWALL
+from vistadetail.engine.templates.d84_wingwall import TEMPLATE as D84_WINGWALL
+from vistadetail.engine.templates.d85_wingwall import TEMPLATE as D85_WINGWALL
 
 TEMPLATE_REGISTRY: dict = {
     # ── G2 Inlets ─────────────────────────────────────────────────────────────
@@ -49,6 +51,9 @@ TEMPLATE_REGISTRY: dict = {
     SOUND_WALL.name:             SOUND_WALL,
     # ── Caltrans Headwall ─────────────────────────────────────────────────
     CALTRANS_HEADWALL.name:      CALTRANS_HEADWALL,
+    # ── Caltrans D84/D85 Wingwalls ────────────────────────────────────────
+    D84_WINGWALL.name:           D84_WINGWALL,
+    D85_WINGWALL.name:           D85_WINGWALL,
     # ── Slabs & Pads ──────────────────────────────────────────────────────────
     FLAT_SLAB.name:              FLAT_SLAB,
     DUAL_SLAB.name:              DUAL_SLAB,
