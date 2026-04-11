@@ -12,7 +12,12 @@ from __future__ import annotations
 # Only these 2 fields appear in the main panel.  Everything else is Advanced.
 
 PRIMARY_INPUTS: dict[str, list[str]] = {
+    "G1 Inlet":              ["x_dim_ft", "y_dim_ft"],
     "G2 Inlet":              ["x_dim_ft", "y_dim_ft"],
+    "G3 Inlet":              ["x_dim_ft", "y_dim_ft"],
+    "G4 Inlet":              ["x_dim_ft", "y_dim_ft"],
+    "G5 Inlet":              ["x_dim_ft", "y_dim_ft"],
+    "G6 Inlet":              ["x_dim_ft", "y_dim_ft"],
     "G2 Expanded Inlet":     ["x_dim_ft", "y_dim_ft"],
     "G2 Inlet Top":          ["x_dim_ft", "y_dim_ft"],
     "G2 Expanded Inlet Top": ["slab_length_ft", "slab_width_ft"],
@@ -45,7 +50,12 @@ OVERRIDEABLE: dict[str, str] = {}
 
 # -- Diagram axis labels -------------------------------------------------------
 DIAGRAM_LABELS: dict[str, dict[str, str]] = {
+    "G1 Inlet":              {"x_dim_ft": "L1", "y_dim_ft": "H"},
     "G2 Inlet":              {"x_dim_ft": "X", "y_dim_ft": "Y", "inside_x_in": "X_int", "inside_y_in": "Y_int", "wall_thick_in": "T"},
+    "G3 Inlet":              {"x_dim_ft": "L1", "y_dim_ft": "H"},
+    "G4 Inlet":              {"x_dim_ft": "L1", "y_dim_ft": "H"},
+    "G5 Inlet":              {"x_dim_ft": "L1", "y_dim_ft": "H"},
+    "G6 Inlet":              {"x_dim_ft": "L1", "y_dim_ft": "H"},
     "G2 Expanded Inlet":     {"x_dim_ft": "X", "y_dim_ft": "Y", "y_expanded_ft": "Y_exp", "wall_thick_in": "T"},
     "G2 Inlet Top":          {"x_dim_ft": "X", "y_dim_ft": "Y", "wall_thick_in": "T"},
     "G2 Expanded Inlet Top": {"slab_length_ft": "L", "slab_width_ft": "W"},

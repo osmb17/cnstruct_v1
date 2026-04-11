@@ -30,13 +30,23 @@ from vistadetail.engine.templates.caltrans_ret_wall import TEMPLATE as CALTRANS_
 from vistadetail.engine.templates.caltrans_headwall import TEMPLATE as CALTRANS_HEADWALL
 from vistadetail.engine.templates.d84_wingwall import TEMPLATE as D84_WINGWALL
 from vistadetail.engine.templates.d85_wingwall import TEMPLATE as D85_WINGWALL
+from vistadetail.engine.templates.g1_inlet import TEMPLATE as G1_INLET
+from vistadetail.engine.templates.g3_inlet import TEMPLATE as G3_INLET
+from vistadetail.engine.templates.g4_inlet import TEMPLATE as G4_INLET
+from vistadetail.engine.templates.g5_inlet import TEMPLATE as G5_INLET
+from vistadetail.engine.templates.g6_inlet import TEMPLATE as G6_INLET
 
 TEMPLATE_REGISTRY: dict = {
-    # ── G2 Inlets ─────────────────────────────────────────────────────────────
+    # ── G-Type CIP Inlets (D72B) ──────────────────────────────────────────────
+    G1_INLET.name:               G1_INLET,
     INLET_9IN_WALL.name:         INLET_9IN_WALL,
     G2_EXPANDED_INLET.name:      G2_EXPANDED_INLET,
     G2_INLET_TOP.name:           G2_INLET_TOP,
     G2_EXPANDED_INLET_TOP.name:  G2_EXPANDED_INLET_TOP,
+    G3_INLET.name:               G3_INLET,
+    G4_INLET.name:               G4_INLET,
+    G5_INLET.name:               G5_INLET,
+    G6_INLET.name:               G6_INLET,
     # ── Headwalls ─────────────────────────────────────────────────────────────
     HEADWALL.name:               HEADWALL,
     WING_WALL.name:              WING_WALL,
