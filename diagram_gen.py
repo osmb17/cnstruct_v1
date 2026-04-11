@@ -230,41 +230,58 @@ def _diag_g2_inlet() -> bytes:
 
 
 def _diag_expanded_inlet() -> bytes:
-    """Plan view of G2 expanded inlet -- X, Y, Y_exp, T."""
-    OX, OY_narrow = 6.0, 3.0
-    OY_exp = 5.5
-    T = 0.45
+    """Plan view of G2 expanded inlet -- same rectangular box as G2 but
+    with a larger Y dimension (Y_exp).  X stays the same."""
+    OX, OY = 6.0, 6.5       # expanded outer dims (taller Y)
+    T = 0.50
+    IX, IY = OX - 2 * T, OY - 2 * T
 
-    fig, ax = _fig(9.0, 7.5)
-    ax.set_xlim(-2.0, OX + 2.5)
-    ax.set_ylim(-1.5, OY_exp + 1.8)
+    l1_w = IX * 0.40
+    grate_w = IX - l1_w
 
-    # Lower narrow section
-    _rect(ax, 0, 0, OX, OY_narrow, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
-    _rect(ax, T, T, OX - 2 * T, OY_narrow - T, fc="white", ec=_OUTLINE, lw=1.0)
+    fig, ax = _fig(9.0, 8.5)
+    ax.set_xlim(-2.5, OX + 3.0)
+    ax.set_ylim(-2.5, OY + 2.0)
 
-    # Upper expanded section
-    exp_w = OX + 1.5
-    exp_x = (OX - exp_w) / 2
-    _rect(ax, exp_x, OY_narrow, exp_w, OY_exp - OY_narrow,
-          fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
-    _rect(ax, exp_x + T, OY_narrow, exp_w - 2 * T, OY_exp - OY_narrow - T,
-          fc="white", ec=_OUTLINE, lw=1.0)
+    # Concrete walls (single rectangular box)
+    _rect(ax, 0, 0, OX, OY, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
+    _rect(ax, T, T, IX, IY, fc="white", ec=_OUTLINE, lw=1.5)
 
-    # Taper lines
-    ax.plot([0, exp_x], [OY_narrow, OY_narrow], color=_OUTLINE, lw=1.5)
-    ax.plot([OX, exp_x + exp_w], [OY_narrow, OY_narrow], color=_OUTLINE, lw=1.5)
+    # L1 shaded area (left interior)
+    _rect(ax, T, T, l1_w, IY, fc="#c8c8c8", ec=_OUTLINE, lw=0.5)
+    for yy in [T, T + IY]:
+        ax.plot([T, T + l1_w], [yy, yy], color=_OUTLINE, lw=0.8, ls="--", zorder=3)
 
-    # X dimension
-    _ext_dim_h(ax, 0, OX, OY_exp, OY_exp + 0.7, "X")
-    # Y dimension (narrow)
-    _ext_dim_v(ax, 0, OY_narrow, 0, -0.8, "Y")
-    # Y_exp dimension
-    _ext_dim_v(ax, 0, OY_exp, exp_x, exp_x - 0.9, "Y_exp", fontsize=8)
-    # T callout
-    _callout(ax, T / 2, OY_narrow / 2, "T", "wall thick", angle=135, dist=0.7, fontsize=7)
+    # Grate area (right interior -- vertical bar hatching)
+    gx = T + l1_w
+    _rect(ax, gx, T, grate_w, IY, fc="white", ec=_OUTLINE, lw=1.2)
+    n_grate = 14
+    for i in range(n_grate):
+        bx = gx + grate_w * (i + 1) / (n_grate + 1)
+        ax.plot([bx, bx], [T + 0.08, T + IY - 0.08], color=_OUTLINE, lw=0.7, zorder=3)
 
-    _axes_compass(ax, -1.5, -1.2)
+    # L1 label
+    _dim_h(ax, T, T + l1_w, T + IY * 0.5, "L1", gap=0.15, fontsize=9)
+
+    # X dimension (outer, top)
+    _ext_dim_h(ax, 0, OX, OY, OY + 0.8, "X")
+
+    # Y_exp dimension (outer, left) -- the expanded Y
+    _ext_dim_v(ax, 0, OY, 0, -1.0, "Y (expanded)")
+
+    # Inside dims
+    _ext_dim_v(ax, T, T + IY, OX, OX + 1.0, "Inside Y")
+    _ext_dim_h(ax, T, T + IX, 0, -1.8, "Inside X", fontsize=8)
+
+    # T labels
+    _ext_dim_h(ax, 0, T, 0, -0.45, "T", fontsize=8)
+    _ext_dim_h(ax, OX - T, OX, 0, -0.45, "T", fontsize=8)
+
+    # Note: "Expanded" means larger Y than standard G2
+    ax.text(OX / 2, -2.2, "Same as G2 Inlet with expanded Y dimension",
+            ha="center", va="top", fontsize=7, color=_DIM, style="italic")
+
+    _axes_compass(ax, -2.0, -2.2)
     _title(ax, "G2 EXPANDED INLET -- PLAN VIEW")
 
     return _to_png(fig)
@@ -341,23 +358,21 @@ def _diag_headwall() -> bytes:
 
 
 def _diag_caltrans_headwall() -> bytes:
-    """Front elevation of Caltrans headwall -- pipe D, wall W."""
+    """Front elevation of Caltrans headwall (D86B) -- rectangular wall
+    with circular pipe opening.  Matches Section A-A on standard plans."""
     W, H = 6.0, 4.5
-    pipe_d_ratio = 0.45
+    T = 0.4           # wall thickness (shown as depth callout)
+    pipe_r = 0.9      # pipe opening radius
 
     fig, ax = _fig(7.5, 6.5)
-    ax.set_xlim(-1.5, W + 2.0)
+    ax.set_xlim(-1.5, W + 2.5)
     ax.set_ylim(-1.5, H + 1.5)
 
-    # Trapezoidal headwall shape (wider at base)
-    taper = 0.4
-    pts = [(taper, 0), (W - taper, 0), (W, H), (0, H)]
-    poly = plt.Polygon(pts, closed=True, fc=_CONCRETE, ec=_OUTLINE, lw=2.0, zorder=2)
-    ax.add_patch(poly)
+    # Rectangular headwall
+    _rect(ax, 0, 0, W, H, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
 
-    # Pipe opening
-    pipe_r = H * pipe_d_ratio / 2
-    cx, cy = W / 2, H * 0.42
+    # Pipe opening (center-low, matching field placement)
+    cx, cy = W / 2, H * 0.40
     circ = mpatches.Circle((cx, cy), pipe_r, fc="white", ec=_OUTLINE, lw=2.0, zorder=3)
     ax.add_patch(circ)
     ax.text(cx, cy, "pipe", ha="center", va="center", fontsize=7, color="#555", zorder=4)
@@ -365,19 +380,40 @@ def _diag_caltrans_headwall() -> bytes:
     # Pipe diameter dimension
     ax.annotate("", xy=(cx + pipe_r, cy), xytext=(cx - pipe_r, cy),
                 arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0, mutation_scale=9))
-    ax.text(cx, cy - pipe_r - 0.25, "D", ha="center", va="top", fontsize=10,
+    ax.text(cx, cy - pipe_r - 0.3, "D (pipe dia)", ha="center", va="top", fontsize=9,
             color=_LABEL, fontweight="bold")
 
-    # Rebar hints
-    for xi in [0.5, 1.0, W - 1.0, W - 0.5]:
-        h_at = H * (1 - abs(xi - W / 2) / (W / 2) * taper / W)
-        ax.plot([xi, xi], [0.3, h_at - 0.3], color=_REBAR, lw=0.9, zorder=4)
+    # Rebar hints (vertical each face)
+    for xi in [0.25, 0.50, W - 0.50, W - 0.25]:
+        ax.plot([xi, xi], [0.3, H - 0.3], color=_REBAR, lw=1.0, zorder=4)
+    # Horizontal rebar
+    for yi in [0.4, 1.0, H - 1.0, H - 0.4]:
+        ax.plot([0.1, W - 0.1], [yi, yi], color=_REBAR, lw=0.8, zorder=4)
 
+    # Spacers at pipe (2"-0" into headwall per D86B)
+    for ang_deg in [45, 135, 225, 315]:
+        sx = cx + (pipe_r + 0.15) * math.cos(math.radians(ang_deg))
+        sy = cy + (pipe_r + 0.15) * math.sin(math.radians(ang_deg))
+        ax.plot(sx, sy, "s", color=_REBAR, ms=4, zorder=5)
+
+    # Apron / cutoff wall hint at base
+    _rect(ax, -0.15, -0.35, W + 0.30, 0.35, fc="#b0b8c0", ec=_OUTLINE, lw=1.0)
+    ax.text(W / 2, -0.18, "apron / cutoff wall", ha="center", va="center",
+            fontsize=6, color="#555")
+
+    # Dimensions
     _ext_dim_h(ax, 0, W, H, H + 0.7, "W")
-    _ext_dim_v(ax, 0, H, W, W + 0.7, "H")
+    _ext_dim_v(ax, 0, H, W, W + 0.8, "H")
+
+    # T callout (thickness = depth into page)
+    ax.annotate("T (thickness)", xy=(0, H * 0.7), xytext=(-1.1, H * 0.7),
+                fontsize=8, color=_LABEL, fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color=_DIM, lw=0.8),
+                ha="right", va="center",
+                bbox=dict(boxstyle="round,pad=0.2", fc="white", ec=_DIM, lw=0.6))
 
     _axes_compass(ax, -1.2, -1.2)
-    _title(ax, "CALTRANS HEADWALL -- FRONT ELEVATION")
+    _title(ax, "CALTRANS HEADWALL -- FRONT ELEVATION (D86B)")
 
     return _to_png(fig)
 
@@ -903,6 +939,147 @@ def _diag_collar() -> bytes:
     return _to_png(fig)
 
 
+def _diag_d84_wingwall() -> bytes:
+    """
+    D84 Wingwall -- elevation view.
+    Tapered wall: H at box face (left), ~0.5ft at toe (right).
+    Footing mat below. LOL = horizontal length.
+    """
+    LOL, H, H_toe = 7.0, 3.5, 0.5
+    ftg_h, ftg_w = 0.5, LOL
+    box_w = 0.6  # box culvert wall stub at left
+
+    fig, ax = _fig(8.0, 5.5)
+    ax.set_xlim(-1.5, LOL + box_w + 2.0)
+    ax.set_ylim(-1.5, H + 1.5)
+
+    # Box culvert wall stub (left)
+    _rect(ax, -box_w, -ftg_h, box_w, H + ftg_h, fc="#b0b8c0", ec=_OUTLINE, lw=1.5, zorder=2)
+    ax.text(-box_w / 2, H / 2, "BOX\nWALL", ha="center", va="center",
+            fontsize=6, color="#444", zorder=4)
+
+    # Wingwall profile (trapezoid: tall at left, short at right)
+    pts = [(0, -ftg_h), (LOL, -ftg_h), (LOL, H_toe), (0, H)]
+    poly = plt.Polygon(pts, closed=True, fc=_CONCRETE, ec=_OUTLINE, lw=2.0, zorder=2)
+    ax.add_patch(poly)
+
+    # Footing mat below (B1/B2)
+    _rect(ax, -box_w * 0.5, -ftg_h * 2, LOL + box_w * 0.5, ftg_h,
+          fc=_CONCRETE, ec=_OUTLINE, lw=1.5, zorder=2)
+    # Footing rebar
+    for xi in [0.4, 1.5, 3.0, 4.5, 6.0]:
+        ax.plot([xi, xi], [-ftg_h * 2 + 0.08, -ftg_h - 0.08],
+                color=_REBAR, lw=0.9, zorder=4)
+    ax.plot([0.1, LOL - 0.1], [-ftg_h * 1.5, -ftg_h * 1.5],
+            color=_REBAR, lw=0.9, zorder=4)
+
+    # Face bars F1 / F2 (horizontal, front and rear face)
+    for xi in [0.3, 1.2, 2.8, 4.5, 6.2]:
+        h_here = H + (H_toe - H) * xi / LOL
+        ax.plot([xi, xi], [-ftg_h + 0.1, h_here - 0.1],
+                color=_REBAR, lw=1.0, zorder=4)
+
+    # Longitudinal L bars (parallel to slope along top and mid)
+    for frac in [0.15, 0.50, 0.82]:
+        yi = H * frac
+        ax.plot([0.1, LOL - 0.1], [yi, yi + (H_toe - H) * 1.0],
+                color=_REBAR, lw=0.8, ls="--", zorder=4)
+
+    # Top bars
+    ax.plot([0.1, LOL - 0.1], [H - 0.15, H_toe + 0.1],
+            color=_REBAR, lw=1.3, zorder=4)
+
+    # Dims
+    _ext_dim_h(ax, 0, LOL, -ftg_h * 2, -ftg_h * 2 - 0.6, "LOL")
+    _ext_dim_v(ax, -ftg_h, H, 0, -0.85, "H", fontsize=10)
+
+    _callout(ax, LOL * 0.55, H * 0.55, "F1/F2", "#4@12\"", angle=35, dist=1.1, fontsize=7)
+    _callout(ax, LOL * 0.25, H * 0.42, "L1/L2", "Long bars", angle=145, dist=1.0, fontsize=7)
+    _callout(ax, LOL * 0.4, -ftg_h * 1.5, "B1/B2", "Ftg mat", angle=270, dist=0.7, fontsize=7)
+
+    _axes_compass(ax, -1.2, -1.3)
+    _title(ax, "D84 WINGWALL (A/B/C) -- ELEVATION")
+
+    return _to_png(fig)
+
+
+def _diag_d85_wingwall() -> bytes:
+    """
+    D85 Wingwall -- elevation view (Type E shown with step at box junction).
+    H at box face, stepped profile, n-bars @ 12", o-bars longitudinal, hoops.
+    """
+    LOL, H, H_step = 7.0, 3.5, 1.5
+    step_x = 1.2  # step offset from box face
+    ftg_h = 0.45
+    box_w = 0.6
+
+    fig, ax = _fig(8.0, 5.5)
+    ax.set_xlim(-1.5, LOL + box_w + 2.2)
+    ax.set_ylim(-1.5, H + 1.6)
+
+    # Box culvert wall stub
+    _rect(ax, -box_w, -ftg_h, box_w, H + ftg_h, fc="#b0b8c0", ec=_OUTLINE, lw=1.5, zorder=2)
+    ax.text(-box_w / 2, H / 2, "BOX\nWALL", ha="center", va="center",
+            fontsize=6, color="#444", zorder=4)
+
+    # Stepped wall profile (Type E): step down from H at x=step_x
+    # Lower section: H at box to H_step at step_x, then H_step out to toe
+    pts = [
+        (0, -ftg_h),
+        (LOL, -ftg_h),
+        (LOL, 0.4),
+        (step_x, H_step),
+        (step_x, H),
+        (0, H),
+    ]
+    poly = plt.Polygon(pts, closed=True, fc=_CONCRETE, ec=_OUTLINE, lw=2.0, zorder=2)
+    ax.add_patch(poly)
+
+    # Footing
+    _rect(ax, -box_w * 0.5, -ftg_h * 2.2, LOL + box_w * 0.5, ftg_h,
+          fc=_CONCRETE, ec=_OUTLINE, lw=1.5, zorder=2)
+    # Footing rebar B1/B2
+    for xi in [0.5, 1.8, 3.2, 5.0, 6.4]:
+        ax.plot([xi, xi], [-ftg_h * 2.2 + 0.08, -ftg_h - 0.08],
+                color=_REBAR, lw=0.9, zorder=4)
+    ax.plot([0.1, LOL - 0.1], [-ftg_h * 1.7, -ftg_h * 1.7],
+            color=_REBAR, lw=0.9, zorder=4)
+
+    # n-bars: face bars both faces
+    for xi in [0.25, 0.9, 2.0, 3.5, 5.0, 6.5]:
+        h_here = H if xi < step_x else H_step + (0.4 - H_step) * (xi - step_x) / (LOL - step_x)
+        ax.plot([xi, xi], [-ftg_h + 0.1, h_here - 0.1],
+                color=_REBAR, lw=1.0, zorder=4)
+
+    # o-bars: longitudinal both faces (dashed)
+    for frac in [0.15, 0.55, 0.85]:
+        yi = H * frac
+        # Only in tall section (left of step)
+        ax.plot([0.1, step_x - 0.05], [yi, yi],
+                color=_REBAR, lw=0.9, ls="--", zorder=4)
+
+    # L bars: 2-#5 additional at step (shown as bold dashes at step_x)
+    ax.plot([step_x - 0.15, step_x + 0.15], [H_step + 0.2, H_step + 0.2],
+            color=_REBAR, lw=2.5, zorder=5)
+    ax.plot([step_x - 0.15, step_x + 0.15], [H_step + 0.5, H_step + 0.5],
+            color=_REBAR, lw=2.5, zorder=5)
+
+    # Dims
+    _ext_dim_h(ax, 0, LOL, -ftg_h * 2.2, -ftg_h * 2.2 - 0.6, "LOL")
+    _ext_dim_v(ax, -ftg_h, H, 0, -0.9, "H", fontsize=10)
+    _ext_dim_v(ax, -ftg_h, H_step, step_x + 0.1, step_x + 0.85, "H\u2082", fontsize=9)
+
+    _callout(ax, 0.5, H * 0.5, "n1/n2", "#@12\" ea face", angle=145, dist=1.1, fontsize=7)
+    _callout(ax, 0.3, H * 0.25, "o1/o2", "Long bars", angle=200, dist=1.0, fontsize=7)
+    _callout(ax, step_x, H_step + 0.35, "L1", "2-#5 @ step", angle=45, dist=1.0, fontsize=7)
+    _callout(ax, LOL * 0.5, -ftg_h * 1.7, "B1/B2", "Ftg mat", angle=270, dist=0.6, fontsize=7)
+
+    _axes_compass(ax, -1.2, -1.3)
+    _title(ax, "D85 WINGWALL (D/E) -- ELEVATION")
+
+    return _to_png(fig)
+
+
 # ==============================================================================
 # Registry
 # ==============================================================================
@@ -932,6 +1109,8 @@ _DIAGRAM_FN: dict[str, callable] = {
     "Fuel Foundation":         lambda: _diag_rect_plan_with_T("FUEL FOUNDATION -- PLAN VIEW"),
     "Dual Slab":               _diag_dual_slab,
     "Junction Structure":      _diag_junction,
+    "D84 Wingwall":            _diag_d84_wingwall,
+    "D85 Wingwall":            _diag_d85_wingwall,
 }
 
 
