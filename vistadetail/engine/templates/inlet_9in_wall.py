@@ -48,6 +48,18 @@ class InletWallTemplate(BaseTemplate):
                 hint="Exterior depth in plan",
             ),
             InputField(
+                "inside_x_in", float,
+                label="Inside X Dimension (in)",
+                min=0.0, max=120.0, default=0.0,
+                hint="2'-11 3/8\" min or Pipe penetration diameter + 3\" min (90\" max). 0 = auto from exterior X.",
+            ),
+            InputField(
+                "inside_y_in", float,
+                label="Inside Y Dimension (in)",
+                min=0.0, max=120.0, default=0.0,
+                hint="2'-11 3/8\" min (Caltrans G2 minimum clear depth). 0 = auto from exterior Y.",
+            ),
+            InputField(
                 "wall_height_ft", float,
                 label="Wall Height (ft)",
                 min=2.0, max=20.0, default=4.0,

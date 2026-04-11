@@ -25,6 +25,9 @@ from vistadetail.engine.templates.g2_expanded_inlet import TEMPLATE as G2_EXPAND
 from vistadetail.engine.templates.g2_inlet_top import TEMPLATE as G2_INLET_TOP
 from vistadetail.engine.templates.g2_expanded_inlet_top import TEMPLATE as G2_EXPANDED_INLET_TOP
 from vistadetail.engine.templates.junction_structure import TEMPLATE as JUNCTION_STRUCTURE
+from vistadetail.engine.templates.sound_wall import TEMPLATE as SOUND_WALL
+from vistadetail.engine.templates.caltrans_ret_wall import TEMPLATE as CALTRANS_RET_WALL
+from vistadetail.engine.templates.caltrans_headwall import TEMPLATE as CALTRANS_HEADWALL
 
 TEMPLATE_REGISTRY: dict = {
     # ── G2 Inlets ─────────────────────────────────────────────────────────────
@@ -42,6 +45,10 @@ TEMPLATE_REGISTRY: dict = {
     # ── Culverts & Walls ──────────────────────────────────────────────────────
     BOX_CULVERT.name:            BOX_CULVERT,
     RETAINING_WALL.name:         RETAINING_WALL,
+    CALTRANS_RET_WALL.name:      CALTRANS_RET_WALL,
+    SOUND_WALL.name:             SOUND_WALL,
+    # ── Caltrans Headwall ─────────────────────────────────────────────────
+    CALTRANS_HEADWALL.name:      CALTRANS_HEADWALL,
     # ── Slabs & Pads ──────────────────────────────────────────────────────────
     FLAT_SLAB.name:              FLAT_SLAB,
     DUAL_SLAB.name:              DUAL_SLAB,

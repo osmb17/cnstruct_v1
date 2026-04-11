@@ -331,6 +331,8 @@ def rule_g2_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Inputs expected on p:
       x_dim_ft     — exterior width  (ft)
       y_dim_ft     — exterior depth  (ft)
+      inside_x_in  — interior width  (in), 0 = auto from exterior
+      inside_y_in  — interior depth  (in), 0 = auto from exterior
       wall_height_ft — wall height   (ft)
       wall_thick_in  — 0 = auto
       grate_type     — "Type 24" / "Type 18"
@@ -339,20 +341,38 @@ def rule_g2_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     x_ext = p.x_dim_ft * 12.0
     y_ext = p.y_dim_ft * 12.0
 
+    # ── User-provided inside dimensions ────────────────────────────────
+    user_inside_x = float(getattr(p, "inside_x_in", 0.0))
+    user_inside_y = float(getattr(p, "inside_y_in", 0.0))
+
     # ── Wall thickness auto-derive ──────────────────────────────────────
     t = float(getattr(p, "wall_thick_in", 0))
-    if t <= 0:
-        # Caltrans rule: interior X ≤ 54 → T=9, else T=11
-        # Use tentative T=9 to compute trial interior X
-        trial_inside = x_ext - 2 * 9.0
-        t = 9.0 if trial_inside <= 54.0 else 11.0
-        setattr(p, "wall_thick_in", t)
-        log.step(f"Auto T: trial interior X = {fmt_inches(trial_inside)} → T = {t:.0f}\"")
-    else:
-        log.step(f"User T = {t:.0f}\"")
 
-    x_inside = x_ext - 2 * t
-    y_inside = y_ext - 2 * t
+    if user_inside_x > 0:
+        # Inside X provided: derive T from exterior - interior
+        x_inside = user_inside_x
+        if t <= 0:
+            t = (x_ext - x_inside) / 2.0
+            setattr(p, "wall_thick_in", t)
+            log.step(f"T derived from exterior/interior: ({fmt_inches(x_ext)} - {fmt_inches(x_inside)}) / 2 = {t:.1f}\"")
+        else:
+            log.step(f"User T = {t:.0f}\", user inside X = {fmt_inches(x_inside)}")
+    else:
+        if t <= 0:
+            # Caltrans rule: interior X ≤ 54 → T=9, else T=11
+            trial_inside = x_ext - 2 * 9.0
+            t = 9.0 if trial_inside <= 54.0 else 11.0
+            setattr(p, "wall_thick_in", t)
+            log.step(f"Auto T: trial interior X = {fmt_inches(trial_inside)} → T = {t:.0f}\"")
+        else:
+            log.step(f"User T = {t:.0f}\"")
+        x_inside = x_ext - 2 * t
+
+    if user_inside_y > 0:
+        y_inside = user_inside_y
+        log.step(f"User inside Y = {fmt_inches(y_inside)}")
+    else:
+        y_inside = y_ext - 2 * t
     n = int(getattr(p, "num_structures", 1)) or 1
 
     grate_type = str(getattr(p, "grate_type", "Type 24"))
@@ -427,30 +447,43 @@ def rule_g2_horizontals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """Horizontal wall bars — two zones per Excel:
     Top 2 ft:  #6 @ 4" oc (24/4 = 6 bars per wall-pair, ×2 = 12)
     Below 2 ft: #5 @ 5" oc
+
+    Each horizontal has a 12" (1 ft) hook at each end.
     """
     n = p.n_struct
     top_zone = 24.0      # 2 ft in inches
     top_spacing = 4.0
     below_spacing = 5.0
+    hook_in = 12.0       # 1 ft hook each end
 
     qty_top = math.ceil(top_zone / top_spacing) * 2   # 6 × 2 walls = 12
     qty_below = math.ceil((p.h_adj - top_zone) / below_spacing + 2 * n)
 
-    log.step(f"H1/H2 top 2ft: 24/{top_spacing}×2 = {qty_top} pcs, #6")
-    log.step(f"H3/H4 below: CEIL(({fmt_inches(p.h_adj)}-24)/{below_spacing}+2×{n}) = {qty_below} pcs, #5")
+    # Bar length = straight span + 2 hooks
+    h1_len = p.y_bar + 2 * hook_in
+    h2_len = p.x_bar + 2 * hook_in
+    h3_len = p.y_bar + 2 * hook_in
+    h4_len = p.x_bar + 2 * hook_in
+
+    log.step(f"H1/H2 top 2ft: 24/{top_spacing}×2 = {qty_top} pcs, #6, 12\" hook EE")
+    log.step(f"H3/H4 below: CEIL(({fmt_inches(p.h_adj)}-24)/{below_spacing}+2×{n}) = {qty_below} pcs, #5, 12\" hook EE")
 
     return [
-        BarRow(mark="H1", size="#6", qty=qty_top, length_in=p.y_bar,
-               shape="Str", notes="Y Horz Top 2ft @4oc",
+        BarRow(mark="H1", size="#6", qty=qty_top, length_in=h1_len,
+               shape="U", leg_a_in=hook_in, leg_b_in=p.y_bar, leg_c_in=hook_in,
+               notes="Y Horz Top 2ft @4oc, 1ft hook EE",
                source_rule="rule_g2_horizontals"),
-        BarRow(mark="H2", size="#6", qty=qty_top, length_in=p.x_bar,
-               shape="Str", notes="X Horz Top 2ft @4oc",
+        BarRow(mark="H2", size="#6", qty=qty_top, length_in=h2_len,
+               shape="U", leg_a_in=hook_in, leg_b_in=p.x_bar, leg_c_in=hook_in,
+               notes="X Horz Top 2ft @4oc, 1ft hook EE",
                source_rule="rule_g2_horizontals"),
-        BarRow(mark="H3", size="#5", qty=qty_below, length_in=p.y_bar,
-               shape="Str", notes="Y Horz Below 2ft @5oc",
+        BarRow(mark="H3", size="#5", qty=qty_below, length_in=h3_len,
+               shape="U", leg_a_in=hook_in, leg_b_in=p.y_bar, leg_c_in=hook_in,
+               notes="Y Horz Below 2ft @5oc, 1ft hook EE",
                source_rule="rule_g2_horizontals"),
-        BarRow(mark="H4", size="#5", qty=qty_below, length_in=p.x_bar,
-               shape="Str", notes="X Horz Below 2ft @5oc",
+        BarRow(mark="H4", size="#5", qty=qty_below, length_in=h4_len,
+               shape="U", leg_a_in=hook_in, leg_b_in=p.x_bar, leg_c_in=hook_in,
+               notes="X Horz Below 2ft @5oc, 1ft hook EE",
                source_rule="rule_g2_horizontals"),
     ]
 
@@ -461,19 +494,27 @@ def rule_g2_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Excel formulas (Type 24 grate):
       V1: CEIL((X_bar×2 − 2×grate_ded + Y_bar + 6) / 5)
       V2: CEIL((Y_bar + 2×grate_ded + 4) / 5)
+
+    V1 has a 12" (1 ft) tail at one end (hook into footing).
+    V2 is straight (grate-side verticals).
     """
     spacing = 5.0
     gd2 = 2 * p.grate_ded   # 48 for Type 24, 36 for Type 18
+    tail_in = 12.0           # 1 ft tail on V1
 
     qty_v1 = math.ceil((p.x_bar * 2 - gd2 + p.y_bar + 6) / spacing)
     qty_v2 = math.ceil((p.y_bar + gd2 + 4) / spacing)
 
-    log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}×2 − {gd2:.0f} + {fmt_inches(p.y_bar)} + 6)/{spacing}) = {qty_v1}")
+    # V1 total length = height + tail
+    v1_len = p.h_adj + tail_in
+
+    log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}×2 − {gd2:.0f} + {fmt_inches(p.y_bar)} + 6)/{spacing}) = {qty_v1}, 12\" tail")
     log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + {gd2:.0f} + 4)/{spacing}) = {qty_v2}")
 
     return [
-        BarRow(mark="V1", size="#5", qty=qty_v1, length_in=p.h_adj,
-               shape="Str", notes="Verticals @5oc",
+        BarRow(mark="V1", size="#5", qty=qty_v1, length_in=v1_len,
+               shape="L", leg_a_in=p.h_adj, leg_b_in=tail_in,
+               notes="Verticals @5oc, 1ft tail",
                source_rule="rule_g2_verticals"),
         BarRow(mark="V2", size="#5", qty=qty_v2, length_in=p.h_adj,
                shape="Str", notes="Verticals Grate Side @5oc",
