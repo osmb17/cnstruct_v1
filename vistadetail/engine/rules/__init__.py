@@ -196,6 +196,23 @@ from vistadetail.engine.rules.d85_wingwall_rules import (
     rule_d85_top_bars,
     rule_d85_footing_mat,
 )
+from vistadetail.engine.rules.g_type_inlet_rules import (
+    # G1
+    rule_g1_geometry, rule_g1_wall_bars, rule_g1_top_slab,
+    rule_g1_bottom_mat, rule_g1_hoops, rule_g1_validate,
+    # G3
+    rule_g3_geometry, rule_g3_wall_bars, rule_g3_top_slab,
+    rule_g3_bottom_mat, rule_g3_hoops, rule_g3_validate,
+    # G4
+    rule_g4_geometry, rule_g4_wall_bars, rule_g4_top_slab,
+    rule_g4_bottom_mat, rule_g4_hoops, rule_g4_validate,
+    # G5
+    rule_g5_geometry, rule_g5_wall_bars, rule_g5_top_slab,
+    rule_g5_bottom_mat, rule_g5_hoops, rule_g5_validate,
+    # G6
+    rule_g6_geometry, rule_g6_wall_bars, rule_g6_top_slab,
+    rule_g6_bottom_mat, rule_g6_hoops, rule_g6_validate,
+)
 
 RULE_REGISTRY: dict = {
     # G2 Inlet / G2 Expanded Inlet
@@ -366,4 +383,39 @@ RULE_REGISTRY: dict = {
     "rule_d85_hoops":                rule_d85_hoops,
     "rule_d85_top_bars":             rule_d85_top_bars,
     "rule_d85_footing_mat":          rule_d85_footing_mat,
+    # G1 Inlet (D72B)
+    "rule_g1_validate":              rule_g1_validate,
+    "rule_g1_geometry":              rule_g1_geometry,
+    "rule_g1_wall_bars":             rule_g1_wall_bars,
+    "rule_g1_top_slab":              rule_g1_top_slab,
+    "rule_g1_bottom_mat":            rule_g1_bottom_mat,
+    "rule_g1_hoops":                 rule_g1_hoops,
+    # G3 Inlet (D72B)
+    "rule_g3_validate":              rule_g3_validate,
+    "rule_g3_geometry":              rule_g3_geometry,
+    "rule_g3_wall_bars":             rule_g3_wall_bars,
+    "rule_g3_top_slab":              rule_g3_top_slab,
+    "rule_g3_bottom_mat":            rule_g3_bottom_mat,
+    "rule_g3_hoops":                 rule_g3_hoops,
+    # G4 Inlet (D72B)
+    "rule_g4_validate":              rule_g4_validate,
+    "rule_g4_geometry":              rule_g4_geometry,
+    "rule_g4_wall_bars":             rule_g4_wall_bars,
+    "rule_g4_top_slab":              rule_g4_top_slab,
+    "rule_g4_bottom_mat":            rule_g4_bottom_mat,
+    "rule_g4_hoops":                 rule_g4_hoops,
+    # G5 Inlet (D72B)
+    "rule_g5_validate":              rule_g5_validate,
+    "rule_g5_geometry":              rule_g5_geometry,
+    "rule_g5_wall_bars":             rule_g5_wall_bars,
+    "rule_g5_top_slab":              rule_g5_top_slab,
+    "rule_g5_bottom_mat":            rule_g5_bottom_mat,
+    "rule_g5_hoops":                 rule_g5_hoops,
+    # G6 Inlet (D72B)
+    "rule_g6_validate":              rule_g6_validate,
+    "rule_g6_geometry":              rule_g6_geometry,
+    "rule_g6_wall_bars":             rule_g6_wall_bars,
+    "rule_g6_top_slab":              rule_g6_top_slab,
+    "rule_g6_bottom_mat":            rule_g6_bottom_mat,
+    "rule_g6_hoops":                 rule_g6_hoops,
 }

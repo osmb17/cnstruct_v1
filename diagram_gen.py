@@ -1080,12 +1080,120 @@ def _diag_d85_wingwall() -> bytes:
     return _to_png(fig)
 
 
+def _diag_g_type_inlet(title: str, bar_note: str, has_extension: bool = False,
+                        same_slope: bool = False) -> bytes:
+    """
+    Plan view of a G-type CIP drainage inlet (D72B).
+
+    Box dimensions: L (variable, shown as L1) × W=2'-11¾" (fixed std width).
+    Grate opening shown as inner rectangle.
+    """
+    L   = 4.0   # representative inlet length (ft)
+    W   = 2.98  # 2'-11¾" = 35.75" ÷ 12 ≈ 2.98ft
+    T   = 0.75  # 9" wall thickness in ft
+    grate_w = 2.0   # grate opening width (Type 24 = 2ft clear)
+    grate_l = L - 2 * T - 0.4  # grate opening length
+
+    fig, ax = _fig(7.5, 5.5)
+    ax.set_xlim(-1.3, L + 2.0)
+    ax.set_ylim(-1.2, W + 1.8)
+
+    # Outer box (plan)
+    _rect(ax, 0, 0, L, W, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
+
+    # Grate opening (inner void)
+    grate_x = T + 0.2
+    grate_y = (W - grate_w) / 2
+    _rect(ax, grate_x, grate_y, grate_l, grate_w, fc="white", ec=_OUTLINE, lw=1.2, zorder=3)
+    ax.text(grate_x + grate_l / 2, grate_y + grate_w / 2, "GRATE\nOPENING",
+            ha="center", va="center", fontsize=7, color="#444", zorder=4)
+
+    # Wall rebar lines (horizontal bars in L-direction)
+    for yi in [T * 0.4, W - T * 0.4]:
+        ax.plot([T + 0.1, L - T - 0.1], [yi, yi], color=_REBAR, lw=0.9, zorder=4)
+
+    # Wall rebar lines (vertical bars in W-direction, short walls)
+    for xi in [T * 0.4, L - T * 0.4]:
+        ax.plot([xi, xi], [T + 0.1, W - T - 0.1], color=_REBAR, lw=0.9, zorder=4)
+
+    # Extension indicator for G3
+    if has_extension:
+        ext_w = 0.4
+        _rect(ax, L, 0, ext_w, W, fc="#c8d4dc", ec=_OUTLINE, lw=1.2, zorder=2)
+        ax.text(L + ext_w / 2, W / 2, "EXT\n2ft", ha="center", va="center",
+                fontsize=7, color="#555", zorder=4)
+
+    # Same-slope note for G6
+    if same_slope:
+        ax.text(L / 2, W + 0.35, "SAME SLOPE AS GUTTER -- no depression",
+                ha="center", va="bottom", fontsize=7, style="italic", color="#555")
+
+    # Standard width label
+    ax.text(L + 0.15, W / 2, f"W=2'-11¾\"\n(std)", ha="left", va="center",
+            fontsize=7, color="#333")
+
+    # Bar note
+    ax.text(L / 2, -0.55, bar_note, ha="center", va="center",
+            fontsize=7.5, color="#333",
+            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#bbb", alpha=0.9))
+
+    _ext_dim_h(ax, 0, L, 0, -0.75, "L1")
+    _ext_dim_v(ax, 0, W, L, L + 0.55, "W")
+
+    _axes_compass(ax, -1.0, -1.0)
+    _title(ax, title)
+
+    return _to_png(fig)
+
+
+def _diag_g1_inlet() -> bytes:
+    return _diag_g_type_inlet(
+        "G1 INLET -- PLAN VIEW (D72B)",
+        "#4 ALL AROUND, TOP 2'-0\" MIN",
+    )
+
+
+def _diag_g3_inlet() -> bytes:
+    return _diag_g_type_inlet(
+        "G3 INLET -- PLAN VIEW (D72B)",
+        "#4 ALL AROUND, EXTEND WALL, TOP 2'-0\" MIN",
+        has_extension=True,
+    )
+
+
+def _diag_g4_inlet() -> bytes:
+    return _diag_g_type_inlet(
+        "G4 INLET -- PLAN VIEW (D72B)",
+        "#5 ALL AROUND, TOP 2'-0\" MIN (concrete curb)",
+    )
+
+
+def _diag_g5_inlet() -> bytes:
+    return _diag_g_type_inlet(
+        "G5 INLET -- PLAN VIEW (D72B)",
+        "#5 ALL AROUND (detail A profile)",
+    )
+
+
+def _diag_g6_inlet() -> bytes:
+    return _diag_g_type_inlet(
+        "G6 INLET -- PLAN VIEW (D72B)",
+        "#4 ALL AROUND, TOP 2'-0\" MIN",
+        same_slope=True,
+    )
+
+
 # ==============================================================================
 # Registry
 # ==============================================================================
 
 _DIAGRAM_FN: dict[str, callable] = {
+    "G1 Inlet":                _diag_g1_inlet,
     "G2 Inlet":                _diag_g2_inlet,
+    "G3 Inlet":                _diag_g3_inlet,
+    "G4 Inlet":                _diag_g4_inlet,
+    "G5 Inlet":                _diag_g5_inlet,
+    "G6 Inlet":                _diag_g6_inlet,
     "G2 Expanded Inlet":       _diag_expanded_inlet,
     "G2 Inlet Top":            _diag_inlet_top,
     "G2 Expanded Inlet Top":   lambda: _diag_rect_plan("G2 EXPANDED INLET TOP -- PLAN VIEW"),
