@@ -388,79 +388,305 @@ def _make_xml(bars, template_name, job_info=None) -> str:
     return parseString(tostring(root, encoding="unicode")).toprettyxml(indent="  ")
 
 
-def _make_pdf(bars, template_name, job_info=None) -> bytes:
-    from reportlab.lib import colors
+def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
+              params_raw=None, template=None) -> bytes:
+    """
+    Render a Vista Steel–style barlist PDF.
+
+    Parameters
+    ----------
+    bars          : list[BarRow]
+    template_name : str
+    job_info      : dict  — Project, Job #, Detailer, Date
+    params_raw    : dict  — template input values (displayed as Dimensions Used)
+    template      : BaseTemplate — needed to get human-readable field labels
+    """
+    from reportlab.lib import colors as rc
     from reportlab.lib.pagesizes import landscape, letter
-    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-
-    _NAVY   = colors.HexColor("#1c3461")
-    _STRIPE = colors.HexColor("#f0f4ff")
-    _WARN   = colors.HexColor("#fff3cd")
-
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=landscape(letter),
-                            leftMargin=0.5*inch, rightMargin=0.5*inch,
-                            topMargin=0.5*inch, bottomMargin=0.5*inch)
-    styles = getSampleStyleSheet()
-    elems  = []
-
-    elems.append(Paragraph(f"<b>CNSTRUCT 1.0 — {template_name} Rebar Barlist</b>", styles["Title"]))
-    if job_info:
-        parts = [f"{k}: {v}" for k, v in job_info.items() if v]
-        if parts:
-            elems.append(Paragraph("  |  ".join(parts), styles["Normal"]))
-    weight_lb = barlist_total_weight_lb(bars)
-    elems.append(Paragraph(
-        f"Date: {date.today()}  |  Total Weight: {weight_lb:,.1f} lb",
-        styles["Normal"]))
-    elems.append(Spacer(1, 0.15*inch))
-
-    # Weight breakdown by bar size
+    from reportlab.platypus import (
+        Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+    )
+    from reportlab.graphics.shapes import (
+        Drawing, Line, Rect, Circle, String as GStr,
+    )
     from collections import defaultdict as _dd
     from vistadetail.engine.hooks import BAR_WEIGHT_LB_FT as _WLBFT
+
+    # ── Palette ──────────────────────────────────────────────────────────
+    _NAVY   = rc.HexColor("#1c3461")
+    _SILVER = rc.HexColor("#e8edf5")
+    _STRIPE = rc.HexColor("#f4f6fb")
+    _WARN   = rc.HexColor("#fff3cd")
+    _GRAY   = rc.HexColor("#666666")
+    _LG     = rc.lightgrey
+
+    PAGE_W = 10.0 * inch   # usable width (11" − 2 × 0.5" margin)
+
+    # ── Compact dimension label ("ft-in" compact, e.g. 81 → '6-9') ──────
+    def _cdim(in_val):
+        if not in_val:
+            return ""
+        ft  = int(in_val // 12)
+        ins = round(in_val % 12)
+        if ins >= 12:
+            ft += 1; ins = 0
+        return f"{ft}-{ins}"
+
+    # ── Bar shape sketch (reportlab Drawing) ─────────────────────────────
+    def _sketch(bar):
+        SW, SH = 2.0 * inch, 0.58 * inch
+        d  = Drawing(SW, SH)
+        lw = 2.0
+        m  = 8.0
+        fs = 6.0
+
+        a = _cdim(bar.leg_a_in) if bar.leg_a_in else None
+        b = _cdim(bar.leg_b_in) if bar.leg_b_in else None
+        shape = (bar.shape or "Str").strip()
+
+        if shape == "Str":
+            y = SH * 0.58
+            d.add(Line(m, y, SW - m, y, strokeWidth=lw, strokeColor=_NAVY))
+            if a:
+                d.add(GStr(SW / 2, m, a, fontSize=fs,
+                           textAnchor="middle", fillColor=_GRAY))
+
+        elif shape in ("L", "Hook"):
+            # Long horizontal arm; hook drops on left end
+            hy  = SH - m - fs - 4
+            x1  = m; x2 = SW - m
+            yd  = m + fs + 2
+            d.add(Line(x1, hy, x2, hy, strokeWidth=lw, strokeColor=_NAVY))
+            d.add(Line(x1, hy, x1, yd, strokeWidth=lw, strokeColor=_NAVY))
+            if b:
+                d.add(GStr((x1 + x2) / 2, hy + 3, b,
+                           fontSize=fs, textAnchor="middle", fillColor=_GRAY))
+            if a:
+                d.add(GStr(x1 + 4, (hy + yd) / 2, a,
+                           fontSize=fs, textAnchor="start", fillColor=_GRAY))
+
+        elif shape == "U":
+            # Horizontal top bar; two legs hang down
+            xl = m + 14; xr = SW - m - 14
+            yt = SH - m; yb = m + fs + 4
+            d.add(Line(xl, yt, xr, yt, strokeWidth=lw, strokeColor=_NAVY))
+            d.add(Line(xl, yt, xl, yb, strokeWidth=lw, strokeColor=_NAVY))
+            d.add(Line(xr, yt, xr, yb, strokeWidth=lw, strokeColor=_NAVY))
+            if a:
+                d.add(GStr(xl - 3, (yt + yb) / 2, a,
+                           fontSize=fs, textAnchor="end", fillColor=_GRAY))
+            if b:
+                d.add(GStr((xl + xr) / 2, m + 1, b,
+                           fontSize=fs, textAnchor="middle", fillColor=_GRAY))
+
+        elif shape == "Rect":
+            lx = m + 6; rx = SW - m - 6
+            by = m + fs + 4; ty = SH - m
+            d.add(Rect(lx, by, rx - lx, ty - by,
+                       strokeWidth=lw, strokeColor=_NAVY,
+                       fillColor=rc.white))
+            if a:
+                d.add(GStr((lx + rx) / 2, m + 1, a,
+                           fontSize=fs, textAnchor="middle", fillColor=_GRAY))
+            if b:
+                d.add(GStr(rx + 3, (by + ty) / 2, b,
+                           fontSize=fs, textAnchor="start", fillColor=_GRAY))
+
+        elif shape == "Rng":
+            cx = SW / 2; cy = SH / 2 + fs / 2
+            r  = min(SW, SH) / 2 - m
+            d.add(Circle(cx, cy, r,
+                         strokeWidth=lw, strokeColor=_NAVY,
+                         fillColor=rc.white))
+            if a:
+                d.add(GStr(cx, cy - fs / 2, a,
+                           fontSize=fs, textAnchor="middle", fillColor=_GRAY))
+
+        else:
+            # Fallback straight bar
+            y = SH * 0.58
+            d.add(Line(m, y, SW - m, y, strokeWidth=lw, strokeColor=_NAVY))
+            if a:
+                d.add(GStr(SW / 2, m, a, fontSize=fs,
+                           textAnchor="middle", fillColor=_GRAY))
+
+        return d
+
+    # ── Paragraph styles ─────────────────────────────────────────────────
+    _S = getSampleStyleSheet()
+    b8  = ParagraphStyle("b8",  parent=_S["Normal"],
+                          fontName="Helvetica-Bold", fontSize=8)
+    n8  = ParagraphStyle("n8",  parent=_S["Normal"],
+                          fontName="Helvetica",      fontSize=8)
+    b16 = ParagraphStyle("b16", parent=_S["Normal"],
+                          fontName="Helvetica-Bold", fontSize=16,
+                          textColor=_NAVY)
+    b10 = ParagraphStyle("b10", parent=_S["Normal"],
+                          fontName="Helvetica-Bold", fontSize=10)
+
+    # ── Document ─────────────────────────────────────────────────────────
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=landscape(letter),
+                            leftMargin=0.5 * inch, rightMargin=0.5 * inch,
+                            topMargin=0.5 * inch, bottomMargin=0.5 * inch)
+    elems = []
+
+    # ── Header ───────────────────────────────────────────────────────────
+    ji      = job_info or {}
+    project = ji.get("Project") or ""
+    job_num = ji.get("Job #")   or ""
+    dtlr    = ji.get("Detailer") or ""
+    today   = str(ji.get("Date") or date.today())
+
+    right_lines = []
+    if project: right_lines.append(f"<b>Project:</b> {project}")
+    if job_num: right_lines.append(f"<b>Job #:</b>   {job_num}")
+    if dtlr:    right_lines.append(f"<b>Detailer:</b> {dtlr}")
+    right_lines.append(f"<b>Date:</b> {today}")
+    right_para = Paragraph("<br/>".join(right_lines), n8)
+
+    left_cell = [
+        Paragraph("VISTA STEEL", b16),
+        Paragraph(f"<b>{template_name}</b>  —  Rebar Barlist", b10),
+    ]
+
+    hdr = Table([[left_cell, right_para]],
+                colWidths=[6.5 * inch, 3.5 * inch])
+    hdr.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, -1), _SILVER),
+        ("BOX",           (0, 0), (-1, -1), 1.5, _NAVY),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING",    (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 12),
+    ]))
+    elems.append(hdr)
+    elems.append(Spacer(1, 0.1 * inch))
+
+    # ── Dimensions Used ──────────────────────────────────────────────────
+    if params_raw and template:
+        entries = []
+        for f in template.inputs:
+            val = params_raw.get(f.name)
+            if val is None:
+                continue
+            lbl = f.label or f.name.replace("_", " ").title()
+            fv  = f"{val:g}" if isinstance(val, float) else str(val)
+            entries.append((lbl, fv))
+
+        if entries:
+            half   = (len(entries) + 1) // 2
+            col_a  = entries[:half]
+            col_b  = entries[half:]
+            while len(col_b) < len(col_a):
+                col_b.append(("", ""))
+
+            dim_rows = []
+            for (la, va), (lb, vb) in zip(col_a, col_b):
+                dim_rows.append([
+                    Paragraph(la, b8), Paragraph(va, n8),
+                    Paragraph(lb, b8), Paragraph(vb, n8),
+                ])
+
+            dim_inner = Table(dim_rows,
+                              colWidths=[3.0*inch, 2.0*inch, 3.0*inch, 2.0*inch])
+            dim_inner.setStyle(TableStyle([
+                ("ROWBACKGROUNDS", (0, 0), (-1, -1), [rc.white, _STRIPE]),
+                ("GRID",          (0, 0), (-1, -1), 0.25, _LG),
+                ("TOPPADDING",    (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("LEFTPADDING",   (0, 0), (-1, -1), 6),
+            ]))
+
+            dim_section = Table(
+                [[Paragraph("DIMENSIONS  USED", b8)], [dim_inner]],
+                colWidths=[PAGE_W],
+            )
+            dim_section.setStyle(TableStyle([
+                ("BACKGROUND",    (0, 0), (0, 0), _NAVY),
+                ("TEXTCOLOR",     (0, 0), (0, 0), rc.white),
+                ("TOPPADDING",    (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("LEFTPADDING",   (0, 0), (-1, -1), 8),
+            ]))
+            elems.append(dim_section)
+            elems.append(Spacer(1, 0.1 * inch))
+
+    # ── Weight summary ───────────────────────────────────────────────────
+    weight_lb = barlist_total_weight_lb(bars)
     _sz_wt: dict = _dd(float)
     for _b in bars:
         _sz_wt[_b.size] += _WLBFT.get(_b.size, 0.0) * (_b.length_in / 12.0) * _b.qty
     _sorted_sz = sorted(_sz_wt.keys(), key=lambda s: int(s.lstrip("#")))
-    wt_rows = [["Bar Size", "Weight (lb)"]]
+
+    wt_data = [[Paragraph("<b>Size</b>", b8), Paragraph("<b>Weight (lb)</b>", b8)]]
     for _s in _sorted_sz:
-        wt_rows.append([_s, f"{_sz_wt[_s]:,.1f}"])
-    wt_rows.append(["Total", f"{weight_lb:,.1f}"])
-    wt_tbl = Table(wt_rows, colWidths=[1.1*inch, 1.1*inch])
+        wt_data.append([_s, f"{_sz_wt[_s]:,.1f}"])
+    wt_data.append([Paragraph("<b>TOTAL</b>", b8),
+                    Paragraph(f"<b>{weight_lb:,.1f}</b>", b8)])
+
+    wt_tbl = Table(wt_data, colWidths=[0.9 * inch, 1.1 * inch])
     wt_tbl.setStyle(TableStyle([
-        ("BACKGROUND",  (0, 0), (-1,  0), _NAVY),
-        ("TEXTCOLOR",   (0, 0), (-1,  0), colors.white),
-        ("FONTNAME",    (0, 0), (-1,  0), "Helvetica-Bold"),
-        ("FONTNAME",    (0,-1), (-1, -1), "Helvetica-Bold"),
-        ("FONTSIZE",    (0, 0), (-1, -1), 8),
-        ("BACKGROUND",  (0,-1), (-1, -1), _STRIPE),
-        ("ROWBACKGROUNDS", (0,1), (-1,-2), [colors.white, _STRIPE]),
-        ("GRID",        (0, 0), (-1, -1), 0.25, colors.lightgrey),
-        ("VALIGN",      (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",  (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING",(0, 0),(-1, -1), 2),
+        ("BACKGROUND",    (0,  0), (-1,  0), _NAVY),
+        ("TEXTCOLOR",     (0,  0), (-1,  0), rc.white),
+        ("BACKGROUND",    (0, -1), (-1, -1), _SILVER),
+        ("ROWBACKGROUNDS",(0,  1), (-1, -2), [rc.white, _STRIPE]),
+        ("FONTSIZE",      (0,  0), (-1, -1), 8),
+        ("GRID",          (0,  0), (-1, -1), 0.25, _LG),
+        ("VALIGN",        (0,  0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING",    (0,  0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0,  0), (-1, -1), 2),
+        ("LEFTPADDING",   (0,  0), (-1, -1), 4),
     ]))
     elems.append(wt_tbl)
-    elems.append(Spacer(1, 0.2*inch))
+    elems.append(Spacer(1, 0.1 * inch))
 
-    header = ["Mark","Size","Qty","Length","Shape","Leg A","Leg B","Leg C","Notes"]
-    data   = [header] + [b.to_row()[:9] for b in bars]
-    col_w  = [w*inch for w in [0.55, 0.5, 0.5, 0.85, 0.55, 0.7, 0.7, 0.7, 3.4]]
-    tbl = Table(data, colWidths=col_w, repeatRows=1)
-    tbl.setStyle(TableStyle([
-        ("BACKGROUND",(0,0),(-1,0),_NAVY), ("TEXTCOLOR",(0,0),(-1,0),colors.white),
-        ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"), ("FONTSIZE",(0,0),(-1,-1),8),
-        ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.white,_STRIPE]),
-        ("GRID",(0,0),(-1,-1),0.25,colors.lightgrey),
-        ("VALIGN",(0,0),(-1,-1),"MIDDLE"), ("TOPPADDING",(0,0),(-1,-1),2),
-        ("BOTTOMPADDING",(0,0),(-1,-1),2),
+    # ── Barlist table with shape sketches ────────────────────────────────
+    ROW_H   = 0.62 * inch
+    bar_hdr = [
+        Paragraph("<b>Mark</b>",     b8),
+        Paragraph("<b>Qty / Size</b>", b8),
+        Paragraph("<b>Shape</b>",    b8),
+        Paragraph("<b>Length</b>",   b8),
+        Paragraph("<b>Notes</b>",    b8),
+    ]
+    bar_rows    = [bar_hdr]
+    row_heights = [None]
+
+    for bar in bars:
+        bar_rows.append([
+            Paragraph(bar.mark, n8),
+            Paragraph(f"<b>{bar.qty} {bar.size}</b>", n8),
+            _sketch(bar),
+            Paragraph(bar.length_ft_in, n8),
+            Paragraph(bar.notes or "", n8),
+        ])
+        row_heights.append(ROW_H)
+
+    # mark | qty+size | sketch | length | notes  (total = 10.0")
+    col_w = [0.55*inch, 0.75*inch, 2.0*inch, 0.9*inch, 5.8*inch]
+
+    bar_tbl = Table(bar_rows, colWidths=col_w,
+                    rowHeights=row_heights, repeatRows=1)
+    bar_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (-1,  0), _NAVY),
+        ("TEXTCOLOR",     (0, 0), (-1,  0), rc.white),
+        ("ROWBACKGROUNDS",(0, 1), (-1, -1), [rc.white, _STRIPE]),
+        ("FONTSIZE",      (0, 0), (-1, -1), 8),
+        ("GRID",          (0, 0), (-1, -1), 0.25, _LG),
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING",    (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 4),
     ]))
     for i, bar in enumerate(bars, 1):
         if bar.review_flag:
-            tbl.setStyle(TableStyle([("BACKGROUND",(0,i),(-1,i),_WARN)]))
-    elems.append(tbl)
+            bar_tbl.setStyle(TableStyle([("BACKGROUND", (0, i), (-1, i), _WARN)]))
+
+    elems.append(bar_tbl)
     doc.build(elems)
     return buf.getvalue()
 
@@ -674,35 +900,19 @@ template = TEMPLATE_REGISTRY[template_name]
 st.markdown("---")
 
 # ═════════════════════════════════════════════════════════════════════════════
-# ACTION BAR
+# STATE
 # ═════════════════════════════════════════════════════════════════════════════
 
 bars      = st.session_state.get("bars")
 log_lines = st.session_state.get("log_lines", [])
 warnings  = st.session_state.get("warnings", [])
 
-b1, b2, _pad = st.columns([1, 1, 4])
+generate_btn = st.session_state.pop("_gen_bottom", False)
 
-generate_btn = b1.button("Generate", type="primary", use_container_width=True, key="btn_gen")
-clear_btn    = b2.button("Clear All", use_container_width=True, key="btn_clear")
-
-refresh_btn  = False
-show_cut_tab = False
-show_hist_tab = False
-call_ai      = False
-
-# ── Button actions ────────────────────────────────────────────────────────────
-
-if clear_btn:
-    for _k in ("bars","log_lines","warnings","error"):
-        st.session_state.pop(_k, None)
-    st.rerun()
-
-if generate_btn or refresh_btn:
-    # Collect params from session state widgets
+if generate_btn:
     st.session_state.pop("error", None)
 
-if generate_btn or refresh_btn:
+if generate_btn:
     # Build params_raw from current widget values.
     # Key format must match exactly what _widget() produces:
     #   primary_{template.name}__{field}  and  adv_{template.name}__{field}
@@ -710,14 +920,10 @@ if generate_btn or refresh_btn:
     for f in template.inputs:
         key     = f"primary_{template.name}__{f.name}"
         adv_key = f"adv_{template.name}__{f.name}"
-        ov_key  = f"ov__{template.name}__{f.name}"
-        ov_en   = f"oven__{template.name}__{f.name}"
         if key in st.session_state:
             params_raw[f.name] = st.session_state[key]
         elif adv_key in st.session_state:
             params_raw[f.name] = st.session_state[adv_key]
-        elif ov_en in st.session_state and st.session_state[ov_en] and ov_key in st.session_state:
-            params_raw[f.name] = st.session_state[ov_key]
         else:
             params_raw[f.name] = f.default
 
@@ -754,7 +960,7 @@ if generate_btn or refresh_btn:
         log = ReasoningLogger(None)
         with st.spinner("Running engine..."):
             try:
-                b = generate_barlist(template, params_raw, log, call_ai=call_ai)
+                b = generate_barlist(template, params_raw, log, call_ai=False)
                 st.session_state.bars        = b
                 st.session_state.log_lines   = log.get_lines()
                 st.session_state.warnings    = [ln for ln in log.get_lines() if ln[1].strip()=="WARN"]
@@ -808,130 +1014,56 @@ with diag_col:
 
 # ── INPUTS ────────────────────────────────────────────────────────────────────
 with inp_col:
-    st.markdown(
-        "<div style='font-size:0.78rem;font-weight:700;text-transform:uppercase;"
-        "letter-spacing:0.8px;color:#6c737a;margin:0 0 0.4rem'>Dimensions</div>",
-        unsafe_allow_html=True,
-    )
-
-    # ── Smart suggestions: pre-seed target fields before they render ─────────
-    # Read each trigger's current session-state value; if it changed from last
-    # render, push the predicted value into the target's session-state key so
-    # the widget renders with the suggestion already in place.
-    _active_suggestions: dict[str, any] = {}   # target_field → suggested_val
+    # ── Smart suggestions: pre-seed Y from X when applicable ─────────────
     for _trig, _tgt, _fn in _FIELD_PREDICTIONS.get(template_name, []):
         _trig_key = f"primary_{template_name}__{_trig}"
         _prev_key = f"_prev_{_trig}__{template_name}"
         _trig_val = st.session_state.get(_trig_key)
         if _trig_val is not None:
-            _sugg = _fn(_trig_val)
-            _active_suggestions[_tgt] = _sugg
             if st.session_state.get(_prev_key) != _trig_val:
                 st.session_state[_prev_key] = _trig_val
-                st.session_state[f"primary_{template_name}__{_tgt}"] = _sugg
+                st.session_state[f"primary_{template_name}__{_tgt}"] = _fn(_trig_val)
 
-    # Primary inputs
+    # ── X and Y (primary inputs -- just 2 fields) ───────────────────────
     params_raw: dict = {}
     primary_fields = dflt.get_primary_inputs(template)
     for f in primary_fields:
         name, val = _widget(f, key_prefix=f"primary_{template_name}", container=st)
         params_raw[name] = val
-        # Show suggestion note when this field is carrying a predicted value
-        if name in _active_suggestions and val == _active_suggestions[name]:
-            st.caption(
-                f"Standard sizing suggestion — edit to override"
-            )
 
-    # ── Caltrans auto-fill ────────────────────────────────────────────────────
-    # After collecting primary dims, look up Caltrans standard values for
-    # secondary fields (bar sizes, spacing). When primary dims change, reset
-    # the secondary widget values to Caltrans standard defaults automatically.
+    # ── Caltrans auto-fill (silently pre-fills advanced fields) ──────────
     _ct_result = caltrans_lookup(template_name, params_raw)
     _ct_src    = _ct_result.pop("_source", "")
-    _ov_name   = dflt.OVERRIDEABLE.get(template_name, "")
-
-    # Caltrans source badge — visible pill so the user always knows which table ran
-    if _ct_src:
-        st.markdown(
-            f"<div style='display:inline-flex;align-items:center;gap:6px;"
-            f"background:#eef2fc;color:#1c3461;border:1px solid #c5d5f8;"
-            f"border-radius:20px;padding:3px 12px 3px 8px;font-size:0.72rem;"
-            f"font-weight:600;margin:6px 0 2px;letter-spacing:0.2px'>"
-            f"<span style='width:7px;height:7px;background:#1c3461;border-radius:50%;"
-            f"display:inline-block;flex-shrink:0'></span>"
-            f"Caltrans {_ct_src}</div>",
-            unsafe_allow_html=True,
-        )
-    # Exclude the overrideable field — it's handled separately below
-    _ct_secondary = {k: v for k, v in _ct_result.items() if k != _ov_name}
-
-    if _ct_secondary:
+    if _ct_result:
         _phash_key = f"_phash__{template_name}"
         _phash = hashlib.md5(
             json.dumps(params_raw, sort_keys=True, default=str).encode()
         ).hexdigest()[:8]
         if st.session_state.get(_phash_key) != _phash:
             st.session_state[_phash_key] = _phash
-            for _cf, _cv in _ct_secondary.items():
+            for _cf, _cv in _ct_result.items():
                 st.session_state[f"adv_{template_name}__{_cf}"] = _cv
 
-    # Wall thickness shown from Caltrans table or kept auto via engine
-    _ct_wall_thick = _ct_result.get(_ov_name) if _ov_name else None
-
-    # Auto-computed / overrideable field (e.g. wall_thick_in)
-    ov_field = dflt.get_overrideable_field(template)
-    if ov_field:
-        ov_en_key  = f"oven__{template.name}__{ov_field.name}"
-        ov_val_key = f"ov__{template.name}__{ov_field.name}"
-        col_lbl, col_chk = st.columns([3, 1])
-        override_on = col_chk.checkbox("override", key=ov_en_key,
-                                       help="Uncheck to use Caltrans auto-computed value")
-        if override_on:
-            lo = int(ov_field.min) if ov_field.min is not None else 0
-            hi = int(ov_field.max) if ov_field.max is not None else 36
-            dv = int(ov_field.default) if ov_field.default and ov_field.default > 0 else lo + 9
-            ov_val = col_lbl.number_input(
-                f"{ov_field.label or ov_field.name} (custom)",
-                min_value=lo, max_value=hi, value=dv, step=1, key=ov_val_key)
-            params_raw[ov_field.name] = ov_val
-        else:
-            _thick_label = ov_field.label or ov_field.name
-            if _ct_wall_thick:
-                col_lbl.markdown(
-                    f"**{_thick_label}:** "
-                    f"<span style='color:#1c3461'>{_ct_wall_thick}\" (Caltrans std)</span>",
-                    unsafe_allow_html=True)
-                params_raw[ov_field.name] = _ct_wall_thick
-            else:
-                col_lbl.markdown(
-                    f"**{_thick_label}:** "
-                    f"<span style='color:#1c3461'>auto (Caltrans std)</span>",
-                    unsafe_allow_html=True)
-                params_raw[ov_field.name] = 0
-
-    # Advanced inputs (collapsed)
+    # ── Advanced (small collapsed section) ───────────────────────────────
     secondary = dflt.get_secondary_inputs(template)
     if secondary:
-        _adv_label = f"Advanced  ({len(secondary)} inputs)"
-        if _ct_src:
-            _adv_label += f"  ·  Caltrans {_ct_src}"
-        with st.expander(_adv_label, expanded=False):
-            if _ct_src and _ct_secondary:
-                st.caption(
-                    f"Values pre-filled from Caltrans standard plan ({_ct_src}). "
-                    "Edit any field to override."
-                )
+        with st.expander("Advanced", expanded=False):
             for f in secondary:
                 name, val = _widget(f, key_prefix=f"adv_{template.name}", container=st)
                 params_raw[name] = val
 
-    # Store current params (used by refresh and re-explain)
+    # Store params
     st.session_state._last_params = params_raw
-    # Hash for staleness detection (has the user changed inputs since last generate?)
     _cur_phash = hashlib.md5(json.dumps(params_raw, sort_keys=True, default=str).encode()).hexdigest()[:12]
     st.session_state._cur_params_hash = _cur_phash
 
-# ── RESULTS — full width below diagram + inputs ───────────────────────────────
+    # Generate button (below inputs)
+    st.markdown("")
+    if st.button("Generate", type="primary", use_container_width=True, key="btn_gen_bottom"):
+        st.session_state["_gen_bottom"] = True
+        st.rerun()
+
+# ── RESULTS -- full width below diagram + inputs ───────────────────────────────
 if st.session_state.get("error"):
     _err = st.session_state.error
     if _err.startswith("**Input problems:**"):
@@ -975,7 +1107,8 @@ if bars is not None:
 
     # ── Export buttons (below barlist) ───────────────────────────────────────
     ex1, ex2, ex3, _pad = st.columns([1, 1, 1, 3])
-    ji = {"Project": job_name, "Job #": job_number, "Detailer": detailer}
+    ji = {"Project": job_name, "Job #": job_number,
+          "Detailer": detailer, "Date": str(run_date)}
     ex1.download_button(
         "Export CSV",
         data=_make_csv(bars),
@@ -991,7 +1124,8 @@ if bars is not None:
     try:
         ex3.download_button(
             "Export PDF",
-            data=_make_pdf(bars, template_name, ji),
+            data=_make_pdf(bars, template_name, ji,
+                           params_raw=params_raw, template=template),
             file_name=f"{template_name.replace(' ','_')}_barlist.pdf",
             mime="application/pdf", use_container_width=True, key="btn_pdf",
         )
@@ -999,87 +1133,15 @@ if bars is not None:
         ex3.button("Export PDF", disabled=True, use_container_width=True, key="btn_pdf_na")
 
 # ═════════════════════════════════════════════════════════════════════════════
-# DETAILS (collapsed) — computation trace, history
+# COMPUTATION LOG (collapsed)
 # ═════════════════════════════════════════════════════════════════════════════
 
 if bars is not None or log_lines:
-    st.markdown("---")
-    tab_log, tab_cut, tab_hist = st.tabs(["Computation Log", "Cut Optimizer", "History"])
-
-    with tab_log:
-        non_blank = [(ts, tag, msg, det, src) for ts, tag, msg, det, src in log_lines if msg.strip()]
-        if non_blank:
+    non_blank = [(ts, tag, msg, det, src) for ts, tag, msg, det, src in log_lines if msg.strip()]
+    if non_blank:
+        with st.expander("Computation Log", expanded=False):
             log_df = pd.DataFrame(non_blank, columns=["Time","Tag","Message","Detail","Source"])
-            st.dataframe(log_df, use_container_width=True, hide_index=True, height=350)
-        else:
-            st.info("Log appears after generation.")
-
-    # ── Cut Optimizer ─────────────────────────────────────────────────────────
-    with tab_cut:
-        if bars is not None:
-            ca, cb, cc = st.columns([1, 1, 3])
-            with ca:
-                stock_ft = st.selectbox("Stock Length", [20, 40, 60], index=0,
-                                        format_func=lambda x: f"{x} ft", key="cut_stock")
-            with cb:
-                price_lb = st.number_input("Price per lb ($)", min_value=0.0, max_value=10.0,
-                                           value=0.80, step=0.05, format="%.2f", key="cut_price_lb")
-
-            results = _cut_optimize(bars, stock_ft * 12)
-            disp_cols = ["Size","Sticks","Stock (ft)","Ordered (ft)","Used (ft)","Waste (ft)","Waste %"]
-            df_cut = pd.DataFrame([{c: r[c] for c in disp_cols} for r in results])
-
-            def _hl_waste(row):
-                return ["background-color:#fff3cd"]*len(row) if row["Waste %"] > 20 else [""]*len(row)
-
-            with cc:
-                st.dataframe(df_cut.style.apply(_hl_waste, axis=1),
-                             use_container_width=True, hide_index=True)
-
-            from vistadetail.engine.hooks import BAR_WEIGHT_LB_FT as _WLBFT
-            total_sticks = sum(r["Sticks"] for r in results)
-            total_waste  = round(sum(r["Waste (ft)"] for r in results), 1)
-            avg_waste    = round(sum(r["Waste %"] for r in results) / len(results), 1) if results else 0
-            total_ordered_lb = sum(
-                r["Sticks"] * stock_ft * _WLBFT.get(r["Size"], 0.0) for r in results)
-            est_cost = total_ordered_lb * price_lb
-
-            sm1, sm2, sm3, sm4 = st.columns(4)
-            sm1.metric("Sticks",     total_sticks)
-            sm2.metric("Waste",      f"{total_waste} ft  ({avg_waste}%)")
-            sm3.metric("Ordered Wt", f"{total_ordered_lb:,.0f} lb")
-            sm4.metric("Est. Cost",  f"${est_cost:,.2f}")
-        else:
-            st.info("Generate a barlist to use the cut optimizer.")
-
-    # ── History ───────────────────────────────────────────────────────────────
-    with tab_hist:
-        runs = hist.list_runs()
-        if not runs:
-            st.info("No history yet.")
-        else:
-            disp = [{"#": r["id"], "Date": r["timestamp"], "Template": r["template_name"],
-                     "Project": r["job_name"] or "", "Job #": r["job_number"] or "",
-                     "Weight (lb)": r["total_weight_lb"]}
-                    for r in runs]
-            st.dataframe(pd.DataFrame(disp), use_container_width=True, hide_index=True)
-
-            opts = {f"#{r['id']}  {r['timestamp']}  —  {r['template_name']}": r["id"]
-                    for r in runs}
-            sel = st.selectbox("View run", list(opts.keys()), key="hist_sel")
-            if sel:
-                run = hist.load_run(opts[sel])
-                if run:
-                    hbars = run["bars"]
-                    hdf = pd.DataFrame([{
-                        "Mark": b.mark, "Size": b.size, "Qty": b.qty,
-                        "Length": b.length_ft_in, "Shape": b.shape, "Notes": b.notes,
-                    } for b in hbars])
-                    st.dataframe(hdf, use_container_width=True, hide_index=True)
-                    hx1, _s = st.columns([1, 5])
-                    hx1.download_button("CSV", data=_make_csv(hbars),
-                                        file_name=f"run_{run['id']}.csv", mime="text/csv",
-                                        key=f"hcsv_{run['id']}")
+            st.dataframe(log_df, use_container_width=True, hide_index=True, height=300)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # AI ASSISTANT — full-width chat section
