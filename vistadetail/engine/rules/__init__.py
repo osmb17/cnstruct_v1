@@ -151,6 +151,32 @@ from vistadetail.engine.rules.junction_structure_rules import (
     rule_junction_floor_short,
     rule_validate_junction,
 )
+from vistadetail.engine.rules.sound_wall_rules import (
+    rule_sw_wall_verticals,
+    rule_sw_wall_horizontals,
+    rule_sw_footing_dowels,
+    rule_sw_footing_bars,
+    rule_sw_pile_cage,
+    rule_sw_pile_cap_bars,
+    rule_validate_sound_wall,
+)
+from vistadetail.engine.rules.caltrans_ret_wall_rules import (
+    rule_ct_rw_stem_vert,
+    rule_ct_rw_stem_horiz,
+    rule_ct_rw_toe_heel,
+    rule_ct_rw_dowels,
+    rule_ct_rw_shear_key,
+    rule_ct_rw_e_bars,
+    rule_validate_ct_rw,
+)
+from vistadetail.engine.rules.caltrans_headwall_rules import (
+    rule_ct_hw_vert_bars,
+    rule_ct_hw_horiz_bars,
+    rule_ct_hw_top_bars,
+    rule_ct_hw_footing,
+    rule_ct_hw_pipe_hoops,
+    rule_validate_ct_hw,
+)
 
 RULE_REGISTRY: dict = {
     # G2 Inlet / G2 Expanded Inlet
@@ -281,4 +307,27 @@ RULE_REGISTRY: dict = {
     "rule_junction_floor_long":      rule_junction_floor_long,
     "rule_junction_floor_short":     rule_junction_floor_short,
     "rule_validate_junction":        rule_validate_junction,
+    # Sound Wall
+    "rule_sw_wall_verticals":        rule_sw_wall_verticals,
+    "rule_sw_wall_horizontals":      rule_sw_wall_horizontals,
+    "rule_sw_footing_dowels":        rule_sw_footing_dowels,
+    "rule_sw_footing_bars":          rule_sw_footing_bars,
+    "rule_sw_pile_cage":             rule_sw_pile_cage,
+    "rule_sw_pile_cap_bars":         rule_sw_pile_cap_bars,
+    "rule_validate_sound_wall":      rule_validate_sound_wall,
+    # Caltrans Retaining Wall Type 1
+    "rule_ct_rw_stem_vert":          rule_ct_rw_stem_vert,
+    "rule_ct_rw_stem_horiz":         rule_ct_rw_stem_horiz,
+    "rule_ct_rw_toe_heel":           rule_ct_rw_toe_heel,
+    "rule_ct_rw_dowels":             rule_ct_rw_dowels,
+    "rule_ct_rw_shear_key":          rule_ct_rw_shear_key,
+    "rule_ct_rw_e_bars":             rule_ct_rw_e_bars,
+    "rule_validate_ct_rw":           rule_validate_ct_rw,
+    # Caltrans Headwall D89
+    "rule_ct_hw_vert_bars":          rule_ct_hw_vert_bars,
+    "rule_ct_hw_horiz_bars":         rule_ct_hw_horiz_bars,
+    "rule_ct_hw_top_bars":           rule_ct_hw_top_bars,
+    "rule_ct_hw_footing":            rule_ct_hw_footing,
+    "rule_ct_hw_pipe_hoops":         rule_ct_hw_pipe_hoops,
+    "rule_validate_ct_hw":           rule_validate_ct_hw,
 }

@@ -12,7 +12,7 @@ from __future__ import annotations
 # Only these appear in the main panel; everything else is in "Advanced".
 
 PRIMARY_INPUTS: dict[str, list[str]] = {
-    "G2 Inlet":              ["x_dim_ft", "y_dim_ft", "wall_height_ft", "grate_type"],
+    "G2 Inlet":              ["x_dim_ft", "y_dim_ft", "inside_x_in", "inside_y_in", "wall_height_ft", "grate_type"],
     "G2 Expanded Inlet":     ["x_dim_ft", "y_dim_ft", "y_expanded_ft", "wall_height_ft", "grate_type"],
     "G2 Inlet Top":          ["x_dim_ft", "y_dim_ft", "wall_height_ft", "grate_type"],
     "G2 Expanded Inlet Top": ["slab_length_ft", "slab_width_ft"],
@@ -33,6 +33,9 @@ PRIMARY_INPUTS: dict[str, list[str]] = {
     "Fuel Foundation":       ["fdn_length_ft", "fdn_width_ft", "fdn_thickness_in"],
     "Dual Slab":             ["slab_a_length_ft", "slab_a_width_ft", "slab_b_length_ft", "slab_b_width_ft"],
     "Junction Structure":    ["inside_length_ft", "inside_width_ft", "inside_depth_ft"],
+    "Sound Wall":            ["wall_height_ft", "wall_length_ft", "foundation_type"],
+    "Caltrans Retaining Wall": ["design_h_ft", "wall_length_ft", "wall_case"],
+    "Caltrans Headwall":     ["pipe_dia_in", "wall_width_ft", "wall_type"],
 }
 
 # ── Auto-computed field (shown as read-only, unlockable via checkbox) ─────────
@@ -47,7 +50,7 @@ OVERRIDEABLE: dict[str, str] = {
 
 # ── Diagram axis labels (what each primary field represents on the diagram) ───
 DIAGRAM_LABELS: dict[str, dict[str, str]] = {
-    "G2 Inlet":              {"x_dim_ft": "X", "y_dim_ft": "Y", "wall_thick_in": "T"},
+    "G2 Inlet":              {"x_dim_ft": "X", "y_dim_ft": "Y", "inside_x_in": "X_int", "inside_y_in": "Y_int", "wall_thick_in": "T"},
     "G2 Expanded Inlet":     {"x_dim_ft": "X", "y_dim_ft": "Y", "y_expanded_ft": "Y_exp", "wall_thick_in": "T"},
     "G2 Inlet Top":          {"x_dim_ft": "X", "y_dim_ft": "Y", "wall_thick_in": "T"},
     "G2 Expanded Inlet Top": {"slab_length_ft": "L", "slab_width_ft": "W"},
@@ -69,6 +72,9 @@ DIAGRAM_LABELS: dict[str, dict[str, str]] = {
     "Dual Slab":             {"slab_a_length_ft": "A-L", "slab_a_width_ft": "A-W",
                               "slab_b_length_ft": "B-L", "slab_b_width_ft": "B-W"},
     "Junction Structure":    {"inside_length_ft": "L", "inside_width_ft": "W", "inside_depth_ft": "D"},
+    "Sound Wall":            {"wall_height_ft": "H", "wall_length_ft": "L"},
+    "Caltrans Retaining Wall": {"design_h_ft": "H", "wall_length_ft": "L"},
+    "Caltrans Headwall":     {"pipe_dia_in": "D", "wall_width_ft": "W"},
 }
 
 

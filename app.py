@@ -356,6 +356,38 @@ def _make_csv(bars) -> str:
     csv.writer(buf).writerows(barlist_to_rows(bars))
     return buf.getvalue()
 
+def _make_xml(bars, template_name, job_info=None) -> str:
+    """Generate a simple XML barlist export."""
+    from xml.etree.ElementTree import Element, SubElement, tostring
+    from xml.dom.minidom import parseString
+
+    root = Element("barlist")
+    root.set("template", template_name)
+    root.set("date", str(date.today()))
+    if job_info:
+        meta = SubElement(root, "job")
+        for k, v in job_info.items():
+            if v:
+                meta.set(k.lower().replace(" ", "_").replace("#", "num"), str(v))
+    for b in bars:
+        bar_el = SubElement(root, "bar")
+        bar_el.set("mark", b.mark)
+        bar_el.set("size", b.size)
+        bar_el.set("qty", str(b.qty))
+        bar_el.set("length_in", f"{b.length_in:.2f}")
+        bar_el.set("length", b.length_ft_in)
+        bar_el.set("shape", b.shape)
+        if b.leg_a_in:
+            bar_el.set("leg_a_in", f"{b.leg_a_in:.2f}")
+        if b.leg_b_in:
+            bar_el.set("leg_b_in", f"{b.leg_b_in:.2f}")
+        if b.leg_c_in:
+            bar_el.set("leg_c_in", f"{b.leg_c_in:.2f}")
+        if b.notes:
+            bar_el.set("notes", b.notes)
+    return parseString(tostring(root, encoding="unicode")).toprettyxml(indent="  ")
+
+
 def _make_pdf(bars, template_name, job_info=None) -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import landscape, letter
@@ -602,10 +634,10 @@ def _get_diagram(template_name: str):
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# HEADER ROW
+# HEADER
 # ═════════════════════════════════════════════════════════════════════════════
 
-h1, h2, h3, h4, h5, h6 = st.columns([2, 2.2, 1.2, 1.4, 1.0, 0.9])
+h1, h2 = st.columns([3, 2])
 
 with h1:
     st.markdown(
@@ -621,25 +653,15 @@ with h1:
 with h2:
     template_name = st.selectbox(
         "Structure Type", TEMPLATE_NAMES, key="template_select",
-        help="Select template"
-    )
-    st.markdown(
-        f"<span style='font-size:0.72rem;color:#8a909a;font-weight:500'>"
-        f"{_template_stats(template_name)}</span>",
-        unsafe_allow_html=True,
+        label_visibility="collapsed",
     )
 
-with h3:
-    detailer = st.text_input("Detailer", key="detailer", placeholder="Initials")
-
-with h4:
-    job_name = st.text_input("Project", key="job_name", placeholder="Project name")
-
-with h5:
-    job_number = st.text_input("Job #", key="job_number", placeholder="2024-001")
-
-with h6:
-    run_date = st.date_input("Date", value=date.today(), key="run_date")
+# Job info row (compact)
+j1, j2, j3, j4 = st.columns(4)
+detailer   = j1.text_input("Detailer", key="detailer", placeholder="Initials")
+job_name   = j2.text_input("Project",  key="job_name", placeholder="Project name")
+job_number = j3.text_input("Job #",    key="job_number", placeholder="2024-001")
+run_date   = j4.date_input("Date",     value=date.today(), key="run_date")
 
 # Template change → clear results
 if template_name != st.session_state.get("_last_template"):
@@ -652,42 +674,22 @@ template = TEMPLATE_REGISTRY[template_name]
 st.markdown("---")
 
 # ═════════════════════════════════════════════════════════════════════════════
-# BUTTON BAR
+# ACTION BAR
 # ═════════════════════════════════════════════════════════════════════════════
 
 bars      = st.session_state.get("bars")
 log_lines = st.session_state.get("log_lines", [])
 warnings  = st.session_state.get("warnings", [])
 
-b1, b2, b3, b4, b5, b6, b7, b8 = st.columns([1.2, 1, 1, 1, 1, 1, 1, 0.9])
+b1, b2, _pad = st.columns([1, 1, 4])
 
-generate_btn = b1.button("Generate",   type="primary", use_container_width=True, key="btn_gen")
-refresh_btn  = b2.button("Refresh",    use_container_width=True, key="btn_refresh",
-                          disabled=bars is None)
-clear_btn    = b3.button("Clear All",  use_container_width=True, key="btn_clear")
+generate_btn = b1.button("Generate", type="primary", use_container_width=True, key="btn_gen")
+clear_btn    = b2.button("Clear All", use_container_width=True, key="btn_clear")
 
-# CSV + PDF download buttons (or disabled placeholders)
-if bars is not None:
-    b4.download_button("Export CSV",
-                       data=_make_csv(bars),
-                       file_name=f"{template_name.replace(' ','_')}_barlist.csv",
-                       mime="text/csv", use_container_width=True, key="btn_csv")
-    try:
-        ji = {"Project": job_name, "Job #": job_number, "Detailer": detailer}
-        b5.download_button("Barlist Sheet",
-                           data=_make_pdf(bars, template_name, ji),
-                           file_name=f"{template_name.replace(' ','_')}_barlist.pdf",
-                           mime="application/pdf", use_container_width=True, key="btn_pdf")
-    except ImportError:
-        b5.button("Barlist Sheet", disabled=True, use_container_width=True, key="btn_pdf_na")
-else:
-    b4.button("Export CSV",   disabled=True, use_container_width=True, key="btn_csv_na")
-    b5.button("Barlist Sheet", disabled=True, use_container_width=True, key="btn_pdf_na")
-
-show_cut_tab  = b6.button("Cut Optimizer", use_container_width=True, key="btn_cut")
-show_hist_tab = b7.button("History",       use_container_width=True, key="btn_hist")
-call_ai       = b8.toggle("AI Review", value=False, key="opt_ai",
-                           help="Add per-bar AI review notes flagging potential issues")
+refresh_btn  = False
+show_cut_tab = False
+show_hist_tab = False
+call_ai      = False
 
 # ── Button actions ────────────────────────────────────────────────────────────
 
@@ -945,13 +947,16 @@ if bars is not None:
     st.markdown("---")
     weight_lb = barlist_total_weight_lb(bars)
 
-    # Metrics
+    # Metrics row
     m1, m2, m3 = st.columns(3)
     m1.metric("Marks",      len({b.mark for b in bars}))
     m2.metric("Total Bars", f"{sum(b.qty for b in bars):,}")
     m3.metric("Weight",     f"{weight_lb:,.1f} lb")
 
-    st.markdown("")
+    # Warnings inline (if any)
+    if warnings:
+        for _ts, _tag, msg, detail, _src in warnings:
+            st.warning(f"{msg}\n\n_{detail}_" if detail else msg)
 
     # Barlist table
     df = pd.DataFrame([{
@@ -966,377 +971,115 @@ if bars is not None:
         return ["background-color:#fff3cd"]*len(row) if row["Review"] else [""]*len(row)
 
     st.dataframe(df.style.apply(_hl, axis=1),
-                 use_container_width=True, hide_index=True, height=320)
+                 use_container_width=True, hide_index=True, height=360)
 
-    # ── Computation Trace (deterministic) ─────────────────────────────────────
-    _trace_lines = st.session_state.get("log_lines", [])
-    if _trace_lines:
-        with st.expander("Computation Trace", expanded=False):
-            _trace_html_parts = []
-            for _ts, _tag, _msg, _detail, _src in _trace_lines:
-                _tag = _tag.strip()
-                _msg = html.escape(_msg.strip())
-                _detail = html.escape((_detail or "").strip())
-
-                if not _tag and not _msg:
-                    _trace_html_parts.append("<div style='height:6px'></div>")
-                    continue
-                if _tag == "────":
-                    _trace_html_parts.append(
-                        "<hr style='border:none;border-top:1px solid #d0d5dd;margin:8px 0'>"
-                    )
-                    continue
-
-                # Color-code by tag type
-                if _tag == "WARN":
-                    _color = "#c62828"
-                    _bg = "#fff3e0"
-                    _prefix = "[!] "
-                elif _tag == "OUT":
-                    _color = "#1565c0"
-                    _bg = "#e3f2fd"
-                    _prefix = ""
-                elif _tag == "RULE":
-                    _color = "#37474f"
-                    _bg = "#eceff1"
-                    _prefix = ""
-                elif _tag == "DONE":
-                    _color = "#2e7d32"
-                    _bg = "#e8f5e9"
-                    _prefix = ""
-                else:
-                    _color = "#1a1d23"
-                    _bg = "transparent"
-                    _prefix = ""
-
-                _detail_span = (
-                    f"<span style='color:#78909c;font-size:0.78rem;margin-left:8px'>{_detail}</span>"
-                    if _detail else ""
-                )
-                _trace_html_parts.append(
-                    f"<div style='background:{_bg};padding:2px 8px;margin:1px 0;"
-                    f"font-family:monospace;font-size:0.82rem;color:{_color};"
-                    f"border-radius:3px;line-height:1.5'>"
-                    f"<b style='min-width:50px;display:inline-block'>{html.escape(_tag)}</b> "
-                    f"{_prefix}{_msg}{_detail_span}</div>"
-                )
-
-            st.markdown(
-                "<div style='max-height:400px;overflow-y:auto;border:1px solid #e8eaed;"
-                "border-radius:8px;padding:6px'>"
-                + "".join(_trace_html_parts)
-                + "</div>",
-                unsafe_allow_html=True,
-            )
-
-    # ── AI Explanation card ───────────────────────────────────────────────────
-    explanation = st.session_state.get("explanation")
-    _api_ready  = _api_key_available()
-
-    st.markdown(
-        "<div style='display:flex;align-items:center;gap:8px;margin:1rem 0 0.4rem'>"
-        "<span style='background:#1c3461;color:#fff;border-radius:5px;padding:2px 8px;"
-        "font-size:0.7rem;font-weight:700;letter-spacing:0.5px'>AI</span>"
-        "<span style='font-size:0.78rem;font-weight:700;text-transform:uppercase;"
-        "letter-spacing:0.8px;color:#6c737a'>Barlist Explanation</span>"
-        "</div>",
-        unsafe_allow_html=True,
+    # ── Export buttons (below barlist) ───────────────────────────────────────
+    ex1, ex2, ex3, _pad = st.columns([1, 1, 1, 3])
+    ji = {"Project": job_name, "Job #": job_number, "Detailer": detailer}
+    ex1.download_button(
+        "Export CSV",
+        data=_make_csv(bars),
+        file_name=f"{template_name.replace(' ','_')}_barlist.csv",
+        mime="text/csv", use_container_width=True, key="btn_csv",
     )
-
-    if explanation:
-        # Detect if inputs changed since the barlist was generated
-        _gen_hash = st.session_state.get("_gen_params_hash", "")
-        _cur_hash = st.session_state.get("_cur_params_hash", "")
-        if _gen_hash and _cur_hash and _gen_hash != _cur_hash:
-            st.caption(
-                "Inputs have changed since this barlist was generated. "
-                "Click **Generate** to update the results and explanation."
-            )
-        st.markdown(
-            f"<div style='background:#ffffff;border:1px solid #e8eaed;border-left:4px solid #1c3461;"
-            f"border-radius:0 10px 10px 0;padding:1.1rem 1.3rem;line-height:1.7;"
-            f"font-size:0.87rem;color:#1a1d23'>{explanation}</div>",
-            unsafe_allow_html=True,
+    ex2.download_button(
+        "Export XML",
+        data=_make_xml(bars, template_name, ji),
+        file_name=f"{template_name.replace(' ','_')}_barlist.xml",
+        mime="application/xml", use_container_width=True, key="btn_xml",
+    )
+    try:
+        ex3.download_button(
+            "Export PDF",
+            data=_make_pdf(bars, template_name, ji),
+            file_name=f"{template_name.replace(' ','_')}_barlist.pdf",
+            mime="application/pdf", use_container_width=True, key="btn_pdf",
         )
-        if st.button("Re-explain", key="btn_reexplain", help="Generate a fresh explanation"):
-            st.session_state.explanation = None
-            with st.spinner("Re-generating explanation…"):
-                try:
-                    chunks = []
-                    for chunk in asst.explain_barlist_stream(
-                        template_name=template_name,
-                        params_raw=st.session_state.get("_last_params"),
-                        bars=bars,
-                        warnings=st.session_state.get("warnings", []),
-                        log_lines=st.session_state.get("log_lines"),
-                    ):
-                        chunks.append(chunk)
-                    st.session_state.explanation = "".join(chunks)
-                    st.rerun()
-                except Exception as exc:
-                    st.error(f"Explanation error: {exc}")
-    elif not _api_ready:
-        st.markdown(
-            "<div style='background:#f8f9fa;border:1px solid #e8eaed;border-radius:8px;"
-            "padding:0.9rem 1.1rem;color:#6c737a;font-size:0.84rem'>"
-            "Set <code>ANTHROPIC_API_KEY</code> to enable AI explanations.</div>",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.info("Explanation will appear after the next generate.")
+    except ImportError:
+        ex3.button("Export PDF", disabled=True, use_container_width=True, key="btn_pdf_na")
 
 # ═════════════════════════════════════════════════════════════════════════════
-# BOTTOM TABS — always visible
+# DETAILS (collapsed) — computation trace, history
 # ═════════════════════════════════════════════════════════════════════════════
 
-st.markdown("---")
+if bars is not None or log_lines:
+    st.markdown("---")
+    tab_log, tab_cut, tab_hist = st.tabs(["Computation Log", "Cut Optimizer", "History"])
 
-# Determine active tab from button clicks
-_active = st.session_state.get("_active_tab", 0)
-if show_cut_tab:
-    _active = 2
-if show_hist_tab:
-    _active = 3
-st.session_state._active_tab = _active
+    with tab_log:
+        non_blank = [(ts, tag, msg, det, src) for ts, tag, msg, det, src in log_lines if msg.strip()]
+        if non_blank:
+            log_df = pd.DataFrame(non_blank, columns=["Time","Tag","Message","Detail","Source"])
+            st.dataframe(log_df, use_container_width=True, hide_index=True, height=350)
+        else:
+            st.info("Log appears after generation.")
 
-tab_warn, tab_log, tab_cut, tab_hist = st.tabs([
-    f"Warnings{f' ({len(warnings)})' if warnings else ''}",
-    "Reasoning Log",
-    "Cut Optimizer",
-    "History",
-])
+    # ── Cut Optimizer ─────────────────────────────────────────────────────────
+    with tab_cut:
+        if bars is not None:
+            ca, cb, cc = st.columns([1, 1, 3])
+            with ca:
+                stock_ft = st.selectbox("Stock Length", [20, 40, 60], index=0,
+                                        format_func=lambda x: f"{x} ft", key="cut_stock")
+            with cb:
+                price_lb = st.number_input("Price per lb ($)", min_value=0.0, max_value=10.0,
+                                           value=0.80, step=0.05, format="%.2f", key="cut_price_lb")
 
-# ── Warnings ──────────────────────────────────────────────────────────────────
-with tab_warn:
-    if warnings:
-        for _ts, _tag, msg, detail, _src in warnings:
-            st.warning(f"{msg}\n\n_{detail}_" if detail else msg)
-    elif bars is not None:
-        st.success("All checks passed — no validation warnings.")
-    else:
-        st.info("Warnings will appear here after generation.")
+            results = _cut_optimize(bars, stock_ft * 12)
+            disp_cols = ["Size","Sticks","Stock (ft)","Ordered (ft)","Used (ft)","Waste (ft)","Waste %"]
+            df_cut = pd.DataFrame([{c: r[c] for c in disp_cols} for r in results])
 
-# ── Reasoning Log ─────────────────────────────────────────────────────────────
-with tab_log:
-    non_blank = [(ts, tag, msg, det, src) for ts, tag, msg, det, src in log_lines if msg.strip()]
-    if non_blank:
-        log_df = pd.DataFrame(non_blank, columns=["Time","Tag","Message","Detail","Source"])
-        st.dataframe(log_df, use_container_width=True, hide_index=True, height=420)
-    else:
-        st.info("Reasoning log appears here after generation.")
+            def _hl_waste(row):
+                return ["background-color:#fff3cd"]*len(row) if row["Waste %"] > 20 else [""]*len(row)
 
-# ── Cut Optimizer ─────────────────────────────────────────────────────────────
-with tab_cut:
-    if bars is not None:
-        ca, cb, cc = st.columns([1, 1, 3])
-        with ca:
-            stock_ft = st.selectbox("Stock Length", [20, 40, 60], index=0,
-                                    format_func=lambda x: f"{x} ft", key="cut_stock")
-            st.caption("FFD bin-packing")
-        with cb:
-            price_lb = st.number_input("Price per lb ($)", min_value=0.0, max_value=10.0,
-                                       value=0.80, step=0.05, format="%.2f", key="cut_price_lb")
-            st.caption("Material cost estimate")
+            with cc:
+                st.dataframe(df_cut.style.apply(_hl_waste, axis=1),
+                             use_container_width=True, hide_index=True)
 
-        results = _cut_optimize(bars, stock_ft * 12)
-        disp_cols = ["Size","Sticks","Stock (ft)","Ordered (ft)","Used (ft)","Waste (ft)","Waste %"]
-        df_cut = pd.DataFrame([{c: r[c] for c in disp_cols} for r in results])
+            from vistadetail.engine.hooks import BAR_WEIGHT_LB_FT as _WLBFT
+            total_sticks = sum(r["Sticks"] for r in results)
+            total_waste  = round(sum(r["Waste (ft)"] for r in results), 1)
+            avg_waste    = round(sum(r["Waste %"] for r in results) / len(results), 1) if results else 0
+            total_ordered_lb = sum(
+                r["Sticks"] * stock_ft * _WLBFT.get(r["Size"], 0.0) for r in results)
+            est_cost = total_ordered_lb * price_lb
 
-        def _hl_waste(row):
-            return ["background-color:#fff3cd"]*len(row) if row["Waste %"] > 20 else [""]*len(row)
+            sm1, sm2, sm3, sm4 = st.columns(4)
+            sm1.metric("Sticks",     total_sticks)
+            sm2.metric("Waste",      f"{total_waste} ft  ({avg_waste}%)")
+            sm3.metric("Ordered Wt", f"{total_ordered_lb:,.0f} lb")
+            sm4.metric("Est. Cost",  f"${est_cost:,.2f}")
+        else:
+            st.info("Generate a barlist to use the cut optimizer.")
 
-        with cc:
-            st.dataframe(df_cut.style.apply(_hl_waste, axis=1),
-                         use_container_width=True, hide_index=True)
+    # ── History ───────────────────────────────────────────────────────────────
+    with tab_hist:
+        runs = hist.list_runs()
+        if not runs:
+            st.info("No history yet.")
+        else:
+            disp = [{"#": r["id"], "Date": r["timestamp"], "Template": r["template_name"],
+                     "Project": r["job_name"] or "", "Job #": r["job_number"] or "",
+                     "Weight (lb)": r["total_weight_lb"]}
+                    for r in runs]
+            st.dataframe(pd.DataFrame(disp), use_container_width=True, hide_index=True)
 
-        for r in results:
-            if r["_oversized"]:
-                st.warning(f"**{r['Size']}**: {r['_oversized']} bar(s) exceed {stock_ft} ft — special order required.")
-
-        # Summary + cost estimate
-        from vistadetail.engine.hooks import BAR_WEIGHT_LB_FT as _WLBFT
-        total_sticks = sum(r["Sticks"] for r in results)
-        total_waste  = round(sum(r["Waste (ft)"] for r in results), 1)
-        avg_waste    = round(sum(r["Waste %"] for r in results) / len(results), 1) if results else 0
-        total_ordered_lb = sum(
-            r["Sticks"] * stock_ft * _WLBFT.get(r["Size"], 0.0)
-            for r in results
-        )
-        est_cost = total_ordered_lb * price_lb
-
-        sm1, sm2, sm3, sm4, dl_c = st.columns([1, 1, 1, 1, 1])
-        sm1.metric("Sticks",      total_sticks)
-        sm2.metric("Waste",       f"{total_waste} ft  ({avg_waste}%)")
-        sm3.metric("Ordered Wt",  f"{total_ordered_lb:,.0f} lb")
-        sm4.metric("Est. Cost",   f"${est_cost:,.2f}")
-        dl_c.download_button("Cut List CSV", data=_manifest_csv(results),
-                             file_name="cut_list.csv", mime="text/csv", key="btn_cutcsv")
-
-        st.markdown("**Stick Manifest**")
-        for r in results:
-            mdf = pd.DataFrame(r["_manifest"])[["Stick #","Cuts","# Pcs","Waste"]]
-            with st.expander(f"{r['Size']} — {r['Sticks']} sticks  ({r['Waste %']}% waste)"):
-                st.dataframe(mdf, use_container_width=True, hide_index=True)
-
-        # Visual stick layout
-        with st.expander("Stick Cut Layout Chart", expanded=False):
-            import matplotlib.pyplot as plt
-            _fig = _draw_cuts_chart(results, stock_ft * 12)
-            st.pyplot(_fig, use_container_width=True)
-            plt.close(_fig)
-    else:
-        st.info("Generate a barlist to use the cut optimizer.")
-
-# ── History ───────────────────────────────────────────────────────────────────
-with tab_hist:
-    runs = hist.list_runs()
-    if not runs:
-        st.info("No history yet.")
-    else:
-        disp = [{"#": r["id"], "Date": r["timestamp"], "Template": r["template_name"],
-                 "Project": r["job_name"] or "—", "Job #": r["job_number"] or "—",
-                 "Detailer": r["detailer"] or "—",
-                 "Weight (lb)": r["total_weight_lb"]}
-                for r in runs]
-        st.dataframe(pd.DataFrame(disp), use_container_width=True, hide_index=True)
-
-        st.markdown("---")
-        opts = {f"#{r['id']}  {r['timestamp']}  —  {r['template_name']}  —  {r['job_name'] or 'no job'}": r["id"]
-                for r in runs}
-        sel = st.selectbox("View run", list(opts.keys()), key="hist_sel")
-        if sel:
-            run = hist.load_run(opts[sel])
-            if run:
-                hbars = run["bars"]
-                hweight = barlist_total_weight_lb(hbars)
-                hj = [f"**{k}:** {v}" for k, v in
-                      [("Project", run["job_name"]), ("Job #", run["job_number"]),
-                       ("Detailer", run["detailer"])] if v]
-                if hj:
-                    st.markdown("  |  ".join(hj))
-                hm1, hm2, hm3 = st.columns(3)
-                hm1.metric("Marks",  len({b.mark for b in hbars}))
-                hm2.metric("Bars",   sum(b.qty for b in hbars))
-                hm3.metric("Weight", f"{hweight:,.1f} lb")
-
-                hx1, hx2, _s = st.columns([1,1,5])
-                hx1.download_button("CSV", data=_make_csv(hbars),
-                                    file_name=f"run_{run['id']}.csv", mime="text/csv",
-                                    key=f"hcsv_{run['id']}")
-                try:
-                    ji2 = {"Project": run["job_name"], "Job #": run["job_number"],
-                           "Detailer": run["detailer"]}
-                    hx2.download_button("PDF", data=_make_pdf(hbars, run["template_name"], ji2),
-                                        file_name=f"run_{run['id']}.pdf", mime="application/pdf",
-                                        key=f"hpdf_{run['id']}")
-                except ImportError:
-                    pass
-
-                hdf = pd.DataFrame([{
-                    "Mark": b.mark, "Size": b.size, "Qty": b.qty,
-                    "Length": b.length_ft_in, "Shape": b.shape,
-                    "Notes": b.notes, "Ref": b.ref,
-                } for b in hbars])
-                st.dataframe(hdf, use_container_width=True, hide_index=True)
-
-                _del_col1, _del_col2 = st.columns([1, 4])
-                with _del_col1:
-                    _del_clicked = st.button(
-                        f"Delete run #{run['id']}", key=f"hdel_{run['id']}",
-                        type="secondary")
-                if _del_clicked:
-                    _confirm_key = f"_confirm_del_{run['id']}"
-                    st.session_state[_confirm_key] = True
-                if st.session_state.get(f"_confirm_del_{run['id']}"):
-                    with _del_col2:
-                        st.warning("Are you sure? This cannot be undone.")
-                    _c1, _c2, _c3 = st.columns([1, 1, 4])
-                    if _c1.button("Yes, delete", key=f"hdelyes_{run['id']}",
-                                  type="primary"):
-                        hist.delete_run(run["id"])
-                        st.session_state.pop(f"_confirm_del_{run['id']}", None)
-                        _template_stats.clear()
-                        st.rerun()
-                    if _c2.button("Cancel", key=f"hdelno_{run['id']}"):
-                        st.session_state.pop(f"_confirm_del_{run['id']}", None)
-                        st.rerun()
-
-        # ── Compare two runs ──────────────────────────────────────────────────
-        if len(runs) >= 2:
-            st.markdown("---")
-            st.markdown(
-                "<div style='font-size:0.78rem;font-weight:700;text-transform:uppercase;"
-                "letter-spacing:0.8px;color:#6c737a;margin-bottom:0.5rem'>Compare Two Runs</div>",
-                unsafe_allow_html=True,
-            )
-            comp_opts = {
-                f"#{r['id']}  {r['timestamp']}  —  {r['template_name']}  —  {r['job_name'] or 'no job'}": r["id"]
-                for r in runs
-            }
-            _keys = list(comp_opts.keys())
-            cc1, cc2 = st.columns(2)
-            run_a_key = cc1.selectbox("Run A", _keys, index=0, key="comp_run_a")
-            run_b_key = cc2.selectbox("Run B", _keys, index=min(1, len(_keys)-1), key="comp_run_b")
-
-            if run_a_key != run_b_key:
-                _ra = hist.load_run(comp_opts[run_a_key])
-                _rb = hist.load_run(comp_opts[run_b_key])
-                if _ra and _rb:
-                    _wa = barlist_total_weight_lb(_ra["bars"])
-                    _wb = barlist_total_weight_lb(_rb["bars"])
-                    _marks_a = len({b.mark for b in _ra["bars"]})
-                    _marks_b = len({b.mark for b in _rb["bars"]})
-                    _qty_a   = sum(b.qty for b in _ra["bars"])
-                    _qty_b   = sum(b.qty for b in _rb["bars"])
-
-                    cm1, cm2, cm3, cm4, cm5, cm6 = st.columns(6)
-                    cm1.metric("A: Marks",  _marks_a)
-                    cm2.metric("A: Bars",   _qty_a)
-                    cm3.metric("A: Weight", f"{_wa:,.1f} lb")
-                    cm4.metric("B: Marks",  _marks_b,  delta=_marks_b - _marks_a)
-                    cm5.metric("B: Bars",   _qty_b,    delta=_qty_b - _qty_a)
-                    cm6.metric("B: Weight", f"{_wb:,.1f} lb",
-                               delta=f"{_wb - _wa:+,.1f} lb")
-
-                    # Aligned diff by mark
-                    _ma = {b.mark: b for b in _ra["bars"]}
-                    _mb = {b.mark: b for b in _rb["bars"]}
-                    _all_marks = sorted(set(_ma) | set(_mb))
-                    _comp_rows = []
-                    for m in _all_marks:
-                        a, b_ = _ma.get(m), _mb.get(m)
-                        changed = (
-                            "Added"   if not a else
-                            "Removed" if not b_ else
-                            "" if (a.size == b_.size and a.qty == b_.qty and a.length_in == b_.length_in)
-                            else "Changed"
-                        )
-                        _comp_rows.append({
-                            "Mark":     m,
-                            "A Size":   a.size       if a  else "—",
-                            "A Qty":    a.qty        if a  else "—",
-                            "A Length": a.length_ft_in if a else "—",
-                            "B Size":   b_.size      if b_ else "—",
-                            "B Qty":    b_.qty       if b_ else "—",
-                            "B Length": b_.length_ft_in if b_ else "—",
-                            "Status":   changed,
-                        })
-
-                    def _hl_comp(row):
-                        if row["Status"] == "Added":
-                            return ["background-color:#d4edda"] * len(row)
-                        if row["Status"] == "Removed":
-                            return ["background-color:#f8d7da"] * len(row)
-                        if row["Status"] == "Changed":
-                            return ["background-color:#fff3cd"] * len(row)
-                        return [""] * len(row)
-
-                    _comp_df = pd.DataFrame(_comp_rows)
-                    st.dataframe(_comp_df.style.apply(_hl_comp, axis=1),
-                                 use_container_width=True, hide_index=True)
-                    st.caption("Green = added in B  |  Red = removed in B  |  Yellow = changed")
-            else:
-                st.info("Select two different runs to compare.")
+            opts = {f"#{r['id']}  {r['timestamp']}  —  {r['template_name']}": r["id"]
+                    for r in runs}
+            sel = st.selectbox("View run", list(opts.keys()), key="hist_sel")
+            if sel:
+                run = hist.load_run(opts[sel])
+                if run:
+                    hbars = run["bars"]
+                    hdf = pd.DataFrame([{
+                        "Mark": b.mark, "Size": b.size, "Qty": b.qty,
+                        "Length": b.length_ft_in, "Shape": b.shape, "Notes": b.notes,
+                    } for b in hbars])
+                    st.dataframe(hdf, use_container_width=True, hide_index=True)
+                    hx1, _s = st.columns([1, 5])
+                    hx1.download_button("CSV", data=_make_csv(hbars),
+                                        file_name=f"run_{run['id']}.csv", mime="text/csv",
+                                        key=f"hcsv_{run['id']}")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # AI ASSISTANT — full-width chat section
