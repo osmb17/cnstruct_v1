@@ -477,34 +477,38 @@ def rule_g2_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
       V2: CEIL((Y_bar + 2×grate_ded + 4) / 5)
 
     V1 has a 12" (1 ft) tail at one end (hook into footing).
-    V2 is straight (grate-side verticals).
+    V2 (grate side) also has a 12" (1 ft) tail at one end.
     """
     spacing = 5.0
     gd2 = 2 * p.grate_ded   # 48 for Type 24, 36 for Type 18
-    tail_in = 12.0           # 1 ft tail on V1
+    tail_in = 12.0           # 1 ft tail (both V1 and V2)
 
     qty_v1 = math.ceil((p.x_bar * 2 - gd2 + p.y_bar + 6) / spacing)
     qty_v2 = math.ceil((p.y_bar + gd2 + 4) / spacing)
 
-    # V1 total length = height + tail
     v1_len = p.h_adj + tail_in
+    v2_len = p.h_adj + tail_in   # grate side also gets 1ft tail
 
     log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}×2 − {gd2:.0f} + {fmt_inches(p.y_bar)} + 6)/{spacing}) = {qty_v1}, 12\" tail")
-    log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + {gd2:.0f} + 4)/{spacing}) = {qty_v2}")
+    log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + {gd2:.0f} + 4)/{spacing}) = {qty_v2}, 12\" tail (grate side)")
 
     return [
         BarRow(mark="V1", size="#5", qty=qty_v1, length_in=v1_len,
                shape="L", leg_a_in=p.h_adj, leg_b_in=tail_in,
                notes="Verticals @5oc, 1ft tail",
                source_rule="rule_g2_verticals"),
-        BarRow(mark="V2", size="#5", qty=qty_v2, length_in=p.h_adj,
-               shape="Str", notes="Verticals Grate Side @5oc",
+        BarRow(mark="V2", size="#5", qty=qty_v2, length_in=v2_len,
+               shape="L", leg_a_in=p.h_adj, leg_b_in=tail_in,
+               notes="Verticals Grate Side @5oc, 1ft tail",
                source_rule="rule_g2_verticals"),
     ]
 
 
+_AB_TAIL_IN = 8.0   # A and B bars are U-bars with 8" tails on each side
+
+
 def rule_g2_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """A and B bars (deck-level reinforcement at gut opening)."""
+    """A and B bars — U-bars with 8\" tails on each side over the gut opening."""
     if p.gut_dim <= 0:
         log.step("A/B bars: skipped (gut_dim ≤ 0)")
         return []
@@ -512,15 +516,22 @@ def rule_g2_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     qty_a = math.ceil(p.gut_dim / 5.0)
     qty_b = math.ceil(p.gut_dim / 6.0)
 
-    log.step(f"A1: CEIL({fmt_inches(p.gut_dim)}/5) = {qty_a}, #5, length {fmt_inches(p.ab_bar_len)}")
-    log.step(f"B1: CEIL({fmt_inches(p.gut_dim)}/6) = {qty_b}, #4, length {fmt_inches(p.ab_bar_len)}")
+    # Total bar = 8" tail + span + 8" tail; span = ab_bar_len - 2 × 8"
+    a_span = max(0.0, p.ab_bar_len - 2 * _AB_TAIL_IN)
+
+    log.step(f"A1: CEIL({fmt_inches(p.gut_dim)}/5) = {qty_a}, #5, "
+             f"total {fmt_inches(p.ab_bar_len)} (8\" U-tails, span {fmt_inches(a_span)})")
+    log.step(f"B1: CEIL({fmt_inches(p.gut_dim)}/6) = {qty_b}, #4, "
+             f"total {fmt_inches(p.ab_bar_len)} (8\" U-tails, span {fmt_inches(a_span)})")
 
     return [
         BarRow(mark="A1", size="#5", qty=qty_a, length_in=p.ab_bar_len,
-               shape="Str", notes="A Bars @5oc",
+               shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=a_span,
+               notes="A Bars @5oc, 8\" U-tails",
                source_rule="rule_g2_ab_bars"),
         BarRow(mark="B1", size="#4", qty=qty_b, length_in=p.ab_bar_len,
-               shape="Str", notes="B Bars @6oc",
+               shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=a_span,
+               notes="B Bars @6oc, 8\" U-tails",
                source_rule="rule_g2_ab_bars"),
     ]
 
@@ -551,21 +562,28 @@ def rule_g2_right_angle(p: Params, log: ReasoningLogger) -> list[BarRow]:
     )]
 
 
+_HP_TAIL_PLAIN = 6.5   # plain (non-hook) side tail
+_HP_TAIL_HOOK  = 5.5   # hook side tail
+
+
 def rule_g2_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """Hoops at grate level — spaced along Y exterior at 5" oc."""
+    """Hoops at grate level — U-bars spanning gut_dim, 6.5\" plain / 5.5\" hook tails."""
     if p.gut_dim <= 0:
         log.step("Hoops: skipped (gut_dim ≤ 0)")
         return []
 
     qty = math.ceil(p.y_ext_in / 5.0 * p.n_struct)
+    hp_total = p.gut_dim + _HP_TAIL_PLAIN + _HP_TAIL_HOOK   # gut + 12"
 
     log.step(f"HP1: qty=CEIL({fmt_inches(p.y_ext_in)}/5×{p.n_struct})={qty}, "
-             f"gut dim={fmt_inches(p.gut_dim)}")
+             f"span={fmt_inches(p.gut_dim)}, 6.5\" + 5.5\" tails, "
+             f"total={fmt_inches(hp_total)}")
 
     return [BarRow(
         mark="HP1", size="#5", qty=qty,
-        length_in=p.gut_dim,
-        shape="Rect", notes="Hoops @5oc",
+        length_in=hp_total,
+        shape="U", leg_a_in=_HP_TAIL_PLAIN, leg_b_in=p.gut_dim,
+        notes=f"Hoops @5oc, 6.5\" / 5.5\" tails",
         source_rule="rule_g2_hoops",
     )]
 
@@ -679,7 +697,7 @@ def rule_g2exp_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 
 def rule_g2exp_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """Expanded G2 A&B bars -- regular + notched variants.
+    """Expanded G2 A&B bars — U-bars with 8\" tails, regular + notched variants.
 
     Regular bars span X (over grate), notched bars span expanded Y.
     """
@@ -688,14 +706,19 @@ def rule_g2exp_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     if p.gut_dim > 0:
         qty_a_reg = math.ceil(p.gut_dim / 5.0)
         qty_b_reg = math.ceil(p.gut_dim / 6.0)
-        log.step(f"A1 reg: CEIL({fmt_inches(p.gut_dim)}/5) = {qty_a_reg}, len {fmt_inches(p.ab_bar_len_reg)}")
-        log.step(f"B1 reg: CEIL({fmt_inches(p.gut_dim)}/6) = {qty_b_reg}, len {fmt_inches(p.ab_bar_len_reg)}")
+        span_reg = max(0.0, p.ab_bar_len_reg - 2 * _AB_TAIL_IN)
+        log.step(f"A1 reg: CEIL({fmt_inches(p.gut_dim)}/5) = {qty_a_reg}, "
+                 f"total {fmt_inches(p.ab_bar_len_reg)} (8\" U-tails, span {fmt_inches(span_reg)})")
+        log.step(f"B1 reg: CEIL({fmt_inches(p.gut_dim)}/6) = {qty_b_reg}, "
+                 f"total {fmt_inches(p.ab_bar_len_reg)} (8\" U-tails, span {fmt_inches(span_reg)})")
         bars += [
             BarRow(mark="A1", size="#5", qty=qty_a_reg, length_in=p.ab_bar_len_reg,
-                   shape="Str", notes="A Bars Reg @5oc",
+                   shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=span_reg,
+                   notes="A Bars Reg @5oc, 8\" U-tails",
                    source_rule="rule_g2exp_ab_bars"),
             BarRow(mark="B1", size="#4", qty=qty_b_reg, length_in=p.ab_bar_len_reg,
-                   shape="Str", notes="B Bars Reg @6oc",
+                   shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=span_reg,
+                   notes="B Bars Reg @6oc, 8\" U-tails",
                    source_rule="rule_g2exp_ab_bars"),
         ]
     else:
@@ -704,14 +727,19 @@ def rule_g2exp_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     if p.notch_dim > 0:
         qty_a_notch = math.ceil(p.notch_dim / 5.0)
         qty_b_notch = math.ceil(p.notch_dim / 6.0)
-        log.step(f"A2 notch: CEIL({fmt_inches(p.notch_dim)}/5) = {qty_a_notch}, len {fmt_inches(p.ab_bar_len_notch)}")
-        log.step(f"B2 notch: CEIL({fmt_inches(p.notch_dim)}/6) = {qty_b_notch}, len {fmt_inches(p.ab_bar_len_notch)}")
+        span_notch = max(0.0, p.ab_bar_len_notch - 2 * _AB_TAIL_IN)
+        log.step(f"A2 notch: CEIL({fmt_inches(p.notch_dim)}/5) = {qty_a_notch}, "
+                 f"total {fmt_inches(p.ab_bar_len_notch)} (8\" U-tails, span {fmt_inches(span_notch)})")
+        log.step(f"B2 notch: CEIL({fmt_inches(p.notch_dim)}/6) = {qty_b_notch}, "
+                 f"total {fmt_inches(p.ab_bar_len_notch)} (8\" U-tails, span {fmt_inches(span_notch)})")
         bars += [
             BarRow(mark="A2", size="#5", qty=qty_a_notch, length_in=p.ab_bar_len_notch,
-                   shape="Str", notes="A Bars Notched @5oc",
+                   shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=span_notch,
+                   notes="A Bars Notched @5oc, 8\" U-tails",
                    source_rule="rule_g2exp_ab_bars"),
             BarRow(mark="B2", size="#4", qty=qty_b_notch, length_in=p.ab_bar_len_notch,
-                   shape="Str", notes="B Bars Notched @6oc",
+                   shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=span_notch,
+                   notes="B Bars Notched @6oc, 8\" U-tails",
                    source_rule="rule_g2exp_ab_bars"),
         ]
     else:
@@ -721,32 +749,36 @@ def rule_g2exp_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 
 def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """Expanded G2 hoops -- regular + notched.
+    """Expanded G2 hoops — U-bars, 6.5\" plain / 5.5\" hook tails.
 
     Excel formulas:
-      Reg:    ROUNDUP((Y_exp_ext) / 5 * n, 0)       dim = gut_dim
-      Notch:  ROUNDUP((X_ext) / 5 * 2 * n, 0)       dim = notch_dim
+      Reg:    ROUNDUP((Y_exp_ext) / 5 * n, 0)    span = gut_dim
+      Notch:  ROUNDUP((X_ext) / 5 * 2 * n, 0)   span = notch_dim
     """
     bars: list[BarRow] = []
     n = p.n_struct
 
     if p.gut_dim > 0:
         qty_reg = math.ceil(p.y_exp_ext_in / 5.0 * n)
+        hp1_total = p.gut_dim + _HP_TAIL_PLAIN + _HP_TAIL_HOOK
         log.step(f"HP1 reg: CEIL({fmt_inches(p.y_exp_ext_in)}/5*{n}) = {qty_reg}, "
-                 f"dim {fmt_inches(p.gut_dim)}")
+                 f"span={fmt_inches(p.gut_dim)}, total={fmt_inches(hp1_total)}")
         bars.append(BarRow(
-            mark="HP1", size="#5", qty=qty_reg, length_in=p.gut_dim,
-            shape="Rect", notes="Reg Hoops @5oc",
+            mark="HP1", size="#5", qty=qty_reg, length_in=hp1_total,
+            shape="U", leg_a_in=_HP_TAIL_PLAIN, leg_b_in=p.gut_dim,
+            notes="Reg Hoops @5oc, 6.5\" / 5.5\" tails",
             source_rule="rule_g2exp_hoops",
         ))
 
     if p.notch_dim > 0:
         qty_notch = math.ceil(p.x_ext_in / 5.0 * 2 * n)
+        hp2_total = p.notch_dim + _HP_TAIL_PLAIN + _HP_TAIL_HOOK
         log.step(f"HP2 notch: CEIL({fmt_inches(p.x_ext_in)}/5*2*{n}) = {qty_notch}, "
-                 f"dim {fmt_inches(p.notch_dim)}")
+                 f"span={fmt_inches(p.notch_dim)}, total={fmt_inches(hp2_total)}")
         bars.append(BarRow(
-            mark="HP2", size="#5", qty=qty_notch, length_in=p.notch_dim,
-            shape="Rect", notes="Notched Hoops @5oc",
+            mark="HP2", size="#5", qty=qty_notch, length_in=hp2_total,
+            shape="U", leg_a_in=_HP_TAIL_PLAIN, leg_b_in=p.notch_dim,
+            notes="Notched Hoops @5oc, 6.5\" / 5.5\" tails",
             source_rule="rule_g2exp_hoops",
         ))
 

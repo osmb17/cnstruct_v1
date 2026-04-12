@@ -33,6 +33,57 @@ _AXIS_CLR  = "#888888"
 _TITLE_CLR = "#1a1d23"
 
 
+# -- Live annotation context ---------------------------------------------------
+# Set by get_diagram_live() before calling a diagram function.
+# Maps dimension label string → formatted value string.
+_DIM_VALUES: dict[str, str] = {}
+
+
+def _aug_label(label: str) -> str:
+    """Return label augmented with its current value if one is set."""
+    val = _DIM_VALUES.get(label)
+    return f"{label}\n{val}" if val else label
+
+
+def _fmt_dim_value(field_name: str, value: float) -> str:
+    """Format a parameter value for display on the diagram."""
+    if field_name.endswith("_ft"):
+        total_in = round(value * 96) / 8  # nearest 1/8"
+        ft = int(total_in // 12)
+        rem = total_in % 12
+        whole = int(rem)
+        eighths = round((rem - whole) * 8)
+        if eighths >= 8:
+            whole += 1
+            eighths = 0
+        if whole >= 12:
+            ft += 1
+            whole = 0
+        fmap = {0: "", 1: " 1/8\"", 2: " 1/4\"", 3: " 3/8\"",
+                4: " 1/2\"", 5: " 5/8\"", 6: " 3/4\"", 7: " 7/8\""}
+        fs = fmap.get(eighths, "")
+        if ft == 0:
+            return f"{whole}{fs}\""
+        elif whole == 0 and not fs:
+            return f"{ft}'-0\""
+        elif whole == 0:
+            return f"{ft}'-0{fs}\""
+        else:
+            return f"{ft}'-{whole}{fs}\""
+    elif field_name.endswith("_in"):
+        v = round(value * 8) / 8
+        whole = int(v)
+        eighths = round((v - whole) * 8)
+        if eighths >= 8:
+            whole += 1
+            eighths = 0
+        fmap = {0: "", 1: " 1/8", 2: " 1/4", 3: " 3/8",
+                4: " 1/2", 5: " 5/8", 6: " 3/4", 7: " 7/8"}
+        return f"{whole}{fmap.get(eighths, '')}\""
+    else:
+        return f"{int(value)}" if value == int(value) else f"{value:g}"
+
+
 # -- Drawing helpers -----------------------------------------------------------
 
 def _fig(w=6.0, h=5.0):
@@ -53,6 +104,7 @@ def _rect(ax, x, y, w, h, fc=_CONCRETE, ec=_OUTLINE, lw=1.5, zorder=2, hatch=Non
 
 def _dim_h(ax, x1, x2, y, label, gap=0.22, fontsize=9, ext_len=0.12):
     """Horizontal dimension with extension lines and double-headed arrow."""
+    label = _aug_label(label)
     # Extension lines
     ax.plot([x1, x1], [y - ext_len, y + ext_len], color=_DIM, lw=0.5, zorder=6)
     ax.plot([x2, x2], [y - ext_len, y + ext_len], color=_DIM, lw=0.5, zorder=6)
@@ -68,6 +120,7 @@ def _dim_h(ax, x1, x2, y, label, gap=0.22, fontsize=9, ext_len=0.12):
 
 def _dim_v(ax, y1, y2, x, label, gap=0.22, fontsize=9, ext_len=0.12):
     """Vertical dimension with extension lines and double-headed arrow."""
+    label = _aug_label(label)
     ax.plot([x - ext_len, x + ext_len], [y1, y1], color=_DIM, lw=0.5, zorder=6)
     ax.plot([x - ext_len, x + ext_len], [y2, y2], color=_DIM, lw=0.5, zorder=6)
     ax.annotate("", xy=(x, y2), xytext=(x, y1),
@@ -95,10 +148,11 @@ def _ext_dim_v(ax, y1, y2, obj_x, dim_x, label, fontsize=9):
 
 def _callout(ax, x, y, label, text, angle=45, dist=0.55, fontsize=8):
     """Leader line callout for thickness or other annotations."""
+    display = _DIM_VALUES.get(label, text)
     dx = dist * math.cos(math.radians(angle))
     dy = dist * math.sin(math.radians(angle))
     ax.annotate(
-        f"{label} = {text}",
+        f"{label} = {display}",
         xy=(x, y), xytext=(x + dx, y + dy),
         fontsize=fontsize, color=_LABEL, fontweight="bold",
         arrowprops=dict(arrowstyle="-", color=_DIM, lw=0.8),
@@ -709,8 +763,10 @@ def _diag_cage() -> bytes:
     # Phi dimension
     ax.annotate("", xy=(cx + r, cy), xytext=(cx - r, cy),
                 arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.9, mutation_scale=8))
-    ax.text(cx, cy + r + 0.25, "\u03c6", ha="center", va="bottom", fontsize=12,
-            color=_LABEL, fontweight="bold")
+    _phi_label = _aug_label("\u03c6")
+    ax.text(cx, cy + r + 0.25, _phi_label, ha="center", va="bottom", fontsize=12,
+            color=_LABEL, fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.92))
 
     # Depth dimension
     _ext_dim_h(ax, 0, D_depth, cage_bot, cage_bot - 0.6, "D (depth)")
@@ -1226,3 +1282,84 @@ def get_diagram(template_name: str) -> bytes | None:
     """Return PNG bytes for the given template, or None if not found."""
     fn = _DIAGRAM_FN.get(template_name)
     return fn() if fn else None
+
+
+# -- Field-to-label mappings for live annotation -------------------------------
+# Maps template_name → {field_name: exact label string used in diagram helpers}
+_FIELD_LABELS: dict[str, dict[str, str]] = {
+    "G1 Inlet":              {"x_dim_ft": "L1"},
+    "G2 Inlet":              {"x_dim_ft": "X", "wall_thick_in": "T"},
+    "G3 Inlet":              {"x_dim_ft": "L1"},
+    "G4 Inlet":              {"x_dim_ft": "L1"},
+    "G5 Inlet":              {"x_dim_ft": "L1"},
+    "G6 Inlet":              {"x_dim_ft": "L1"},
+    "G2 Expanded Inlet":     {"x_dim_ft": "X", "y_expanded_ft": "Y (expanded)",
+                              "wall_thick_in": "T"},
+    "G2 Inlet Top":          {"x_dim_ft": "X", "y_dim_ft": "Y"},
+    "G2 Expanded Inlet Top": {"slab_length_ft": "L", "slab_width_ft": "W"},
+    "Straight Headwall":     {"wall_width_ft": "W", "wall_height_ft": "H"},
+    "Caltrans Headwall":     {"wall_width_ft": "W", "wall_height_ft": "H"},
+    "Wing Wall":             {"wing_length_ft": "L",
+                              "hw_height_ft": "H\u2081",
+                              "tip_height_ft": "H\u2082"},
+    "Spread Footing":        {"footing_length_ft": "L", "footing_width_ft": "W",
+                              "footing_depth_in": "D"},
+    "Box Culvert":           {"clear_span_ft": "S", "clear_rise_ft": "R",
+                              "wall_thick_in": "T"},
+    "Retaining Wall":        {"wall_length_ft": "L", "stem_height_ft": "H"},
+    "Caltrans Retaining Wall": {"design_h_ft": "H\n(design)"},
+    "Sound Wall":            {"wall_height_ft": "H", "wall_length_ft": "L"},
+    "Flat Slab":             {"slab_length_ft": "L", "slab_width_ft": "W"},
+    "Drilled Shaft Cage":    {"hole_diameter_ft": "\u03c6",
+                              "cage_depth_ft": "D (depth)"},
+    "Concrete Pipe Collar":  {"collar_length_ft": "L", "collar_width_ft": "W"},
+    "Slab on Grade":         {"slab_length_ft": "L", "slab_width_ft": "W",
+                              "slab_thickness_in": "T"},
+    "Equipment Pad":         {"pad_length_ft": "L", "pad_width_ft": "W",
+                              "pad_thickness_in": "T"},
+    "Switchboard Pad":       {"pad_length_ft": "L", "pad_width_ft": "W",
+                              "pad_thickness_in": "T"},
+    "Seatwall":              {"wall_height_in": "H", "wall_width_in": "W"},
+    "Concrete Header":       {"header_height_in": "H", "header_width_in": "W"},
+    "Pipe Encasement":       {"encasement_width_in": "W",
+                              "encasement_height_in": "H",
+                              "encasement_length_ft": "L"},
+    "Fuel Foundation":       {"fdn_length_ft": "L", "fdn_width_ft": "W",
+                              "fdn_thickness_in": "T"},
+    "Dual Slab":             {"slab_a_length_ft": "A-L", "slab_a_width_ft": "A-W",
+                              "slab_b_length_ft": "B-L", "slab_b_width_ft": "B-W"},
+    "Junction Structure":    {"inside_length_ft": "L (inside)",
+                              "inside_width_ft": "W (inside)"},
+    "D84 Wingwall":          {"wall_length_ft": "LOL", "wall_height_ft": "H"},
+    "D85 Wingwall":          {"wall_length_ft": "LOL", "wall_height_ft": "H"},
+}
+
+
+def get_diagram_live(template_name: str, params_dict: dict | None) -> bytes | None:
+    """
+    Return PNG bytes with dimension labels annotated with actual input values.
+
+    Uses the module-level _DIM_VALUES context so all _dim_h / _dim_v / _callout
+    calls inside the diagram function automatically pick up the values.
+    Thread safety: acceptable for a single-user local Streamlit app.
+    """
+    global _DIM_VALUES
+    if not params_dict:
+        return get_diagram(template_name)
+
+    field_map = _FIELD_LABELS.get(template_name, {})
+    dim_vals: dict[str, str] = {}
+    for field_name, label in field_map.items():
+        val = params_dict.get(field_name)
+        if val is not None:
+            try:
+                dim_vals[label] = _fmt_dim_value(field_name, float(val))
+            except (ValueError, TypeError):
+                pass
+
+    _DIM_VALUES = dim_vals
+    try:
+        fn = _DIAGRAM_FN.get(template_name)
+        return fn() if fn else None
+    finally:
+        _DIM_VALUES = {}
