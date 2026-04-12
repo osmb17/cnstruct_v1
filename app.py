@@ -1053,14 +1053,6 @@ if generate_btn:
             if f.name == "num_structures" and num < 1:
                 _validation_errors.append(f"Number of structures must be at least 1 (got {val})")
 
-    # Expanded inlet: expanded Y must be larger than standard Y
-    if template_name == "G2 Expanded Inlet":
-        _y_std = float(params_raw.get("y_dim_ft", 0))
-        _y_exp = float(params_raw.get("y_expanded_ft", 0))
-        if _y_exp > 0 and _y_std > 0 and _y_exp <= _y_std:
-            _validation_errors.append(
-                f"Expanded Y ({_y_exp} ft) must be larger than standard Y ({_y_std} ft)")
-
     if _validation_errors:
         st.session_state.error = "**Input problems:**\n" + "\n".join(
             f"- {e}" for e in _validation_errors)
