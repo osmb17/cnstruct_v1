@@ -1378,6 +1378,21 @@ with inp_col:
     # ── Parse ft-in text values to decimal floats ────────────────────────
     _parse_ft_params(template, params_raw)
 
+    # ── Inject computed inside-dimensions for live diagram annotation ─────
+    # Any template that has x_dim_ft + wall_thick_in gets _inside_x_ft.
+    # Any template that has y_dim_ft + wall_thick_in gets _inside_y_ft.
+    # These synthetic _ft keys are picked up by _FIELD_LABELS in diagram_gen.
+    try:
+        _di_t = float(params_raw.get("wall_thick_in", 0) or 0)
+        _di_x = params_raw.get("x_dim_ft")
+        _di_y = params_raw.get("y_dim_ft")
+        if _di_t and _di_x is not None:
+            params_raw["_inside_x_ft"] = max(0.0, float(_di_x) - 2 * _di_t / 12.0)
+        if _di_t and _di_y is not None:
+            params_raw["_inside_y_ft"] = max(0.0, float(_di_y) - 2 * _di_t / 12.0)
+    except (TypeError, ValueError):
+        pass
+
     # Store params
     st.session_state._last_params = params_raw
     _cur_phash = hashlib.md5(json.dumps(params_raw, sort_keys=True, default=str).encode()).hexdigest()[:12]
