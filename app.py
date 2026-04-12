@@ -490,7 +490,7 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
     from reportlab.platypus import (
-        Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+        Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
     )
     from reportlab.graphics.shapes import (
         Drawing, Line, Rect, Circle, String as GStr,
@@ -684,10 +684,23 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
                 ])
 
             n_data = len(dim_rows) - 1  # rows after header
-            dim_tbl = Table(
-                dim_rows,
-                colWidths=[3.0*inch, 2.0*inch, 3.0*inch, 2.0*inch],
-            )
+
+            # Try to get a live diagram annotated with the current values
+            _diag_png = diagram_gen.get_diagram_live(template_name, params_raw or {})
+
+            if _diag_png:
+                # Side-by-side layout: dim table (5") | diagram (5")
+                dim_tbl = Table(
+                    dim_rows,
+                    colWidths=[1.6*inch, 0.9*inch, 1.6*inch, 0.9*inch],
+                )
+            else:
+                # Full-width dim table
+                dim_tbl = Table(
+                    dim_rows,
+                    colWidths=[3.0*inch, 2.0*inch, 3.0*inch, 2.0*inch],
+                )
+
             style_cmds = [
                 # Header row: black bg, white text, spans all 4 cols
                 ("SPAN",          (0, 0), (-1, 0)),
@@ -709,7 +722,24 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
                 if i % 2 == 0:
                     style_cmds.append(("BACKGROUND", (0, i), (-1, i), _STRIPE))
             dim_tbl.setStyle(TableStyle(style_cmds))
-            elems.append(dim_tbl)
+
+            if _diag_png:
+                rl_img = RLImage(io.BytesIO(_diag_png), width=4.8*inch, height=3.2*inch)
+                side_tbl = Table(
+                    [[dim_tbl, rl_img]],
+                    colWidths=[5.0*inch, 5.0*inch],
+                )
+                side_tbl.setStyle(TableStyle([
+                    ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
+                    ("TOPPADDING",    (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ]))
+                elems.append(side_tbl)
+            else:
+                elems.append(dim_tbl)
+
             elems.append(Spacer(1, 0.1 * inch))
 
     # ── Barlist table with shape sketches ────────────────────────────────
@@ -955,11 +985,6 @@ def _template_stats(template_name: str) -> str:
     return f"{n} run{'s' if n != 1 else ''}  ·  history tracked"
 
 
-# ── Cached diagram ────────────────────────────────────────────────────────────
-
-@st.cache_data
-def _get_diagram(template_name: str):
-    return diagram_gen.get_diagram(template_name)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1117,15 +1142,7 @@ st.markdown("---")
 
 diag_col, inp_col = st.columns([1.3, 1], gap="large")
 
-# ── DIAGRAM ───────────────────────────────────────────────────────────────────
-with diag_col:
-    diag = _get_diagram(template_name)
-    if diag:
-        st.image(diag, use_container_width=True)
-    if template.description:
-        st.caption(template.description)
-
-# ── INPUTS ────────────────────────────────────────────────────────────────────
+# ── INPUTS (rendered first so params_raw is populated before diagram) ─────────
 with inp_col:
     _tname = template.name   # use template.name consistently for all session-state keys
     params_raw: dict = {}
@@ -1253,7 +1270,7 @@ with inp_col:
             if st.session_state.get(_phash_key) != _phash:
                 st.session_state[_phash_key] = _phash
                 for _cf, _cv in _ct_result.items():
-                    st.session_state[f"adv_{_tname}__{_cf}"] = _cv
+                    st.session_state[f"primary_{_tname}__{_cf}"] = _cv
 
         secondary = dflt.get_secondary_inputs(template)
         if secondary:
@@ -1275,6 +1292,14 @@ with inp_col:
     if st.button("Generate", type="primary", use_container_width=True, key="btn_gen_bottom"):
         st.session_state["_gen_bottom"] = True
         st.rerun()
+
+# ── DIAGRAM (rendered after inputs so params_raw values are available) ────────
+with diag_col:
+    diag = diagram_gen.get_diagram_live(template_name, params_raw)
+    if diag:
+        st.image(diag, use_container_width=True)
+    if template.description:
+        st.caption(template.description)
 
 # ── RESULTS -- full width below diagram + inputs ───────────────────────────────
 if st.session_state.get("error"):

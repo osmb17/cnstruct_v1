@@ -35,15 +35,16 @@ class G2ExpandedInletTemplate(BaseTemplate):
             ),
             InputField(
                 "y_dim_ft", float,
-                label="Y -- Main Box Exterior Depth (ft)",
+                label="Y -- Standard Box Depth (ft)",
                 min=2.5, max=12.0, default=5.0,
-                hint="Exterior depth of the main inlet box",
+                hint="Exterior depth of the standard (non-expanded) inlet section",
             ),
             InputField(
                 "y_expanded_ft", float,
-                label="Y Expanded -- Exterior Depth (ft)",
+                label="Y Exp -- Full Box Depth (ft)",
                 min=2.5, max=20.0, default=7.0,
-                hint="Exterior depth of expanded section (for notched A&B bars and hoops)",
+                hint="Exterior depth of the expanded section (larger Y); "
+                     "drives notched A/B bars and hoops",
             ),
             InputField(
                 "wall_height_ft", float,
