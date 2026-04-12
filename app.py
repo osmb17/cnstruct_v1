@@ -1221,17 +1221,21 @@ with inp_col:
         _, _tv = _widget(_t_field, key_prefix=f"primary_{_tname}", container=st)
         params_raw["wall_thick_in"] = _tv
 
-        # Y display (interior fixed, exterior derived)
+        # Y display (interior fixed per Caltrans D73A, exterior derived)
         _y_ext_in = _Y_INT_IN + 2 * int(_tv)
+        _yi_key = f"_g2_yi_{_tname}"
+        _ye_key = f"_g2_ye_{_tname}"
+        # Force the computed values into session state so they always display
+        # correctly even if the user typed something in the field
+        st.session_state[_yi_key] = _format_ft_in(_Y_INT_IN / 12.0)
+        st.session_state[_ye_key] = _format_ft_in(_y_ext_in / 12.0)
         c3, c4 = st.columns(2)
         with c3:
-            st.text_input("Y Interior", value=_format_ft_in(_Y_INT_IN / 12.0),
-                          disabled=True, key=f"_g2_yi_{_tname}",
-                          help="Fixed at 2'-11 3/8\" per Caltrans D73A")
+            st.text_input("Y Interior", key=_yi_key,
+                          help="Fixed at 2'-11 3/8\" per Caltrans D73A — updates automatically")
         with c4:
-            st.text_input("Y Exterior", value=_format_ft_in(_y_ext_in / 12.0),
-                          disabled=True, key=f"_g2_ye_{_tname}",
-                          help=f"Y Interior + 2 x {int(_tv)}\" = {_format_ft_in(_y_ext_in / 12.0)}")
+            st.text_input("Y Exterior", key=_ye_key,
+                          help=f"Y Interior + 2 \u00d7 {int(_tv)}\" — updates with wall thickness")
 
         # Remaining template fields (wall_height, grate_type, num_structures)
         for f in template.inputs:
