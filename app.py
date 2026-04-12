@@ -1133,6 +1133,22 @@ if bars is not None:
         ex3.button("Export PDF", disabled=True, use_container_width=True, key="btn_pdf_na")
 
 # ═════════════════════════════════════════════════════════════════════════════
+# AI EXPLANATION — shown inline after generate
+# ═════════════════════════════════════════════════════════════════════════════
+
+if st.session_state.get("explanation"):
+    st.markdown("---")
+    st.markdown(
+        "<div style='display:flex;align-items:center;gap:10px;margin-bottom:0.75rem'>"
+        "<div style='background:#1c3461;color:#fff;border-radius:8px;padding:4px 10px;"
+        "font-size:0.72rem;font-weight:800;letter-spacing:1.2px'>AI</div>"
+        "<span style='font-size:1.0rem;font-weight:700;color:#1a1d23'>Barlist Explanation</span>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(st.session_state.explanation)
+
+# ═════════════════════════════════════════════════════════════════════════════
 # COMPUTATION LOG (collapsed)
 # ═════════════════════════════════════════════════════════════════════════════
 
