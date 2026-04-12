@@ -1,11 +1,18 @@
 """
-Template: G2 Inlet  (v4.0)
+Template: G2 Inlet  (v5.0)
 
-Caltrans G2 standard inlet box.  X (exterior width) is the primary driving
-dimension.  Wall thickness T and grate opening L1 are auto-calculated.
+Caltrans G2 standard inlet box.
 
-Bar sizes and spacings are fixed per the Vista Steel G2 Inlet spreadsheet
-(matches Caltrans Standard Plan D73A).
+Geometry rules (Caltrans Standard Plan D73A):
+  - Y interior is ALWAYS fixed at 2'-11 3/8" (35.375").
+    Y exterior = Y_interior + 2 × T.  Y is never a free input.
+  - X exterior is the primary user input.
+    X interior = X_exterior − 2 × T.
+  - Wall thickness T is always explicitly inputted (9" standard, 11" for
+    larger spans).
+
+If Y interior must exceed 35.375" use the G2 Expanded Inlet template instead.
+Bar sizes and spacings per Vista Steel G2 Inlet spreadsheet (D73A).
 """
 
 from __future__ import annotations
@@ -15,49 +22,24 @@ from vistadetail.engine.templates.base import BaseTemplate
 
 
 class InletWallTemplate(BaseTemplate):
-    name: str = "G2 Inlet"
-    version: str = "4.0"
-    description: str = (
-        "Caltrans G2 inlet — X/Y exterior dimensions drive all geometry. "
-        "T auto-derives (9\" if interior X<=54\", 11\" otherwise). "
-        "Bar sizes/spacings per Vista Steel spreadsheet."
-    )
 
     def __init__(self):
         super().__init__()
         self.name = "G2 Inlet"
-        self.version = "4.0"
+        self.version = "5.0"
         self.description = (
-            "Caltrans G2 inlet — X/Y exterior dimensions drive all geometry. "
-            "T auto-derives (9\" if interior X<=54\", 11\" otherwise). "
+            "Caltrans G2 inlet — Y interior fixed at 2'-11 3/8\" per D73A. "
+            "X exterior and wall thickness T are the primary inputs. "
             "Bar sizes/spacings per Vista Steel spreadsheet."
         )
 
         self.inputs = [
-            # ── Primary geometry ──────────────────────────────────────────────
             InputField(
                 "x_dim_ft", float,
                 label="X -- Exterior Width (ft)",
                 min=2.5, max=20.0, default=5.5,
-                hint="Primary driving dimension -- exterior face-to-face width in plan",
-            ),
-            InputField(
-                "y_dim_ft", float,
-                label="Y -- Exterior Depth (ft)",
-                min=2.5, max=10.0, default=4.5,
-                hint="Exterior depth in plan",
-            ),
-            InputField(
-                "inside_x_in", float,
-                label="Inside X Dimension (in)",
-                min=0.0, max=120.0, default=0.0,
-                hint="2'-11 3/8\" min or Pipe penetration diameter + 3\" min (90\" max). 0 = auto from exterior X.",
-            ),
-            InputField(
-                "inside_y_in", float,
-                label="Inside Y Dimension (in)",
-                min=0.0, max=120.0, default=0.0,
-                hint="2'-11 3/8\" min (Caltrans G2 minimum clear depth). 0 = auto from exterior Y.",
+                hint="Exterior face-to-face width in plan. "
+                     "Interior X = X − 2×T.",
             ),
             InputField(
                 "wall_height_ft", float,
@@ -68,8 +50,9 @@ class InletWallTemplate(BaseTemplate):
             InputField(
                 "wall_thick_in", int,
                 label="Wall Thickness (in)",
-                min=0, max=24, default=0,
-                hint="0 = auto (9\" if interior X<=54\", 11\" otherwise)",
+                min=9, max=12, default=9,
+                hint="9\" standard; 11\" for larger spans. "
+                     "Y exterior = 2'-11 3/8\" + 2×T.",
             ),
             InputField(
                 "grate_type", str,
@@ -97,19 +80,10 @@ class InletWallTemplate(BaseTemplate):
 
     def evaluate_triggers(self, params: Params) -> list[str]:
         triggers: list[str] = []
-
         x_ft = getattr(params, "x_dim_ft", 5.5)
-        y_ft = getattr(params, "y_dim_ft", 4.5)
         ratio = params.wall_height_ft / max(x_ft, 0.1)
         if ratio > 2.5:
             triggers.append("aspect_ratio_high")
-
-        # Warn if Y is very close to minimum viable depth
-        t_est = 9.0 / 12 if x_ft * 12 <= 54 else 11.0 / 12
-        min_y = (35.375 / 12) + 2 * t_est
-        if y_ft < min_y + 0.1:
-            triggers.append("y_dim_near_minimum")
-
         return triggers
 
 
