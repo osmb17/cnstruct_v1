@@ -11,6 +11,7 @@ import html
 import io
 import json
 import os
+import re
 from datetime import date
 
 import pandas as pd
@@ -313,6 +314,82 @@ def _float_step_fmt(f):
         return 1.0, "%.0f"
     return (0.25, "%.2f") if rng <= 10 else (0.5, "%.1f")
 
+# ── Ft-inches parsing / formatting ───────────────────────────────────────────
+
+def _parse_ft_in(s: str) -> float | None:
+    """Parse a feet-inches string to decimal feet.
+
+    Accepted formats:  5'-6"  5'6  5-6  5' 6"  5.5  5'-11 3/8"  0
+    Returns None if the string cannot be parsed.
+    """
+    if s is None:
+        return None
+    s = str(s).strip().rstrip('"\'').strip()
+    if not s:
+        return None
+    # Plain number (decimal feet)
+    try:
+        return float(s)
+    except ValueError:
+        pass
+    # Separator between feet and inches: ' and/or - with optional spaces
+    _SEP = r"(?:['\u2032]\s*-?\s*|-\s*)"
+    # Feet-inches with fractional inches:  5'-11 3/8  or  2'-11 3/8
+    m = re.match(r"(\d+)\s*" + _SEP + r"(\d+)\s+(\d+)/(\d+)", s)
+    if m:
+        return int(m.group(1)) + (int(m.group(2)) + int(m.group(3)) / int(m.group(4))) / 12.0
+    # Feet-inches:  5'-6  or  5'6  or  5-6
+    m = re.match(r"(\d+)\s*" + _SEP + r"(\d+(?:\.\d+)?)\s*$", s)
+    if m:
+        return int(m.group(1)) + float(m.group(2)) / 12.0
+    # Just feet with optional tick:  5'  or  5
+    m = re.match(r"(\d+(?:\.\d+)?)\s*['\u2032]?\s*$", s)
+    if m:
+        return float(m.group(1))
+    return None
+
+
+def _format_ft_in(ft_val: float) -> str:
+    """Format decimal feet to  ft'-in\"  with 1/8-inch precision."""
+    if ft_val < 0:
+        return f"-{_format_ft_in(-ft_val)}"
+    total_in = ft_val * 12.0
+    feet = int(total_in // 12)
+    eighths = round((total_in - feet * 12) * 8)
+    if eighths >= 96:          # rolled over 12"
+        feet += 1
+        eighths = 0
+    whole_in = eighths // 8
+    frac = eighths % 8
+    if frac == 0:
+        return f"{feet}'-{whole_in}\""
+    num, den = frac, 8
+    while num % 2 == 0:
+        num //= 2
+        den //= 2
+    if whole_in:
+        return f"{feet}'-{whole_in} {num}/{den}\""
+    return f"{feet}'-{num}/{den}\""
+
+
+def _parse_ft_params(template, params_raw: dict) -> list[str]:
+    """Parse ft-in text values in *params_raw* **in-place** to decimal floats.
+
+    Returns a list of validation error strings (empty on success).
+    """
+    errors: list[str] = []
+    for f in template.inputs:
+        raw = params_raw.get(f.name)
+        if f.dtype == float and f.name.endswith("_ft") and isinstance(raw, str):
+            parsed = _parse_ft_in(raw)
+            if parsed is not None:
+                params_raw[f.name] = parsed
+            else:
+                label = getattr(f, "label", f.name.replace("_", " ").title())
+                errors.append(f"Cannot parse dimension '{raw}' for {label}")
+    return errors
+
+
 def _widget(f, key_prefix="", container=None):
     """Render one input widget. Returns (name, value)."""
     target = container or st
@@ -337,6 +414,13 @@ def _widget(f, key_prefix="", container=None):
                                            value=dv, step=1, key=key, help=hint)
 
     if f.dtype == float:
+        # Feet-dimension fields → text input with ft-in format
+        if f.name.endswith("_ft"):
+            dv = float(f.default) if f.default is not None else 0.0
+            dv_str = _format_ft_in(dv)
+            return f.name, target.text_input(label, value=dv_str, key=key,
+                                             help=hint,
+                                             placeholder="e.g. 5'-6\"")
         lo  = float(f.min) if f.min is not None else 0.0
         hi  = float(f.max) if f.max is not None else 9999.0
         dv  = float(f.default) if f.default is not None else lo
@@ -731,22 +815,23 @@ SHAPE_SYMBOLS: dict[str, str] = {
 # Maps template → [(trigger_field, target_field, fn(trigger_val) → suggested_val)]
 # When the trigger field changes, the target is auto-suggested.
 # Rules are grounded in Caltrans standard sizing conventions.
+def _ft_predict(v, fn=lambda x: x):
+    """Parse ft-in string, apply *fn*, re-format to ft-in."""
+    parsed = _parse_ft_in(str(v)) if isinstance(v, str) else v
+    if parsed is None:
+        return v
+    return _format_ft_in(fn(float(parsed)))
+
+
 _FIELD_PREDICTIONS: dict[str, list] = {
-    "G2 Inlet": [
-        # Square plan is the most common starting point for G2 inlets
-        ("x_dim_ft", "y_dim_ft", lambda v: round(v, 2)),
-    ],
-    "G2 Expanded Inlet": [
-        ("x_dim_ft", "y_dim_ft", lambda v: round(v, 2)),
-    ],
+    # G2 Inlet: no predictions — Y is fixed, Interior X derived in custom block
+    # G2 Expanded Inlet: no auto X→Y (user complained about crosstalk)
     "Box Culvert": [
-        # Square box (span = rise) is standard unless hydraulics dictate otherwise
-        ("clear_span_ft", "clear_rise_ft", lambda v: round(v, 2)),
+        ("clear_span_ft", "clear_rise_ft", lambda v: _ft_predict(v)),
     ],
     "Junction Structure": [
-        # Square plan → same width; depth ≈ width + 1 ft (per D91B proportions)
-        ("inside_length_ft", "inside_width_ft",  lambda v: round(v, 2)),
-        ("inside_length_ft", "inside_depth_ft",  lambda v: round(v + 1.0, 2)),
+        ("inside_length_ft", "inside_width_ft",  lambda v: _ft_predict(v)),
+        ("inside_length_ft", "inside_depth_ft",  lambda v: _ft_predict(v, lambda x: x + 1.0)),
     ],
 }
 
@@ -945,17 +1030,23 @@ if generate_btn:
         else:
             params_raw[f.name] = f.default
 
+    # ── Parse ft-in text values to floats ────────────────────────────────
+    _ft_errors = _parse_ft_params(template, params_raw)
+
     # ── Pre-flight input validation ───────────────────────────────────────
     # Fields where 0 is a valid sentinel (auto-calculate), not an error
     _ZERO_OK = {"footing_width_ft", "cover_ft"}
 
-    _validation_errors: list[str] = []
+    _validation_errors: list[str] = list(_ft_errors)
     for f in template.inputs:
         val = params_raw.get(f.name)
         if val is None:
             continue
         if f.dtype in (int, float):
-            num = float(val) if val != "" else 0.0
+            try:
+                num = float(val) if val != "" else 0.0
+            except (TypeError, ValueError):
+                continue   # already captured by _ft_errors
             if f.name.endswith("_ft") and num <= 0 and f.name not in _ZERO_OK:
                 _label = f.label if hasattr(f, "label") else f.name.replace("_", " ").title()
                 _validation_errors.append(f"{_label} must be greater than zero (got {val})")
@@ -1044,44 +1135,143 @@ with diag_col:
 
 # ── INPUTS ────────────────────────────────────────────────────────────────────
 with inp_col:
-    # ── Smart suggestions: pre-seed Y from X when applicable ─────────────
     _tname = template.name   # use template.name consistently for all session-state keys
-    for _trig, _tgt, _fn in _FIELD_PREDICTIONS.get(template_name, []):
-        _trig_key = f"primary_{_tname}__{_trig}"
-        _prev_key = f"_prev_{_trig}__{_tname}"
-        _trig_val = st.session_state.get(_trig_key)
-        if _trig_val is not None:
-            if st.session_state.get(_prev_key) != _trig_val:
-                st.session_state[_prev_key] = _trig_val
-                st.session_state[f"primary_{_tname}__{_tgt}"] = _fn(_trig_val)
-
-    # ── X and Y (primary inputs -- just 2 fields) ───────────────────────
     params_raw: dict = {}
-    primary_fields = dflt.get_primary_inputs(template)
-    for f in primary_fields:
-        name, val = _widget(f, key_prefix=f"primary_{_tname}", container=st)
-        params_raw[name] = val
 
-    # ── Caltrans auto-fill (silently pre-fills advanced fields) ──────────
-    _ct_result = caltrans_lookup(template_name, params_raw)
-    _ct_src    = _ct_result.pop("_source", "")
-    if _ct_result:
-        _phash_key = f"_phash__{_tname}"
-        _phash = hashlib.md5(
-            json.dumps(params_raw, sort_keys=True, default=str).encode()
-        ).hexdigest()[:8]
-        if st.session_state.get(_phash_key) != _phash:
-            st.session_state[_phash_key] = _phash
-            for _cf, _cv in _ct_result.items():
-                st.session_state[f"adv_{_tname}__{_cf}"] = _cv
+    # ======================================================================
+    # G2 Inlet — custom inputs with bidirectional X and Y display
+    # ======================================================================
+    if template_name == "G2 Inlet":
+        _Y_INT_IN = 35.375   # fixed interior Y (2'-11 3/8")
 
-    # ── Advanced (small collapsed section) ───────────────────────────────
-    secondary = dflt.get_secondary_inputs(template)
-    if secondary:
-        with st.expander("Advanced", expanded=False):
-            for f in secondary:
-                name, val = _widget(f, key_prefix=f"adv_{template.name}", container=st)
-                params_raw[name] = val
+        # --- Read current T from session state (set by prior render) -------
+        _t_wk = f"primary_{_tname}__wall_thick_in"
+        _cur_t = int(st.session_state.get(_t_wk, 9))
+
+        # --- Bidirectional X prediction ------------------------------------
+        _ext_wk   = f"primary_{_tname}__x_dim_ft"
+        _int_wk   = f"_g2_x_interior_{_tname}"
+        _prev_e_k = f"_prev_g2_ext_{_tname}"
+        _prev_i_k = f"_prev_g2_int_{_tname}"
+        _prev_t_k = f"_prev_g2_t_{_tname}"
+        _src_k    = f"_g2_x_source_{_tname}"
+
+        _cur_ext = st.session_state.get(_ext_wk)
+        _cur_int = st.session_state.get(_int_wk)
+        _prev_e  = st.session_state.get(_prev_e_k)
+        _prev_i  = st.session_state.get(_prev_i_k)
+        _prev_t  = st.session_state.get(_prev_t_k)
+
+        _ext_chg = (_cur_ext is not None and _cur_ext != _prev_e)
+        _int_chg = (_cur_int is not None and _cur_int != _prev_i)
+        _t_chg   = (_prev_t is not None and _cur_t != _prev_t)
+
+        if _int_chg and not _ext_chg:
+            st.session_state[_src_k] = "int"
+        elif _ext_chg and not _int_chg:
+            st.session_state[_src_k] = "ext"
+
+        _src = st.session_state.get(_src_k, "ext")
+
+        # Derive the non-primary field
+        if _src == "ext" and _cur_ext is not None and (_ext_chg or _t_chg):
+            _xef = _parse_ft_in(str(_cur_ext))
+            if _xef is not None:
+                st.session_state[_int_wk] = _format_ft_in(max(0, _xef - 2 * _cur_t / 12.0))
+        elif _src == "int" and _cur_int is not None and (_int_chg or _t_chg):
+            _xif = _parse_ft_in(str(_cur_int))
+            if _xif is not None:
+                st.session_state[_ext_wk] = _format_ft_in(_xif + 2 * _cur_t / 12.0)
+
+        st.session_state[_prev_t_k] = _cur_t
+
+        # --- Render widgets ------------------------------------------------
+        _x_field = next(f for f in template.inputs if f.name == "x_dim_ft")
+        _t_field = next(f for f in template.inputs if f.name == "wall_thick_in")
+        _x_def   = float(_x_field.default) if _x_field.default is not None else 5.5
+        _int_def = max(0, _x_def - 2 * 9 / 12.0)
+
+        c1, c2 = st.columns(2)
+        with c1:
+            _ev = st.text_input("X Exterior", key=_ext_wk,
+                                value=_format_ft_in(_x_def),
+                                help="Exterior face-to-face width",
+                                placeholder="e.g. 5'-6\"")
+            params_raw["x_dim_ft"] = _ev
+        with c2:
+            st.text_input("X Interior", key=_int_wk,
+                          value=_format_ft_in(_int_def),
+                          help="Interior clear width = Exterior - 2T",
+                          placeholder="e.g. 4'-0\"")
+
+        # Store for next-run change detection
+        st.session_state[_prev_e_k] = st.session_state.get(_ext_wk)
+        st.session_state[_prev_i_k] = st.session_state.get(_int_wk)
+
+        # Wall thickness
+        _, _tv = _widget(_t_field, key_prefix=f"primary_{_tname}", container=st)
+        params_raw["wall_thick_in"] = _tv
+
+        # Y display (interior fixed, exterior derived)
+        _y_ext_in = _Y_INT_IN + 2 * int(_tv)
+        c3, c4 = st.columns(2)
+        with c3:
+            st.text_input("Y Interior", value=_format_ft_in(_Y_INT_IN / 12.0),
+                          disabled=True, key=f"_g2_yi_{_tname}",
+                          help="Fixed at 2'-11 3/8\" per Caltrans D73A")
+        with c4:
+            st.text_input("Y Exterior", value=_format_ft_in(_y_ext_in / 12.0),
+                          disabled=True, key=f"_g2_ye_{_tname}",
+                          help=f"Y Interior + 2 x {int(_tv)}\" = {_format_ft_in(_y_ext_in / 12.0)}")
+
+        # Remaining template fields (wall_height, grate_type, num_structures)
+        for f in template.inputs:
+            if f.name in ("x_dim_ft", "wall_thick_in"):
+                continue
+            name, val = _widget(f, key_prefix=f"primary_{_tname}", container=st)
+            params_raw[name] = val
+
+    # ======================================================================
+    # All other templates — standard primary / advanced layout
+    # ======================================================================
+    else:
+        # Smart suggestions: pre-seed derived fields when trigger changes
+        for _trig, _tgt, _fn in _FIELD_PREDICTIONS.get(template_name, []):
+            _trig_key = f"primary_{_tname}__{_trig}"
+            _prev_key = f"_prev_{_trig}__{_tname}"
+            _trig_val = st.session_state.get(_trig_key)
+            if _trig_val is not None:
+                if st.session_state.get(_prev_key) != _trig_val:
+                    st.session_state[_prev_key] = _trig_val
+                    st.session_state[f"primary_{_tname}__{_tgt}"] = _fn(_trig_val)
+
+        primary_fields = dflt.get_primary_inputs(template)
+        for f in primary_fields:
+            name, val = _widget(f, key_prefix=f"primary_{_tname}", container=st)
+            params_raw[name] = val
+
+        # Caltrans auto-fill (silently pre-fills advanced fields)
+        _ct_result = caltrans_lookup(template_name, params_raw)
+        _ct_src    = _ct_result.pop("_source", "")
+        if _ct_result:
+            _phash_key = f"_phash__{_tname}"
+            _phash = hashlib.md5(
+                json.dumps(params_raw, sort_keys=True, default=str).encode()
+            ).hexdigest()[:8]
+            if st.session_state.get(_phash_key) != _phash:
+                st.session_state[_phash_key] = _phash
+                for _cf, _cv in _ct_result.items():
+                    st.session_state[f"adv_{_tname}__{_cf}"] = _cv
+
+        secondary = dflt.get_secondary_inputs(template)
+        if secondary:
+            with st.expander("Advanced", expanded=False):
+                for f in secondary:
+                    name, val = _widget(f, key_prefix=f"adv_{template.name}", container=st)
+                    params_raw[name] = val
+
+    # ── Parse ft-in text values to decimal floats ────────────────────────
+    _parse_ft_params(template, params_raw)
 
     # Store params
     st.session_state._last_params = params_raw
