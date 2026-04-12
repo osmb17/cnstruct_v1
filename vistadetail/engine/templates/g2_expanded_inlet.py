@@ -29,34 +29,34 @@ class G2ExpandedInletTemplate(BaseTemplate):
         self.inputs = [
             InputField(
                 "x_dim_ft", float,
-                label="X -- Exterior Width (ft)",
+                label="Exterior Width (ft)",
                 min=2.5, max=30.0, default=5.667,
                 hint="Exterior face-to-face width in plan",
-            ),
-            InputField(
-                "y_dim_ft", float,
-                label="Y -- Standard Box Depth (ft)",
-                min=2.5, max=12.0, default=5.0,
-                hint="Exterior depth of the standard (non-expanded) inlet section",
-            ),
-            InputField(
-                "y_expanded_ft", float,
-                label="Y Exp -- Full Box Depth (ft)",
-                min=2.5, max=20.0, default=7.0,
-                hint="Exterior depth of the expanded section (larger Y); "
-                     "drives notched A/B bars and hoops",
-            ),
-            InputField(
-                "wall_height_ft", float,
-                label="Wall Height (ft)",
-                min=2.0, max=20.0, default=5.0,
-                hint="Bottom of footing to top of wall",
             ),
             InputField(
                 "wall_thick_in", int,
                 label="Wall Thickness (in)",
                 min=0, max=24, default=0,
                 hint="0 = auto (9\" if interior X<=54\", 11\" otherwise)",
+            ),
+            InputField(
+                "y_dim_ft", float,
+                label="Standard Box Depth (ft)",
+                min=2.5, max=12.0, default=5.0,
+                hint="Exterior depth of the standard (non-expanded) inlet section",
+            ),
+            InputField(
+                "y_expanded_ft", float,
+                label="Full Expanded Depth (ft)",
+                min=2.5, max=20.0, default=7.0,
+                hint="Full exterior depth including expansion room; "
+                     "must be greater than Standard Box Depth",
+            ),
+            InputField(
+                "wall_height_ft", float,
+                label="Wall Height (ft)",
+                min=2.0, max=20.0, default=5.0,
+                hint="Bottom of footing to top of wall",
             ),
             InputField(
                 "grate_type", str,

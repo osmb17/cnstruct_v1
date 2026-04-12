@@ -1245,62 +1245,93 @@ with inp_col:
             params_raw[name] = val
 
     # ======================================================================
-    # G2 Expanded Inlet — custom inputs with Inside X / Inside Y display
+    # G2 Expanded Inlet — custom inputs with computed interior dimensions
     # ======================================================================
     elif template_name == "G2 Expanded Inlet":
-        _t_field = next(f for f in template.inputs if f.name == "wall_thick_in")
-        _x_field = next(f for f in template.inputs if f.name == "x_dim_ft")
+        _t_field  = next(f for f in template.inputs if f.name == "wall_thick_in")
+        _x_field  = next(f for f in template.inputs if f.name == "x_dim_ft")
+        _y_field  = next(f for f in template.inputs if f.name == "y_dim_ft")
+        _ye_field = next(f for f in template.inputs if f.name == "y_expanded_ft")
+
+        # Read current wall thickness (needed to compute all interior dims)
         _t_wk = f"primary_{_tname}__wall_thick_in"
         _cur_t_exp = int(st.session_state.get(_t_wk, 9))
 
-        # X Exterior + X Interior (computed display)
-        _x_ext_wk = f"primary_{_tname}__x_dim_ft"
+        # ---- Row 1: Exterior Width | Interior Width (auto) ----
+        _x_ext_wk  = f"primary_{_tname}__x_dim_ft"
         _x_int_key = f"_g2exp_xi_{_tname}"
         _x_ext_val = st.session_state.get(_x_ext_wk)
-        _x_ext_ft = _parse_ft_in(str(_x_ext_val)) if _x_ext_val else float(
-            _x_field.default or 5.667)
-        _x_int_ft = max(0.0, _x_ext_ft - 2 * _cur_t_exp / 12.0)
-        st.session_state[_x_int_key] = _format_ft_in(_x_int_ft)
+        _x_ext_ft  = (_parse_ft_in(str(_x_ext_val))
+                      if _x_ext_val else float(_x_field.default or 5.667))
+        st.session_state[_x_int_key] = _format_ft_in(
+            max(0.0, _x_ext_ft - 2 * _cur_t_exp / 12.0))
 
         c1, c2 = st.columns(2)
         with c1:
-            _ev = st.text_input("X -- Exterior Width", key=_x_ext_wk,
-                                value=_format_ft_in(float(_x_field.default or 5.667)),
-                                help="Exterior face-to-face width (ft)",
-                                placeholder="e.g. 5'-8\"")
+            _ev = st.text_input(
+                "Exterior Width", key=_x_ext_wk,
+                value=_format_ft_in(float(_x_field.default or 5.667)),
+                help="Exterior face-to-face width of the inlet box",
+                placeholder="e.g. 5'-8\"")
             params_raw["x_dim_ft"] = _ev
         with c2:
-            st.text_input("X Interior (clear)", key=_x_int_key,
-                          help="Interior clear width = X \u2212 2T, updates automatically")
+            st.text_input(
+                "Interior Width", key=_x_int_key,
+                help="Clear interior width = Exterior \u2212 2 \u00d7 T")
 
-        # Wall Thickness (drives both X and Y interior displays)
+        # ---- Row 2: Wall Thickness (full row) ----
         _, _tv_exp = _widget(_t_field, key_prefix=f"primary_{_tname}", container=st)
         params_raw["wall_thick_in"] = _tv_exp
         _cur_t_exp = int(_tv_exp) if _tv_exp else _cur_t_exp
 
-        # Y Standard Box + Inside Y (computed display)
-        _y_field = next(f for f in template.inputs if f.name == "y_dim_ft")
-        _y_wk = f"primary_{_tname}__y_dim_ft"
+        # ---- Row 3: Standard Box Depth | Standard Box Clear (auto) ----
+        _y_wk  = f"primary_{_tname}__y_dim_ft"
         _yi_key = f"_g2exp_yi_{_tname}"
         _y_val = st.session_state.get(_y_wk)
-        _y_ft = _parse_ft_in(str(_y_val)) if _y_val else float(_y_field.default or 5.0)
-        _y_int_ft = max(0.0, _y_ft - 2 * _cur_t_exp / 12.0)
-        st.session_state[_yi_key] = _format_ft_in(_y_int_ft)
+        _y_ft  = (_parse_ft_in(str(_y_val))
+                  if _y_val else float(_y_field.default or 5.0))
+        st.session_state[_yi_key] = _format_ft_in(
+            max(0.0, _y_ft - 2 * _cur_t_exp / 12.0))
 
         c3, c4 = st.columns(2)
         with c3:
-            _yv = st.text_input("Y -- Standard Box Depth", key=_y_wk,
-                                value=_format_ft_in(float(_y_field.default or 5.0)),
-                                help="Exterior depth of the standard (non-expanded) section",
-                                placeholder="e.g. 5'-0\"")
+            _yv = st.text_input(
+                "Standard Box Depth", key=_y_wk,
+                value=_format_ft_in(float(_y_field.default or 5.0)),
+                help="Exterior depth of the standard grate-box section",
+                placeholder="e.g. 5'-0\"")
             params_raw["y_dim_ft"] = _yv
         with c4:
-            st.text_input("Inside Y (clear)", key=_yi_key,
-                          help="Interior clear depth = Y \u2212 2T, updates automatically")
+            st.text_input(
+                "Standard Box Clear", key=_yi_key,
+                help="Interior clear depth of grate box = Standard Box Depth \u2212 2 \u00d7 T")
 
-        # Remaining fields: y_expanded_ft, wall_height_ft, grate_type, num_structures
+        # ---- Row 4: Full Expanded Depth | Expansion Room Clear (auto) ----
+        _ye_wk  = f"primary_{_tname}__y_expanded_ft"
+        _yec_key = f"_g2exp_yec_{_tname}"
+        _ye_val  = st.session_state.get(_ye_wk)
+        _ye_ft   = (_parse_ft_in(str(_ye_val))
+                    if _ye_val else float(_ye_field.default or 7.0))
+        # Expansion room clear = (full_depth - std_depth) * 12 - T (bottom wall)
+        _exp_room_clear_in = max(0.0, (_ye_ft - _y_ft) * 12.0 - _cur_t_exp)
+        st.session_state[_yec_key] = _format_ft_in(_exp_room_clear_in / 12.0)
+
+        c5, c6 = st.columns(2)
+        with c5:
+            _yev = st.text_input(
+                "Full Expanded Depth", key=_ye_wk,
+                value=_format_ft_in(float(_ye_field.default or 7.0)),
+                help="Total exterior depth including expansion room (must be > Standard Box Depth)",
+                placeholder="e.g. 7'-0\"")
+            params_raw["y_expanded_ft"] = _yev
+        with c6:
+            st.text_input(
+                "Expansion Room Clear", key=_yec_key,
+                help="Interior clear height of expansion room = (Full \u2212 Standard) \u2212 T")
+
+        # ---- Remaining fields: Wall Height, Grate Type, Number of Structures ----
         for f in template.inputs:
-            if f.name in ("x_dim_ft", "wall_thick_in", "y_dim_ft"):
+            if f.name in ("x_dim_ft", "wall_thick_in", "y_dim_ft", "y_expanded_ft"):
                 continue
             name, val = _widget(f, key_prefix=f"primary_{_tname}", container=st)
             params_raw[name] = val
