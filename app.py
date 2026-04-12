@@ -391,7 +391,7 @@ def _make_xml(bars, template_name, job_info=None) -> str:
 def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
               params_raw=None, template=None) -> bytes:
     """
-    Render a Vista Steel–style barlist PDF.
+    Render a Vista Steel–style barlist PDF (black and white).
 
     Parameters
     ----------
@@ -414,13 +414,12 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
     from collections import defaultdict as _dd
     from vistadetail.engine.hooks import BAR_WEIGHT_LB_FT as _WLBFT
 
-    # ── Palette ──────────────────────────────────────────────────────────
-    _NAVY   = rc.HexColor("#1c3461")
-    _SILVER = rc.HexColor("#e8edf5")
-    _STRIPE = rc.HexColor("#f4f6fb")
-    _WARN   = rc.HexColor("#fff3cd")
-    _GRAY   = rc.HexColor("#666666")
-    _LG     = rc.lightgrey
+    # ── Black-and-white palette ───────────────────────────────────────────
+    _BLACK  = rc.black
+    _WHITE  = rc.white
+    _STRIPE = rc.HexColor("#f2f2f2")   # very light gray alternating rows
+    _MID    = rc.HexColor("#dddddd")   # grid lines / borders
+    _WARN   = rc.HexColor("#fff3cd")   # yellow flag — keep for review rows
 
     PAGE_W = 10.0 * inch   # usable width (11" − 2 × 0.5" margin)
 
@@ -436,9 +435,9 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
 
     # ── Bar shape sketch (reportlab Drawing) ─────────────────────────────
     def _sketch(bar):
-        SW, SH = 2.0 * inch, 0.58 * inch
+        SW, SH = 2.0 * inch, 0.55 * inch
         d  = Drawing(SW, SH)
-        lw = 2.0
+        lw = 1.8
         m  = 8.0
         fs = 6.0
 
@@ -447,82 +446,78 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
         shape = (bar.shape or "Str").strip()
 
         if shape == "Str":
-            y = SH * 0.58
-            d.add(Line(m, y, SW - m, y, strokeWidth=lw, strokeColor=_NAVY))
+            y = SH * 0.65
+            d.add(Line(m, y, SW - m, y, strokeWidth=lw, strokeColor=_BLACK))
             if a:
-                d.add(GStr(SW / 2, m, a, fontSize=fs,
-                           textAnchor="middle", fillColor=_GRAY))
+                d.add(GStr(SW / 2, 2, a, fontSize=fs,
+                           textAnchor="middle", fillColor=_BLACK))
 
         elif shape in ("L", "Hook"):
-            # Long horizontal arm; hook drops on left end
-            hy  = SH - m - fs - 4
-            x1  = m; x2 = SW - m
-            yd  = m + fs + 2
-            d.add(Line(x1, hy, x2, hy, strokeWidth=lw, strokeColor=_NAVY))
-            d.add(Line(x1, hy, x1, yd, strokeWidth=lw, strokeColor=_NAVY))
+            hy = SH - m - fs - 2
+            x1 = m; x2 = SW - m
+            yd = 2
+            d.add(Line(x1, hy, x2, hy, strokeWidth=lw, strokeColor=_BLACK))
+            d.add(Line(x1, hy, x1, yd, strokeWidth=lw, strokeColor=_BLACK))
             if b:
-                d.add(GStr((x1 + x2) / 2, hy + 3, b,
-                           fontSize=fs, textAnchor="middle", fillColor=_GRAY))
+                d.add(GStr((x1 + x2) / 2, hy + 2, b,
+                           fontSize=fs, textAnchor="middle", fillColor=_BLACK))
             if a:
                 d.add(GStr(x1 + 4, (hy + yd) / 2, a,
-                           fontSize=fs, textAnchor="start", fillColor=_GRAY))
+                           fontSize=fs, textAnchor="start", fillColor=_BLACK))
 
         elif shape == "U":
-            # Horizontal top bar; two legs hang down
-            xl = m + 14; xr = SW - m - 14
-            yt = SH - m; yb = m + fs + 4
-            d.add(Line(xl, yt, xr, yt, strokeWidth=lw, strokeColor=_NAVY))
-            d.add(Line(xl, yt, xl, yb, strokeWidth=lw, strokeColor=_NAVY))
-            d.add(Line(xr, yt, xr, yb, strokeWidth=lw, strokeColor=_NAVY))
+            xl = m + 12; xr = SW - m - 12
+            yt = SH - 4; yb = fs + 4
+            d.add(Line(xl, yt, xr, yt, strokeWidth=lw, strokeColor=_BLACK))
+            d.add(Line(xl, yt, xl, yb, strokeWidth=lw, strokeColor=_BLACK))
+            d.add(Line(xr, yt, xr, yb, strokeWidth=lw, strokeColor=_BLACK))
             if a:
                 d.add(GStr(xl - 3, (yt + yb) / 2, a,
-                           fontSize=fs, textAnchor="end", fillColor=_GRAY))
+                           fontSize=fs, textAnchor="end", fillColor=_BLACK))
             if b:
-                d.add(GStr((xl + xr) / 2, m + 1, b,
-                           fontSize=fs, textAnchor="middle", fillColor=_GRAY))
+                d.add(GStr((xl + xr) / 2, 2, b,
+                           fontSize=fs, textAnchor="middle", fillColor=_BLACK))
 
         elif shape == "Rect":
-            lx = m + 6; rx = SW - m - 6
-            by = m + fs + 4; ty = SH - m
+            lx = m + 4; rx = SW - m - 4
+            by = fs + 4; ty = SH - 4
             d.add(Rect(lx, by, rx - lx, ty - by,
-                       strokeWidth=lw, strokeColor=_NAVY,
-                       fillColor=rc.white))
+                       strokeWidth=lw, strokeColor=_BLACK,
+                       fillColor=_WHITE))
             if a:
-                d.add(GStr((lx + rx) / 2, m + 1, a,
-                           fontSize=fs, textAnchor="middle", fillColor=_GRAY))
+                d.add(GStr((lx + rx) / 2, 2, a,
+                           fontSize=fs, textAnchor="middle", fillColor=_BLACK))
             if b:
                 d.add(GStr(rx + 3, (by + ty) / 2, b,
-                           fontSize=fs, textAnchor="start", fillColor=_GRAY))
+                           fontSize=fs, textAnchor="start", fillColor=_BLACK))
 
         elif shape == "Rng":
             cx = SW / 2; cy = SH / 2 + fs / 2
             r  = min(SW, SH) / 2 - m
             d.add(Circle(cx, cy, r,
-                         strokeWidth=lw, strokeColor=_NAVY,
-                         fillColor=rc.white))
+                         strokeWidth=lw, strokeColor=_BLACK,
+                         fillColor=_WHITE))
             if a:
                 d.add(GStr(cx, cy - fs / 2, a,
-                           fontSize=fs, textAnchor="middle", fillColor=_GRAY))
+                           fontSize=fs, textAnchor="middle", fillColor=_BLACK))
 
         else:
-            # Fallback straight bar
-            y = SH * 0.58
-            d.add(Line(m, y, SW - m, y, strokeWidth=lw, strokeColor=_NAVY))
+            y = SH * 0.65
+            d.add(Line(m, y, SW - m, y, strokeWidth=lw, strokeColor=_BLACK))
             if a:
-                d.add(GStr(SW / 2, m, a, fontSize=fs,
-                           textAnchor="middle", fillColor=_GRAY))
+                d.add(GStr(SW / 2, 2, a, fontSize=fs,
+                           textAnchor="middle", fillColor=_BLACK))
 
         return d
 
     # ── Paragraph styles ─────────────────────────────────────────────────
-    _S = getSampleStyleSheet()
+    _S  = getSampleStyleSheet()
     b8  = ParagraphStyle("b8",  parent=_S["Normal"],
                           fontName="Helvetica-Bold", fontSize=8)
     n8  = ParagraphStyle("n8",  parent=_S["Normal"],
                           fontName="Helvetica",      fontSize=8)
-    b16 = ParagraphStyle("b16", parent=_S["Normal"],
-                          fontName="Helvetica-Bold", fontSize=16,
-                          textColor=_NAVY)
+    b18 = ParagraphStyle("b18", parent=_S["Normal"],
+                          fontName="Helvetica-Bold", fontSize=18)
     b10 = ParagraphStyle("b10", parent=_S["Normal"],
                           fontName="Helvetica-Bold", fontSize=10)
 
@@ -545,23 +540,23 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
     if job_num: right_lines.append(f"<b>Job #:</b>   {job_num}")
     if dtlr:    right_lines.append(f"<b>Detailer:</b> {dtlr}")
     right_lines.append(f"<b>Date:</b> {today}")
-    right_para = Paragraph("<br/>".join(right_lines), n8)
 
-    left_cell = [
-        Paragraph("VISTA STEEL", b16),
-        Paragraph(f"<b>{template_name}</b>  —  Rebar Barlist", b10),
-    ]
-
-    hdr = Table([[left_cell, right_para]],
-                colWidths=[6.5 * inch, 3.5 * inch])
+    hdr = Table(
+        [[
+            [Paragraph("VISTA STEEL", b18),
+             Paragraph(f"<b>{template_name}</b>  —  Rebar Barlist", b10)],
+            Paragraph("<br/>".join(right_lines), n8),
+        ]],
+        colWidths=[6.5 * inch, 3.5 * inch],
+    )
     hdr.setStyle(TableStyle([
-        ("BACKGROUND",    (0, 0), (-1, -1), _SILVER),
-        ("BOX",           (0, 0), (-1, -1), 1.5, _NAVY),
+        ("BOX",           (0, 0), (-1, -1), 1.0, _BLACK),
+        ("LINEAFTER",     (0, 0), (0, -1),  0.5, _MID),
         ("VALIGN",        (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING",    (0, 0), (-1, -1), 8),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 12),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 12),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 10),
     ]))
     elems.append(hdr)
     elems.append(Spacer(1, 0.1 * inch))
@@ -578,80 +573,59 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
             entries.append((lbl, fv))
 
         if entries:
-            half   = (len(entries) + 1) // 2
-            col_a  = entries[:half]
-            col_b  = entries[half:]
+            half  = (len(entries) + 1) // 2
+            col_a = entries[:half]
+            col_b = entries[half:]
             while len(col_b) < len(col_a):
                 col_b.append(("", ""))
 
-            dim_rows = []
+            # Single flat table: section header row + data rows
+            dim_rows = [[
+                Paragraph("DIMENSIONS USED", b8), "", "", "",
+            ]]
             for (la, va), (lb, vb) in zip(col_a, col_b):
                 dim_rows.append([
                     Paragraph(la, b8), Paragraph(va, n8),
                     Paragraph(lb, b8), Paragraph(vb, n8),
                 ])
 
-            dim_inner = Table(dim_rows,
-                              colWidths=[3.0*inch, 2.0*inch, 3.0*inch, 2.0*inch])
-            dim_inner.setStyle(TableStyle([
-                ("ROWBACKGROUNDS", (0, 0), (-1, -1), [rc.white, _STRIPE]),
-                ("GRID",          (0, 0), (-1, -1), 0.25, _LG),
-                ("TOPPADDING",    (0, 0), (-1, -1), 2),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                ("LEFTPADDING",   (0, 0), (-1, -1), 6),
-            ]))
-
-            dim_section = Table(
-                [[Paragraph("DIMENSIONS  USED", b8)], [dim_inner]],
-                colWidths=[PAGE_W],
+            n_data = len(dim_rows) - 1  # rows after header
+            dim_tbl = Table(
+                dim_rows,
+                colWidths=[3.0*inch, 2.0*inch, 3.0*inch, 2.0*inch],
             )
-            dim_section.setStyle(TableStyle([
-                ("BACKGROUND",    (0, 0), (0, 0), _NAVY),
-                ("TEXTCOLOR",     (0, 0), (0, 0), rc.white),
-                ("TOPPADDING",    (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                ("LEFTPADDING",   (0, 0), (-1, -1), 8),
-            ]))
-            elems.append(dim_section)
+            style_cmds = [
+                # Header row: black bg, white text, spans all 4 cols
+                ("SPAN",          (0, 0), (-1, 0)),
+                ("BACKGROUND",    (0, 0), (-1, 0), _BLACK),
+                ("TEXTCOLOR",     (0, 0), (-1, 0), _WHITE),
+                ("TOPPADDING",    (0, 0), (-1, 0), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+                ("LEFTPADDING",   (0, 0), (-1, 0), 8),
+                # Data rows
+                ("GRID",          (0, 1), (-1, -1), 0.4, _MID),
+                ("TOPPADDING",    (0, 1), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 2),
+                ("LEFTPADDING",   (0, 1), (-1, -1), 6),
+                ("FONTSIZE",      (0, 0), (-1, -1), 8),
+                ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+            ]
+            # Alternating stripes on data rows
+            for i in range(1, n_data + 1):
+                if i % 2 == 0:
+                    style_cmds.append(("BACKGROUND", (0, i), (-1, i), _STRIPE))
+            dim_tbl.setStyle(TableStyle(style_cmds))
+            elems.append(dim_tbl)
             elems.append(Spacer(1, 0.1 * inch))
 
-    # ── Weight summary ───────────────────────────────────────────────────
-    weight_lb = barlist_total_weight_lb(bars)
-    _sz_wt: dict = _dd(float)
-    for _b in bars:
-        _sz_wt[_b.size] += _WLBFT.get(_b.size, 0.0) * (_b.length_in / 12.0) * _b.qty
-    _sorted_sz = sorted(_sz_wt.keys(), key=lambda s: int(s.lstrip("#")))
-
-    wt_data = [[Paragraph("<b>Size</b>", b8), Paragraph("<b>Weight (lb)</b>", b8)]]
-    for _s in _sorted_sz:
-        wt_data.append([_s, f"{_sz_wt[_s]:,.1f}"])
-    wt_data.append([Paragraph("<b>TOTAL</b>", b8),
-                    Paragraph(f"<b>{weight_lb:,.1f}</b>", b8)])
-
-    wt_tbl = Table(wt_data, colWidths=[0.9 * inch, 1.1 * inch])
-    wt_tbl.setStyle(TableStyle([
-        ("BACKGROUND",    (0,  0), (-1,  0), _NAVY),
-        ("TEXTCOLOR",     (0,  0), (-1,  0), rc.white),
-        ("BACKGROUND",    (0, -1), (-1, -1), _SILVER),
-        ("ROWBACKGROUNDS",(0,  1), (-1, -2), [rc.white, _STRIPE]),
-        ("FONTSIZE",      (0,  0), (-1, -1), 8),
-        ("GRID",          (0,  0), (-1, -1), 0.25, _LG),
-        ("VALIGN",        (0,  0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",    (0,  0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0,  0), (-1, -1), 2),
-        ("LEFTPADDING",   (0,  0), (-1, -1), 4),
-    ]))
-    elems.append(wt_tbl)
-    elems.append(Spacer(1, 0.1 * inch))
-
     # ── Barlist table with shape sketches ────────────────────────────────
-    ROW_H   = 0.62 * inch
+    ROW_H   = 0.60 * inch
     bar_hdr = [
-        Paragraph("<b>Mark</b>",     b8),
+        Paragraph("<b>Mark</b>",      b8),
         Paragraph("<b>Qty / Size</b>", b8),
-        Paragraph("<b>Shape</b>",    b8),
-        Paragraph("<b>Length</b>",   b8),
-        Paragraph("<b>Notes</b>",    b8),
+        Paragraph("<b>Shape</b>",     b8),
+        Paragraph("<b>Length</b>",    b8),
+        Paragraph("<b>Notes</b>",     b8),
     ]
     bar_rows    = [bar_hdr]
     row_heights = [None]
@@ -671,22 +645,56 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
 
     bar_tbl = Table(bar_rows, colWidths=col_w,
                     rowHeights=row_heights, repeatRows=1)
-    bar_tbl.setStyle(TableStyle([
-        ("BACKGROUND",    (0, 0), (-1,  0), _NAVY),
-        ("TEXTCOLOR",     (0, 0), (-1,  0), rc.white),
-        ("ROWBACKGROUNDS",(0, 1), (-1, -1), [rc.white, _STRIPE]),
+    bar_style = [
+        ("BACKGROUND",    (0, 0), (-1,  0), _BLACK),
+        ("TEXTCOLOR",     (0, 0), (-1,  0), _WHITE),
         ("FONTSIZE",      (0, 0), (-1, -1), 8),
-        ("GRID",          (0, 0), (-1, -1), 0.25, _LG),
+        ("GRID",          (0, 0), (-1, -1), 0.4, _MID),
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",    (0, 0), (-1, -1), 3),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ("LEFTPADDING",   (0, 0), (-1, -1), 4),
-    ]))
-    for i, bar in enumerate(bars, 1):
-        if bar.review_flag:
-            bar_tbl.setStyle(TableStyle([("BACKGROUND", (0, i), (-1, i), _WARN)]))
-
+    ]
+    for i in range(1, len(bars) + 1):
+        if bars[i - 1].review_flag:
+            bar_style.append(("BACKGROUND", (0, i), (-1, i), _WARN))
+        elif i % 2 == 0:
+            bar_style.append(("BACKGROUND", (0, i), (-1, i), _STRIPE))
+    bar_tbl.setStyle(TableStyle(bar_style))
     elems.append(bar_tbl)
+    elems.append(Spacer(1, 0.15 * inch))
+
+    # ── Weight summary (bottom) ───────────────────────────────────────────
+    weight_lb = barlist_total_weight_lb(bars)
+    _sz_wt: dict = _dd(float)
+    for _b in bars:
+        _sz_wt[_b.size] += _WLBFT.get(_b.size, 0.0) * (_b.length_in / 12.0) * _b.qty
+    _sorted_sz = sorted(_sz_wt.keys(), key=lambda s: int(s.lstrip("#")))
+
+    wt_rows = [[Paragraph("<b>Size</b>", b8), Paragraph("<b>Weight (lb)</b>", b8)]]
+    for _s in _sorted_sz:
+        wt_rows.append([_s, f"{_sz_wt[_s]:,.1f}"])
+    wt_rows.append([Paragraph("<b>TOTAL</b>", b8),
+                    Paragraph(f"<b>{weight_lb:,.1f}</b>", b8)])
+
+    wt_tbl = Table(wt_rows, colWidths=[0.9 * inch, 1.2 * inch])
+    wt_style = [
+        ("BACKGROUND",    (0,  0), (-1,  0), _BLACK),
+        ("TEXTCOLOR",     (0,  0), (-1,  0), _WHITE),
+        ("FONTSIZE",      (0,  0), (-1, -1), 8),
+        ("GRID",          (0,  0), (-1, -1), 0.4, _MID),
+        ("VALIGN",        (0,  0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING",    (0,  0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0,  0), (-1, -1), 2),
+        ("LEFTPADDING",   (0,  0), (-1, -1), 4),
+        ("BOX",           (0, -1), (-1, -1), 1.0, _BLACK),
+    ]
+    for i in range(1, len(wt_rows) - 1):
+        if i % 2 == 0:
+            wt_style.append(("BACKGROUND", (0, i), (-1, i), _STRIPE))
+    wt_tbl.setStyle(TableStyle(wt_style))
+    elems.append(wt_tbl)
+
     doc.build(elems)
     return buf.getvalue()
 
