@@ -946,6 +946,9 @@ if generate_btn:
             params_raw[f.name] = f.default
 
     # ── Pre-flight input validation ───────────────────────────────────────
+    # Fields where 0 is a valid sentinel (auto-calculate), not an error
+    _ZERO_OK = {"footing_width_ft", "cover_ft"}
+
     _validation_errors: list[str] = []
     for f in template.inputs:
         val = params_raw.get(f.name)
@@ -953,11 +956,9 @@ if generate_btn:
             continue
         if f.dtype in (int, float):
             num = float(val) if val != "" else 0.0
-            if f.name.endswith("_ft") and num <= 0:
+            if f.name.endswith("_ft") and num <= 0 and f.name not in _ZERO_OK:
                 _label = f.label if hasattr(f, "label") else f.name.replace("_", " ").title()
                 _validation_errors.append(f"{_label} must be greater than zero (got {val})")
-            if f.name == "wall_height_ft" and num <= 0:
-                _validation_errors.append(f"Wall height must be greater than zero (got {val})")
             if f.name == "num_structures" and num < 1:
                 _validation_errors.append(f"Number of structures must be at least 1 (got {val})")
 
@@ -1011,8 +1012,7 @@ if generate_btn:
             except Exception:
                 st.session_state.explanation = None
 
-    if not st.session_state.get("error"):
-        st.rerun()
+    st.rerun()   # always rerun — prevents stale bars from rendering on error
 
 st.markdown("---")
 
@@ -1033,34 +1033,35 @@ with diag_col:
 # ── INPUTS ────────────────────────────────────────────────────────────────────
 with inp_col:
     # ── Smart suggestions: pre-seed Y from X when applicable ─────────────
+    _tname = template.name   # use template.name consistently for all session-state keys
     for _trig, _tgt, _fn in _FIELD_PREDICTIONS.get(template_name, []):
-        _trig_key = f"primary_{template_name}__{_trig}"
-        _prev_key = f"_prev_{_trig}__{template_name}"
+        _trig_key = f"primary_{_tname}__{_trig}"
+        _prev_key = f"_prev_{_trig}__{_tname}"
         _trig_val = st.session_state.get(_trig_key)
         if _trig_val is not None:
             if st.session_state.get(_prev_key) != _trig_val:
                 st.session_state[_prev_key] = _trig_val
-                st.session_state[f"primary_{template_name}__{_tgt}"] = _fn(_trig_val)
+                st.session_state[f"primary_{_tname}__{_tgt}"] = _fn(_trig_val)
 
     # ── X and Y (primary inputs -- just 2 fields) ───────────────────────
     params_raw: dict = {}
     primary_fields = dflt.get_primary_inputs(template)
     for f in primary_fields:
-        name, val = _widget(f, key_prefix=f"primary_{template_name}", container=st)
+        name, val = _widget(f, key_prefix=f"primary_{_tname}", container=st)
         params_raw[name] = val
 
     # ── Caltrans auto-fill (silently pre-fills advanced fields) ──────────
     _ct_result = caltrans_lookup(template_name, params_raw)
     _ct_src    = _ct_result.pop("_source", "")
     if _ct_result:
-        _phash_key = f"_phash__{template_name}"
+        _phash_key = f"_phash__{_tname}"
         _phash = hashlib.md5(
             json.dumps(params_raw, sort_keys=True, default=str).encode()
         ).hexdigest()[:8]
         if st.session_state.get(_phash_key) != _phash:
             st.session_state[_phash_key] = _phash
             for _cf, _cv in _ct_result.items():
-                st.session_state[f"adv_{template_name}__{_cf}"] = _cv
+                st.session_state[f"adv_{_tname}__{_cf}"] = _cv
 
     # ── Advanced (small collapsed section) ───────────────────────────────
     secondary = dflt.get_secondary_inputs(template)
