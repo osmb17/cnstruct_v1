@@ -13,7 +13,8 @@ from __future__ import annotations
 
 PRIMARY_INPUTS: dict[str, list[str]] = {
     "G1 Inlet":              ["x_dim_ft", "y_dim_ft"],
-    "G2 Inlet":              ["x_dim_ft", "y_dim_ft"],
+    "G2 Inlet":              ["x_dim_ft", "wall_thick_in", "wall_height_ft",
+                              "grate_type", "num_structures"],
     "G3 Inlet":              ["x_dim_ft", "y_dim_ft"],
     "G4 Inlet":              ["x_dim_ft", "y_dim_ft"],
     "G5 Inlet":              ["x_dim_ft", "y_dim_ft"],
@@ -51,7 +52,7 @@ OVERRIDEABLE: dict[str, str] = {}
 # -- Diagram axis labels -------------------------------------------------------
 DIAGRAM_LABELS: dict[str, dict[str, str]] = {
     "G1 Inlet":              {"x_dim_ft": "L1", "y_dim_ft": "H"},
-    "G2 Inlet":              {"x_dim_ft": "X", "y_dim_ft": "Y", "inside_x_in": "X_int", "inside_y_in": "Y_int", "wall_thick_in": "T"},
+    "G2 Inlet":              {"x_dim_ft": "X_ext", "wall_thick_in": "T"},
     "G3 Inlet":              {"x_dim_ft": "L1", "y_dim_ft": "H"},
     "G4 Inlet":              {"x_dim_ft": "L1", "y_dim_ft": "H"},
     "G5 Inlet":              {"x_dim_ft": "L1", "y_dim_ft": "H"},
