@@ -910,7 +910,7 @@ run_date   = j4.date_input("Date",     value=date.today(), key="run_date")
 # Template change → clear results
 if template_name != st.session_state.get("_last_template"):
     st.session_state._last_template = template_name
-    for _k in ("bars","log_lines","warnings","error"):
+    for _k in ("bars", "log_lines", "warnings", "error", "_pdf_bytes"):
         st.session_state.pop(_k, None)
 
 template = TEMPLATE_REGISTRY[template_name]
@@ -973,7 +973,8 @@ if generate_btn:
     if _validation_errors:
         st.session_state.error = "**Input problems:**\n" + "\n".join(
             f"- {e}" for e in _validation_errors)
-        st.session_state.bars = None
+        st.session_state.bars       = None
+        st.session_state._pdf_bytes = None
     else:
         # ── Run engine ────────────────────────────────────────────────────
         log = ReasoningLogger(None)
@@ -991,9 +992,20 @@ if generate_btn:
                 hist.save_run(template_name, job_name, job_number, detailer,
                               params_raw, b, barlist_total_weight_lb(b), 0.0)
                 _template_stats.clear()
+                # Pre-compute PDF so download_button always serves a stable blob
+                # (avoids the first-click-wrong-file issue caused by render-time recompute)
+                try:
+                    _pdf_ji = {"Project": job_name, "Job #": job_number,
+                               "Detailer": detailer, "Date": str(run_date)}
+                    st.session_state._pdf_bytes = _make_pdf(
+                        b, template_name, _pdf_ji,
+                        params_raw=params_raw, template=template)
+                except Exception:
+                    st.session_state._pdf_bytes = None
             except Exception as exc:
-                st.session_state.error = str(exc)
-                st.session_state.bars  = None
+                st.session_state.error     = str(exc)
+                st.session_state.bars      = None
+                st.session_state._pdf_bytes = None
 
     # Stream AI explanation immediately after engine run (if API key is set)
     if st.session_state.get("bars") and _api_key_available():
@@ -1140,15 +1152,15 @@ if bars is not None:
         file_name=f"{template_name.replace(' ','_')}_barlist.xml",
         mime="application/xml", use_container_width=True, key="btn_xml",
     )
-    try:
+    _pdf_bytes = st.session_state.get("_pdf_bytes")
+    if _pdf_bytes:
         ex3.download_button(
             "Export PDF",
-            data=_make_pdf(bars, template_name, ji,
-                           params_raw=params_raw, template=template),
+            data=_pdf_bytes,
             file_name=f"{template_name.replace(' ','_')}_barlist.pdf",
             mime="application/pdf", use_container_width=True, key="btn_pdf",
         )
-    except ImportError:
+    else:
         ex3.button("Export PDF", disabled=True, use_container_width=True, key="btn_pdf_na")
 
 # ═════════════════════════════════════════════════════════════════════════════
