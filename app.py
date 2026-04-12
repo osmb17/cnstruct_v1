@@ -512,14 +512,21 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
 
     # ── Paragraph styles ─────────────────────────────────────────────────
     _S  = getSampleStyleSheet()
+    # Black-text styles
     b8  = ParagraphStyle("b8",  parent=_S["Normal"],
-                          fontName="Helvetica-Bold", fontSize=8)
+                          fontName="Helvetica-Bold", fontSize=8,
+                          textColor=_BLACK)
     n8  = ParagraphStyle("n8",  parent=_S["Normal"],
-                          fontName="Helvetica",      fontSize=8)
-    b18 = ParagraphStyle("b18", parent=_S["Normal"],
-                          fontName="Helvetica-Bold", fontSize=18)
-    b10 = ParagraphStyle("b10", parent=_S["Normal"],
-                          fontName="Helvetica-Bold", fontSize=10)
+                          fontName="Helvetica",      fontSize=8,
+                          textColor=_BLACK, leading=11)
+    # White-text styles for black header rows
+    b8w = ParagraphStyle("b8w", parent=_S["Normal"],
+                          fontName="Helvetica-Bold", fontSize=8,
+                          textColor=_WHITE)
+    # Header title style: two-line, enough leading for 16pt first line
+    hdr_title = ParagraphStyle("hdr_title", parent=_S["Normal"],
+                                fontName="Helvetica", fontSize=8,
+                                leading=22, textColor=_BLACK)
 
     # ── Document ─────────────────────────────────────────────────────────
     buf = io.BytesIO()
@@ -541,18 +548,21 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
     if dtlr:    right_lines.append(f"<b>Detailer:</b> {dtlr}")
     right_lines.append(f"<b>Date:</b> {today}")
 
+    left_para = Paragraph(
+        f"<font size='16'><b>VISTA STEEL</b></font><br/>"
+        f"<b>{template_name}</b>  —  Rebar Barlist",
+        hdr_title,
+    )
+
     hdr = Table(
-        [[
-            [Paragraph("VISTA STEEL", b18),
-             Paragraph(f"<b>{template_name}</b>  —  Rebar Barlist", b10)],
-            Paragraph("<br/>".join(right_lines), n8),
-        ]],
+        [[left_para, Paragraph("<br/>".join(right_lines), n8)]],
         colWidths=[6.5 * inch, 3.5 * inch],
+        rowHeights=[0.75 * inch],
     )
     hdr.setStyle(TableStyle([
         ("BOX",           (0, 0), (-1, -1), 1.0, _BLACK),
         ("LINEAFTER",     (0, 0), (0, -1),  0.5, _MID),
-        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",    (0, 0), (-1, -1), 8),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
         ("LEFTPADDING",   (0, 0), (-1, -1), 10),
@@ -581,7 +591,7 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
 
             # Single flat table: section header row + data rows
             dim_rows = [[
-                Paragraph("DIMENSIONS USED", b8), "", "", "",
+                Paragraph("DIMENSIONS USED", b8w), "", "", "",
             ]]
             for (la, va), (lb, vb) in zip(col_a, col_b):
                 dim_rows.append([
@@ -621,11 +631,11 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
     # ── Barlist table with shape sketches ────────────────────────────────
     ROW_H   = 0.60 * inch
     bar_hdr = [
-        Paragraph("<b>Mark</b>",      b8),
-        Paragraph("<b>Qty / Size</b>", b8),
-        Paragraph("<b>Shape</b>",     b8),
-        Paragraph("<b>Length</b>",    b8),
-        Paragraph("<b>Notes</b>",     b8),
+        Paragraph("<b>Mark</b>",      b8w),
+        Paragraph("<b>Qty / Size</b>", b8w),
+        Paragraph("<b>Shape</b>",     b8w),
+        Paragraph("<b>Length</b>",    b8w),
+        Paragraph("<b>Notes</b>",     b8w),
     ]
     bar_rows    = [bar_hdr]
     row_heights = [None]
@@ -671,7 +681,7 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
         _sz_wt[_b.size] += _WLBFT.get(_b.size, 0.0) * (_b.length_in / 12.0) * _b.qty
     _sorted_sz = sorted(_sz_wt.keys(), key=lambda s: int(s.lstrip("#")))
 
-    wt_rows = [[Paragraph("<b>Size</b>", b8), Paragraph("<b>Weight (lb)</b>", b8)]]
+    wt_rows = [[Paragraph("<b>Size</b>", b8w), Paragraph("<b>Weight (lb)</b>", b8w)]]
     for _s in _sorted_sz:
         wt_rows.append([_s, f"{_sz_wt[_s]:,.1f}"])
     wt_rows.append([Paragraph("<b>TOTAL</b>", b8),
