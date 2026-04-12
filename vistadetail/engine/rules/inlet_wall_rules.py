@@ -328,51 +328,35 @@ def rule_validate_max_spacing_ACI(p: Params, log: ReasoningLogger) -> list[BarRo
 def rule_g2_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """Derive all G2 inlet dimensions matching the Vista Excel spreadsheet.
 
+    Geometry rules (Caltrans D73A):
+      - Y interior is ALWAYS fixed at 2'-11 3/8" (35.375") for standard G2.
+        Y exterior = Y_interior + 2 × T.
+      - X interior = X_exterior − 2 × T.
+      - T (wall_thick_in) is always explicitly provided by the user.
+
     Inputs expected on p:
-      x_dim_ft     — exterior width  (ft)
-      y_dim_ft     — exterior depth  (ft)
-      inside_x_in  — interior width  (in), 0 = auto from exterior
-      inside_y_in  — interior depth  (in), 0 = auto from exterior
-      wall_height_ft — wall height   (ft)
-      wall_thick_in  — 0 = auto
+      x_dim_ft       — exterior width  (ft)
+      wall_height_ft — wall height     (ft)
+      wall_thick_in  — wall thickness  (in), must be > 0
       grate_type     — "Type 24" / "Type 18"
       num_structures — multiplier (default 1)
     """
     x_ext = p.x_dim_ft * 12.0
-    y_ext = p.y_dim_ft * 12.0
+    t = float(getattr(p, "wall_thick_in", 9.0))
+    if t <= 0:
+        t = 9.0
 
-    # ── User-provided inside dimensions ────────────────────────────────
-    user_inside_x = float(getattr(p, "inside_x_in", 0.0))
-    user_inside_y = float(getattr(p, "inside_y_in", 0.0))
+    # ── X: interior derived from exterior and T ─────────────────────────
+    x_inside = x_ext - 2.0 * t
 
-    # ── Wall thickness auto-derive ──────────────────────────────────────
-    t = float(getattr(p, "wall_thick_in", 0))
+    # ── Y: interior is FIXED per Caltrans D73A ──────────────────────────
+    y_inside = _MIN_INTERIOR_Y_IN   # always 35.375" = 2'-11 3/8"
+    y_ext = y_inside + 2.0 * t
 
-    if user_inside_x > 0:
-        # Inside X provided: derive T from exterior - interior
-        x_inside = user_inside_x
-        if t <= 0:
-            t = (x_ext - x_inside) / 2.0
-            setattr(p, "wall_thick_in", t)
-            log.step(f"T derived from exterior/interior: ({fmt_inches(x_ext)} - {fmt_inches(x_inside)}) / 2 = {t:.1f}\"")
-        else:
-            log.step(f"User T = {t:.0f}\", user inside X = {fmt_inches(x_inside)}")
-    else:
-        if t <= 0:
-            # Caltrans rule: interior X ≤ 54 → T=9, else T=11
-            trial_inside = x_ext - 2 * 9.0
-            t = 9.0 if trial_inside <= 54.0 else 11.0
-            setattr(p, "wall_thick_in", t)
-            log.step(f"Auto T: trial interior X = {fmt_inches(trial_inside)} → T = {t:.0f}\"")
-        else:
-            log.step(f"User T = {t:.0f}\"")
-        x_inside = x_ext - 2 * t
+    log.step(f"T = {t:.0f}\"  (user input)")
+    log.step(f"X exterior = {fmt_inches(x_ext)}  →  X interior = {fmt_inches(x_ext)} − 2×{t:.0f}\" = {fmt_inches(x_inside)}")
+    log.step(f"Y interior = {fmt_inches(y_inside)} (fixed, Caltrans D73A)  →  Y exterior = {fmt_inches(y_inside)} + 2×{t:.0f}\" = {fmt_inches(y_ext)}")
 
-    if user_inside_y > 0:
-        y_inside = user_inside_y
-        log.step(f"User inside Y = {fmt_inches(y_inside)}")
-    else:
-        y_inside = y_ext - 2 * t
     n = int(getattr(p, "num_structures", 1)) or 1
 
     grate_type = str(getattr(p, "grate_type", "Type 24"))
@@ -406,17 +390,14 @@ def rule_g2_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     setattr(p, "n_struct", n)
 
     # ── Validation ────────────────────────────────────────────────────
-    if y_inside < _MIN_INTERIOR_Y_IN:
-        log.warn(
-            f"Interior Y = {fmt_inches(y_inside)} < Caltrans minimum "
-            f"{fmt_inches(_MIN_INTERIOR_Y_IN)} (2'-11 3/8\")"
-        )
+    if x_inside <= 0:
+        log.warn(f"Interior X = {fmt_inches(x_inside)} ≤ 0 — X exterior too small for T={t:.0f}\"")
     if gut_dim <= 0:
         log.warn(f"Gut dimension = {fmt_inches(gut_dim)} ≤ 0 — check X dimension vs grate type")
 
     log.result("GEOMETRY",
         f"X={fmt_inches(x_ext)} (int {fmt_inches(x_inside)}), "
-        f"Y={fmt_inches(y_ext)} (int {fmt_inches(y_inside)}), "
+        f"Y={fmt_inches(y_ext)} (int {fmt_inches(y_inside)} fixed), "
         f"T={t:.0f}\", H_adj={fmt_inches(h_adj)}, "
         f"Y_bar={fmt_inches(y_bar)}, X_bar={fmt_inches(x_bar)}, "
         f"Gut={fmt_inches(gut_dim)}")
