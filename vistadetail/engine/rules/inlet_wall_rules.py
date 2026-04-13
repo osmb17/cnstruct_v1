@@ -178,7 +178,7 @@ def rule_horizontal_bars_EF(p: Params, log: ReasoningLogger) -> list[BarRow]:
         size=p.horiz_bar_size,
         qty=qty_total,
         length_in=bar_len_in,
-        shape="Str",
+        shape="U", leg_a_in=hook_add_in, leg_b_in=p.wall_length_ft * 12, leg_c_in=hook_add_in,
         notes="Horiz EF",
         source_rule="rule_horizontal_bars_EF",
     )]
@@ -227,7 +227,7 @@ def rule_vertical_bars_EF(p: Params, log: ReasoningLogger) -> list[BarRow]:
         size=p.vert_bar_size,
         qty=qty_total,
         length_in=bar_len_in,
-        shape="Str",
+        shape="L", leg_a_in=p.wall_height_ft * 12 + top_stub_in, leg_b_in=bottom_hook_in,
         notes="Vert EF",
         source_rule="rule_vertical_bars_EF",
     )]
@@ -526,11 +526,11 @@ def rule_g2_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [
         BarRow(mark="A1", size="#5", qty=qty_a, length_in=p.ab_bar_len,
-               shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=a_span,
+               shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=a_span, leg_c_in=_AB_TAIL_IN,
                notes="A Bars @5oc, 8\" U-tails",
                source_rule="rule_g2_ab_bars"),
         BarRow(mark="B1", size="#4", qty=qty_b, length_in=p.ab_bar_len,
-               shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=a_span,
+               shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=a_span, leg_c_in=_AB_TAIL_IN,
                notes="B Bars @6oc, 8\" U-tails",
                source_rule="rule_g2_ab_bars"),
     ]
@@ -582,7 +582,7 @@ def rule_g2_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="HP1", size="#5", qty=qty,
         length_in=hp_total,
-        shape="U", leg_a_in=_HP_TAIL_PLAIN, leg_b_in=p.gut_dim,
+        shape="U", leg_a_in=_HP_TAIL_PLAIN, leg_b_in=p.gut_dim, leg_c_in=_HP_TAIL_HOOK,
         notes=f"Hoops @5oc, 6.5\" / 5.5\" tails",
         source_rule="rule_g2_hoops",
     )]
@@ -713,11 +713,11 @@ def rule_g2exp_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
                  f"total {fmt_inches(p.ab_bar_len_reg)} (8\" U-tails, span {fmt_inches(span_reg)})")
         bars += [
             BarRow(mark="A1", size="#5", qty=qty_a_reg, length_in=p.ab_bar_len_reg,
-                   shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=span_reg,
+                   shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=span_reg, leg_c_in=_AB_TAIL_IN,
                    notes="A Bars Reg @5oc, 8\" U-tails",
                    source_rule="rule_g2exp_ab_bars"),
             BarRow(mark="B1", size="#4", qty=qty_b_reg, length_in=p.ab_bar_len_reg,
-                   shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=span_reg,
+                   shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=span_reg, leg_c_in=_AB_TAIL_IN,
                    notes="B Bars Reg @6oc, 8\" U-tails",
                    source_rule="rule_g2exp_ab_bars"),
         ]
@@ -734,11 +734,11 @@ def rule_g2exp_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
                  f"total {fmt_inches(p.ab_bar_len_notch)} (8\" U-tails, span {fmt_inches(span_notch)})")
         bars += [
             BarRow(mark="A2", size="#5", qty=qty_a_notch, length_in=p.ab_bar_len_notch,
-                   shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=span_notch,
+                   shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=span_notch, leg_c_in=_AB_TAIL_IN,
                    notes="A Bars Notched @5oc, 8\" U-tails",
                    source_rule="rule_g2exp_ab_bars"),
             BarRow(mark="B2", size="#4", qty=qty_b_notch, length_in=p.ab_bar_len_notch,
-                   shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=span_notch,
+                   shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=span_notch, leg_c_in=_AB_TAIL_IN,
                    notes="B Bars Notched @6oc, 8\" U-tails",
                    source_rule="rule_g2exp_ab_bars"),
         ]
@@ -765,7 +765,7 @@ def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
                  f"span={fmt_inches(p.gut_dim)}, total={fmt_inches(hp1_total)}")
         bars.append(BarRow(
             mark="HP1", size="#5", qty=qty_reg, length_in=hp1_total,
-            shape="U", leg_a_in=_HP_TAIL_PLAIN, leg_b_in=p.gut_dim,
+            shape="U", leg_a_in=_HP_TAIL_PLAIN, leg_b_in=p.gut_dim, leg_c_in=_HP_TAIL_HOOK,
             notes="Reg Hoops @5oc, 6.5\" / 5.5\" tails",
             source_rule="rule_g2exp_hoops",
         ))
@@ -777,7 +777,7 @@ def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
                  f"span={fmt_inches(p.notch_dim)}, total={fmt_inches(hp2_total)}")
         bars.append(BarRow(
             mark="HP2", size="#5", qty=qty_notch, length_in=hp2_total,
-            shape="U", leg_a_in=_HP_TAIL_PLAIN, leg_b_in=p.notch_dim,
+            shape="U", leg_a_in=_HP_TAIL_PLAIN, leg_b_in=p.notch_dim, leg_c_in=_HP_TAIL_HOOK,
             notes="Notched Hoops @5oc, 6.5\" / 5.5\" tails",
             source_rule="rule_g2exp_hoops",
         ))

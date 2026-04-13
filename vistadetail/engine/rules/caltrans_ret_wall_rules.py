@@ -338,7 +338,8 @@ def rule_ct_rw_shear_key(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="CW9", size=d_size, qty=qty, length_in=bar_len,
-        shape="U", notes=f"shear key U-bars @ {d_spacing}\" oc (B3-1)",
+        shape="U", leg_a_in=leg, leg_b_in=4 * db, leg_c_in=leg,
+        notes=f"shear key U-bars @ {d_spacing}\" oc (B3-1)",
         source_rule="rule_ct_rw_shear_key",
     )]
 

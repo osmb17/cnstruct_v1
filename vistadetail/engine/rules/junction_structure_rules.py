@@ -85,7 +85,8 @@ def rule_junction_long_wall_vert(p: Params, log: ReasoningLogger) -> list[BarRow
 
     return [BarRow(
         mark="JW2", size=p.wall_bar_size, qty=qty, length_in=bar_len_in,
-        shape="Str", notes="Long wall vert EF (2 walls)",
+        shape="L", leg_a_in=p.inside_depth_ft * 12 + 6.0, leg_b_in=bot_hook_in,
+        notes="Long wall vert EF (2 walls)",
         source_rule="rule_junction_long_wall_vert",
     )]
 
@@ -135,7 +136,8 @@ def rule_junction_short_wall_vert(p: Params, log: ReasoningLogger) -> list[BarRo
 
     return [BarRow(
         mark="SW2", size=p.wall_bar_size, qty=qty, length_in=bar_len_in,
-        shape="Str", notes="Short wall vert EF (2 walls)",
+        shape="L", leg_a_in=p.inside_depth_ft * 12 + 6.0, leg_b_in=bot_hook_in,
+        notes="Short wall vert EF (2 walls)",
         source_rule="rule_junction_short_wall_vert",
     )]
 

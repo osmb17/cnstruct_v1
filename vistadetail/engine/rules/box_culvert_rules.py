@@ -32,15 +32,17 @@ def rule_top_slab_top(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     usable_span = (p.clear_span_ft * 12) - (2 * p.cover_in)
     qty = math.floor((p.barrel_length_ft * 12 - 2 * p.cover_in) / p.slab_spacing_in) + 1
-    bar_len_in = usable_span + (2 * hook_add("std_90", p.slab_bar_size))
+    ha = hook_add("std_90", p.slab_bar_size)
+    bar_len_in = usable_span + (2 * ha)
 
     log.step(f"Top slab top: span = {p.clear_span_ft} ft, {qty} bars @ {p.slab_spacing_in} in spacing")
-    log.step(f"Bar length = {usable_span:.1f} + 2×hooks = {bar_len_in:.1f} in = {fmt_inches(bar_len_in)}")
+    log.step(f"Bar length = {usable_span:.1f} + 2×{ha} hooks = {bar_len_in:.1f} in = {fmt_inches(bar_len_in)}")
     log.result("TT1", f"{p.slab_bar_size} × {qty} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
         mark="TT1", size=p.slab_bar_size, qty=qty, length_in=bar_len_in,
-        shape="Str", notes="Top Slab Top", source_rule="rule_top_slab_top",
+        shape="U", leg_a_in=ha, leg_b_in=usable_span, leg_c_in=ha,
+        notes="Top Slab Top", source_rule="rule_top_slab_top",
     )]
 
 
@@ -51,14 +53,16 @@ def rule_top_slab_bottom(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     usable_span = (p.clear_span_ft * 12) - (2 * p.cover_in)
     qty = math.floor((p.barrel_length_ft * 12 - 2 * p.cover_in) / p.slab_spacing_in) + 1
-    bar_len_in = usable_span + (2 * hook_add("std_90", p.slab_bar_size))
+    ha = hook_add("std_90", p.slab_bar_size)
+    bar_len_in = usable_span + (2 * ha)
 
     log.step(f"Top slab bottom: same layout as top — {qty} bars")
     log.result("TB1", f"{p.slab_bar_size} × {qty} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
         mark="TB1", size=p.slab_bar_size, qty=qty, length_in=bar_len_in,
-        shape="Str", notes="Top Slab Bot", source_rule="rule_top_slab_bottom",
+        shape="U", leg_a_in=ha, leg_b_in=usable_span, leg_c_in=ha,
+        notes="Top Slab Bot", source_rule="rule_top_slab_bottom",
     )]
 
 
@@ -97,14 +101,16 @@ def rule_bottom_slab_top(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """Bottom slab top bars — transverse, secondary tension layer."""
     usable_span = (p.clear_span_ft * 12) - (2 * p.cover_in)
     qty = math.floor((p.barrel_length_ft * 12 - 2 * p.cover_in) / p.slab_spacing_in) + 1
-    bar_len_in = usable_span + (2 * hook_add("std_90", p.slab_bar_size))
+    ha = hook_add("std_90", p.slab_bar_size)
+    bar_len_in = usable_span + (2 * ha)
 
     log.step(f"Bottom slab top: {qty} bars @ {fmt_inches(bar_len_in)}")
     log.result("BT1", f"{p.slab_bar_size} × {qty} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
         mark="BT1", size=p.slab_bar_size, qty=qty, length_in=bar_len_in,
-        shape="Str", notes="Bot Slab Top", source_rule="rule_bottom_slab_top",
+        shape="U", leg_a_in=ha, leg_b_in=usable_span, leg_c_in=ha,
+        notes="Bot Slab Top", source_rule="rule_bottom_slab_top",
     )]
 
 
@@ -115,7 +121,8 @@ def rule_bottom_slab_bottom(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     usable_span = (p.clear_span_ft * 12) - (2 * p.cover_in)
     qty = math.floor((p.barrel_length_ft * 12 - 2 * p.cover_in) / p.bot_slab_spacing_in) + 1
-    bar_len_in = usable_span + (2 * hook_add("std_90", p.bot_slab_bar_size))
+    ha = hook_add("std_90", p.bot_slab_bar_size)
+    bar_len_in = usable_span + (2 * ha)
 
     log.step(f"Bottom slab bottom (primary tension): {qty} bars @ {p.bot_slab_spacing_in} in")
     log.step(f"Bar length = {fmt_inches(bar_len_in)}")
@@ -123,7 +130,8 @@ def rule_bottom_slab_bottom(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="BB1", size=p.bot_slab_bar_size, qty=qty, length_in=bar_len_in,
-        shape="Str", notes="Bot Slab Bot (primary)", source_rule="rule_bottom_slab_bottom",
+        shape="U", leg_a_in=ha, leg_b_in=usable_span, leg_c_in=ha,
+        notes="Bot Slab Bot (primary)", source_rule="rule_bottom_slab_bottom",
     )]
 
 
@@ -139,20 +147,22 @@ def rule_haunch_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     haunch_leg_in = getattr(p, "haunch_size_in", 12.0)
     ld_in = development_length_tension(p.slab_bar_size, cover_in=p.cover_in)
-    bar_len_in = (haunch_leg_in * math.sqrt(2)) + (2 * ld_in)   # diagonal leg + 2×dev
+    # L-bar: each leg runs along slab/wall face = haunch_leg + development
+    leg_total = haunch_leg_in + ld_in
+    bar_len_in = 2 * leg_total
 
     usable_len = (p.barrel_length_ft * 12) - (2 * p.cover_in)
     qty_per_corner = math.floor(usable_len / p.slab_spacing_in) + 1
     qty_total = qty_per_corner * 4   # 4 corners
 
-    log.step(f"Haunch leg = {haunch_leg_in} in → diagonal = {haunch_leg_in * math.sqrt(2):.1f} in")
-    log.step(f"Dev each end = {ld_in:.1f} in → bar length = {bar_len_in:.1f} in")
+    log.step(f"Haunch leg = {haunch_leg_in} in + dev {ld_in:.1f} in = {leg_total:.1f} in each leg")
+    log.step(f"Bar length = 2 × {leg_total:.1f} = {bar_len_in:.1f} in = {fmt_inches(bar_len_in)}")
     log.step(f"{qty_per_corner} bars/corner × 4 corners = {qty_total} total")
     log.result("HS1", f"{p.slab_bar_size} × {qty_total} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
         mark="HS1", size=p.slab_bar_size, qty=qty_total, length_in=bar_len_in,
-        shape="L", leg_a_in=haunch_leg_in, leg_b_in=haunch_leg_in,
+        shape="L", leg_a_in=leg_total, leg_b_in=leg_total,
         notes="Haunch/Corner (4 corners)", source_rule="rule_haunch_bars",
     )]
 

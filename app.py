@@ -1381,6 +1381,7 @@ with inp_col:
     # ── Inject computed inside-dimensions for live diagram annotation ─────
     # Any template that has x_dim_ft + wall_thick_in gets _inside_x_ft.
     # Any template that has y_dim_ft + wall_thick_in gets _inside_y_ft.
+    # G2 Inlet: Y is derived (35.375" fixed interior + 2T) → _y_ext_ft.
     # These synthetic _ft keys are picked up by _FIELD_LABELS in diagram_gen.
     try:
         _di_t = float(params_raw.get("wall_thick_in", 0) or 0)
@@ -1390,6 +1391,8 @@ with inp_col:
             params_raw["_inside_x_ft"] = max(0.0, float(_di_x) - 2 * _di_t / 12.0)
         if _di_t and _di_y is not None:
             params_raw["_inside_y_ft"] = max(0.0, float(_di_y) - 2 * _di_t / 12.0)
+        if template_name == "G2 Inlet" and _di_t:
+            params_raw["_y_ext_ft"] = (35.375 + 2 * _di_t) / 12.0
     except (TypeError, ValueError):
         pass
 
