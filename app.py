@@ -858,6 +858,7 @@ SHAPE_SYMBOLS: dict[str, str] = {
     "C":    "⊏",       # C-bar — open on one side
     "S":    "⟳",       # spiral
     "Rect": "▭",       # rectangular tie / hoop
+    "Hoop": "⊐",       # inlet hoop — C-shape, closed left, open right
     "Hook": "└",       # single 90-deg hook
 }
 
