@@ -1223,6 +1223,7 @@ with inp_col:
 
         # Y display (interior fixed per Caltrans D73A, exterior derived)
         _y_ext_in = _Y_INT_IN + 2 * int(_tv)
+        params_raw["_y_ext_ft"] = _y_ext_in / 12.0   # injected for live diagram Y label
         _yi_key = f"_g2_yi_{_tname}"
         _ye_key = f"_g2_ye_{_tname}"
         # Force the computed values into session state so they always display
