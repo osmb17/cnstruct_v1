@@ -277,26 +277,26 @@ def _diag_g2_inlet() -> bytes:
             color=_LABEL, fontweight="bold")
 
     # ── Hoop bar detail (lower-right) ────────────────────────────────
-    # HP1 hoop shown as a horizontal C-shape (open on LEFT = plain tail 6.5",
-    # closed on RIGHT = hook tail 5.5").  Two horizontal span lines connected
-    # by a short right vertical — "not fully closed, not vertical".
-    hd_x0 = OX + 1.25   # left open end (plain tail, 6.5")
-    hd_x2 = OX + 2.90   # right closed end (hook connector, 5.5")
+    # HP1 hoop shown as a horizontal C-shape (closed on LEFT = hook tail 5.5",
+    # open on RIGHT = plain tail 6.5").  Two horizontal span lines connected
+    # by a short left vertical — right side intentionally open.
+    hd_x0 = OX + 1.25   # left closed end (hook connector, 5.5")
+    hd_x2 = OX + 2.90   # right open end (plain tail, 6.5")
     hd_yt  = -0.45       # top horizontal line
     hd_yb  = -1.25       # bottom horizontal line
 
     lw_h = 2.2
     ax.plot([hd_x0, hd_x2], [hd_yt, hd_yt], color=_OUTLINE, lw=lw_h,
             solid_capstyle="round", zorder=6)                         # top span
-    ax.plot([hd_x2, hd_x2], [hd_yb,  hd_yt], color=_OUTLINE, lw=lw_h,
-            solid_capstyle="round", zorder=6)                         # right connector (closed)
+    ax.plot([hd_x0, hd_x0], [hd_yb,  hd_yt], color=_OUTLINE, lw=lw_h,
+            solid_capstyle="round", zorder=6)                         # left connector (closed)
     ax.plot([hd_x0, hd_x2], [hd_yb, hd_yb], color=_OUTLINE, lw=lw_h,
             solid_capstyle="round", zorder=6)                         # bottom span
-    # left side intentionally open (plain tail enters wall here)
+    # right side intentionally open (plain tail exits wall here)
 
-    ax.text(hd_x0 - 0.07, (hd_yt + hd_yb) / 2, "6.5\"",
+    ax.text(hd_x0 - 0.07, (hd_yt + hd_yb) / 2, "5.5\"",
             ha="right", va="center", fontsize=7.5, color=_DIM, fontweight="bold")
-    ax.text(hd_x2 + 0.07, (hd_yt + hd_yb) / 2, "5.5\"",
+    ax.text(hd_x2 + 0.07, (hd_yt + hd_yb) / 2, "6.5\"",
             ha="left",  va="center", fontsize=7.5, color=_DIM, fontweight="bold")
     ax.text((hd_x0 + hd_x2) / 2, hd_yt + 0.09, "HP1 HOOP (TYP.)",
             ha="center", va="bottom", fontsize=7, color=_LABEL, fontweight="bold")
