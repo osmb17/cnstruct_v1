@@ -527,6 +527,7 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
 
         a = _cdim(bar.leg_a_in) if bar.leg_a_in else None
         b = _cdim(bar.leg_b_in) if bar.leg_b_in else None
+        c = _cdim(bar.leg_c_in) if bar.leg_c_in else None
         shape = (bar.shape or "Str").strip()
 
         if shape == "Str":
@@ -561,6 +562,25 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
             if b:
                 d.add(GStr((xl + xr) / 2, 2, b,
                            fontSize=fs, textAnchor="middle", fillColor=_BLACK))
+
+        elif shape == "Hoop":
+            # Horizontal C-shape: closed left (hook tail = leg_a), open right (plain tail = leg_c).
+            # Two horizontal span lines connected on the left; right side open with inward stubs.
+            xl = m + 18; xr = SW - m - 10
+            yt = SH - 5; yb = fs + 3
+            mid = (yt + yb) / 2
+            stub = (yt - yb) * 0.42   # stub reaches ~42% of height from each end
+            d.add(Line(xl, yt, xr, yt, strokeWidth=lw, strokeColor=_BLACK))  # top span
+            d.add(Line(xl, yb, xr, yb, strokeWidth=lw, strokeColor=_BLACK))  # bottom span
+            d.add(Line(xl, yb, xl, yt, strokeWidth=lw, strokeColor=_BLACK))  # left connector
+            d.add(Line(xr, yt, xr, yt - stub, strokeWidth=lw, strokeColor=_BLACK))  # top-right stub
+            d.add(Line(xr, yb, xr, yb + stub, strokeWidth=lw, strokeColor=_BLACK))  # bot-right stub
+            if a:
+                d.add(GStr(xl - 3, mid, a, fontSize=fs, textAnchor="end",   fillColor=_BLACK))
+            if b:
+                d.add(GStr((xl + xr) / 2, yt + 1, b, fontSize=fs, textAnchor="middle", fillColor=_BLACK))
+            if c:
+                d.add(GStr(xr + 3, mid, c, fontSize=fs, textAnchor="start", fillColor=_BLACK))
 
         elif shape == "Rect":
             lx = m + 4; rx = SW - m - 4
