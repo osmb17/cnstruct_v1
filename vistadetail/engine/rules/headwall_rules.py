@@ -35,7 +35,8 @@ def rule_front_face_horiz(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="FF1", size=p.horiz_bar_size, qty=qty, length_in=bar_len_in,
-        shape="Str", notes="FF Horiz", source_rule="rule_front_face_horiz",
+        shape="U", leg_a_in=hook_add_in, leg_b_in=p.wall_width_ft * 12, leg_c_in=hook_add_in,
+        notes="FF Horiz", source_rule="rule_front_face_horiz",
     )]
 
 
@@ -52,7 +53,8 @@ def rule_front_face_vert(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="FF2", size=p.vert_bar_size, qty=qty, length_in=bar_len_in,
-        shape="Str", notes="FF Vert", source_rule="rule_front_face_vert",
+        shape="L", leg_a_in=p.wall_height_ft * 12 + 6.0, leg_b_in=bot_hook,
+        notes="FF Vert", source_rule="rule_front_face_vert",
     )]
 
 
@@ -75,7 +77,10 @@ def rule_back_face_horiz(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="BF1", size=p.horiz_bar_size, qty=qty, length_in=bar_len_in,
-        shape="Str", notes="BF Horiz", source_rule="rule_back_face_horiz",
+        shape="U", leg_a_in=hook_add_in,
+        leg_b_in=max((p.wall_width_ft * 12) - (2 * batter_in), 0.0),
+        leg_c_in=hook_add_in,
+        notes="BF Horiz", source_rule="rule_back_face_horiz",
     )]
 
 

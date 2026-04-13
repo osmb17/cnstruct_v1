@@ -94,7 +94,8 @@ def rule_stem_vert(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="SW2", size=p.vert_bar_size, qty=qty_total, length_in=bar_len_in,
-        shape="Str", notes="Stem Vert EF", source_rule="rule_stem_vert",
+        shape="L", leg_a_in=p.stem_height_ft * 12.0 + 6.0, leg_b_in=bot_hook_in,
+        notes="Stem Vert EF", source_rule="rule_stem_vert",
     )]
 
 
@@ -128,7 +129,8 @@ def rule_toe_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="TW1", size=p.footing_bar_size, qty=qty, length_in=bar_len_in,
-        shape="Str", notes="Toe Bars Bot", source_rule="rule_toe_bars",
+        shape="L", leg_a_in=footing_len_in - p.cover_in, leg_b_in=hook_in,
+        notes="Toe Bars Bot", source_rule="rule_toe_bars",
     )]
 
 
@@ -159,7 +161,8 @@ def rule_heel_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="HW1", size=p.footing_bar_size, qty=qty, length_in=bar_len_in,
-        shape="Str", notes="Heel Bars Top", source_rule="rule_heel_bars",
+        shape="L", leg_a_in=footing_len_in - p.cover_in, leg_b_in=hook_in,
+        notes="Heel Bars Top", source_rule="rule_heel_bars",
     )]
 
 
@@ -237,7 +240,8 @@ def rule_shear_key(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="KW1", size=p.footing_bar_size, qty=qty, length_in=bar_len_in,
-        shape="U", notes="Shear Key U-bars", source_rule="rule_shear_key",
+        shape="U", leg_a_in=leg_in, leg_b_in=bend_add_in, leg_c_in=leg_in,
+        notes="Shear Key U-bars", source_rule="rule_shear_key",
     )]
 
 

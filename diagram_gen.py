@@ -1381,7 +1381,7 @@ def get_diagram(template_name: str) -> bytes | None:
 _FIELD_LABELS: dict[str, dict[str, str]] = {
     "G1 Inlet":              {"x_dim_ft": "X", "wall_thick_in": "T",
                               "_inside_x_ft": "Inside X"},
-    "G2 Inlet":              {"x_dim_ft": "X", "wall_thick_in": "T"},
+    "G2 Inlet":              {"x_dim_ft": "X", "wall_thick_in": "T", "_y_ext_ft": "Y"},
     "G3 Inlet":              {"x_dim_ft": "L1"},
     "G4 Inlet":              {"x_dim_ft": "L1"},
     "G5 Inlet":              {"x_dim_ft": "L1"},

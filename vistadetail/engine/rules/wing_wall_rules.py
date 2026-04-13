@@ -37,7 +37,8 @@ def rule_wing_horiz(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="WH1", size=p.horiz_bar_size, qty=qty_total, length_in=bar_len_in,
-        shape="Str", notes="Wing Horiz EF", source_rule="rule_wing_horiz",
+        shape="L", leg_a_in=p.wing_length_ft * 12, leg_b_in=hook_add_in,
+        notes="Wing Horiz EF", source_rule="rule_wing_horiz",
     )]
 
 
@@ -61,7 +62,8 @@ def rule_wing_vert(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="WV1", size=p.vert_bar_size, qty=qty_total, length_in=bar_len_in,
-        shape="Str", notes="Wing Vert EF (max-length)",
+        shape="L", leg_a_in=p.hw_height_ft * 12 + 6.0, leg_b_in=bot_hook,
+        notes="Wing Vert EF (max-length)",
         review_flag="Verify bar lengths suit wall taper",
         source_rule="rule_wing_vert",
     )]
