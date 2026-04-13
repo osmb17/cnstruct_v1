@@ -285,6 +285,7 @@ def _diag_g2_inlet() -> bytes:
     hd_yt  = -0.45       # top horizontal line
     hd_yb  = -1.25       # bottom horizontal line
 
+    hd_stub = 0.13   # tiny inward stub at right open end — illusion of hoop wrap
     lw_h = 2.2
     ax.plot([hd_x0, hd_x2], [hd_yt, hd_yt], color=_OUTLINE, lw=lw_h,
             solid_capstyle="round", zorder=6)                         # top span
@@ -292,7 +293,11 @@ def _diag_g2_inlet() -> bytes:
             solid_capstyle="round", zorder=6)                         # left connector (closed)
     ax.plot([hd_x0, hd_x2], [hd_yb, hd_yb], color=_OUTLINE, lw=lw_h,
             solid_capstyle="round", zorder=6)                         # bottom span
-    # right side intentionally open (plain tail exits wall here)
+    # right side: minimal inward stubs to suggest hoop wrap (not fully closed)
+    ax.plot([hd_x2, hd_x2], [hd_yt, hd_yt - hd_stub], color=_OUTLINE, lw=lw_h,
+            solid_capstyle="round", zorder=6)                         # top-right stub (inward)
+    ax.plot([hd_x2, hd_x2], [hd_yb, hd_yb + hd_stub], color=_OUTLINE, lw=lw_h,
+            solid_capstyle="round", zorder=6)                         # bot-right stub (inward)
 
     ax.text(hd_x0 - 0.07, (hd_yt + hd_yb) / 2, "5.5\"",
             ha="right", va="center", fontsize=7.5, color=_DIM, fontweight="bold")
