@@ -276,6 +276,26 @@ def _diag_g2_inlet() -> bytes:
     ax.text(tr_x + 0.12, T / 2, "T", ha="left", va="center", fontsize=8,
             color=_LABEL, fontweight="bold")
 
+    # ── Hoop bar detail (lower-right) ────────────────────────────────
+    # Shows HP1 hoop bar profile: three-sided U-shape (open at bottom),
+    # span horizontal with two downward legs — "not fully closed, not vertical"
+    hd_x0 = OX + 1.3    # left edge
+    hd_x1 = OX + 2.9    # right edge  (stays within xlim OX+3.2)
+    hd_yt  = -0.55       # top of hoop (horizontal span)
+    hd_yb  = -1.45       # bottom of legs (open end)
+
+    lw_h = 2.2
+    ax.plot([hd_x0, hd_x1], [hd_yt, hd_yt],   color=_OUTLINE, lw=lw_h,
+            solid_capstyle="round", zorder=6)                              # span (top)
+    ax.plot([hd_x0, hd_x0], [hd_yt, hd_yb],   color=_OUTLINE, lw=lw_h,
+            solid_capstyle="round", zorder=6)                              # left leg
+    ax.plot([hd_x1, hd_x1], [hd_yt, hd_yb],   color=_OUTLINE, lw=lw_h,
+            solid_capstyle="round", zorder=6)                              # right leg
+    # bottom is intentionally open
+
+    ax.text((hd_x0 + hd_x1) / 2, hd_yt + 0.09, "HP1 HOOP (TYP.)",
+            ha="center", va="bottom", fontsize=7, color=_LABEL, fontweight="bold")
+
     # Axes and title
     _axes_compass(ax, -2.0, -2.5)
     _title(ax, "G2 INLET -- PLAN VIEW")
