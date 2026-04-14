@@ -59,7 +59,7 @@ SHL_MAP = {
     "L":      "L",
     "U":      "U",
     "Hook":   "H",
-    "Hoop":   "H",
+    "Hoop":   "S",
     "Spiral": "S",
 }
 
@@ -69,7 +69,7 @@ TYPE_MAP = {
     "L":      "1",
     "U":      "2",
     "Hook":   "1",
-    "Hoop":   "SQ",
+    "Hoop":   "S6",
     "Spiral": "SPI",
 }
 
@@ -440,9 +440,9 @@ def bar_to_vista_row(bar) -> list:
         bar.leg_a_ft_in or "",  # J: A
         bar.leg_b_ft_in or "",  # K: B
         bar.leg_c_ft_in or "",  # L: C'
-        "",                # M: D (not computed for simple shapes)
+        bar.leg_d_ft_in or "",  # M: D
         "",                # N: E
         "",                # O: F
-        "",                # P: G
+        bar.leg_g_ft_in or "",  # P: G
         "",                # Q: H
     ]

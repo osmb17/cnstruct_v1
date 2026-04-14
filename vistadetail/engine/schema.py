@@ -93,6 +93,8 @@ class BarRow:
     leg_a_in: float | None = None       # for shaped bars
     leg_b_in: float | None = None
     leg_c_in: float | None = None
+    leg_d_in: float | None = None       # bend chart D dimension (e.g. S6 hoops)
+    leg_g_in: float | None = None       # bend chart G dimension (e.g. S6 hoops)
     notes: str = ""
     ref: str = ""                       # Feature F: shop drawing reference pin (e.g. "Sht 3, Det 4/S3")
     source_rule: str = ""               # which rule produced this row
@@ -116,6 +118,14 @@ class BarRow:
     @property
     def leg_c_ft_in(self) -> str:
         return fmt_inches(self.leg_c_in) if self.leg_c_in is not None else ""
+
+    @property
+    def leg_d_ft_in(self) -> str:
+        return fmt_inches(self.leg_d_in) if self.leg_d_in is not None else ""
+
+    @property
+    def leg_g_ft_in(self) -> str:
+        return fmt_inches(self.leg_g_in) if self.leg_g_in is not None else ""
 
     def to_row(self) -> list[Any]:
         """Flat list for writing to Excel / CSV."""
