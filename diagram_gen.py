@@ -252,12 +252,12 @@ def _diag_g2_inlet() -> bytes:
 
     # -- Inside Y dimension (right) --
     _ext_dim_v(ax, T, T + IY, OX, OX + 1.1, "Inside Y\nDimension")
-    ax.text(OX + 1.35, T + IY * 0.30, "2'-11 3/8\" min",
+    ax.text(OX + 1.35, T + IY * 0.30, "3'-0\" (2'-11 3/8\" min)",
             ha="left", va="center", fontsize=6.5, color=_DIM)
 
     # -- Inside X dimension (bottom) --
     _ext_dim_h(ax, T, T + IX, 0, -1.3, "Inside X Dimension", fontsize=8)
-    ax.text(T + IX / 2, -1.7, "2'-11 3/8\" min  OR\nPipe penetration dia + 3\" min (90\" max)",
+    ax.text(T + IX / 2, -1.7, "3'-0\" (2'-11 3/8\" min)  OR\nPipe penetration dia + 3\" min (90\" max)",
             ha="center", va="top", fontsize=6.5, color=_DIM)
 
     # T labels (bottom-left and bottom-right)

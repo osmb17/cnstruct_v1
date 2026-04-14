@@ -528,6 +528,8 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
         a = _cdim(bar.leg_a_in) if bar.leg_a_in else None
         b = _cdim(bar.leg_b_in) if bar.leg_b_in else None
         c = _cdim(bar.leg_c_in) if bar.leg_c_in else None
+        dd = _cdim(bar.leg_d_in) if bar.leg_d_in else None
+        g = _cdim(bar.leg_g_in) if bar.leg_g_in else None
         shape = (bar.shape or "Str").strip()
 
         if shape == "Str":
@@ -564,23 +566,32 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
                            fontSize=fs, textAnchor="middle", fillColor=_BLACK))
 
         elif shape == "Hoop":
-            # Horizontal C-shape: closed left (hook tail = leg_a), open right (plain tail = leg_c).
-            # Two horizontal span lines connected on the left; right side open with inward stubs.
-            xl = m + 18; xr = SW - m - 10
-            yt = SH - 5; yb = fs + 3
+            # S6 bend: rectangular hoop with tails.
+            # A (left tail) ─┐ B (top span) ┌─ G (right tail)
+            #                 │              │
+            #                 └── D (bot) ───┘
+            #                    C (bottom tail)
+            xl = m + 16; xr = SW - m - 16
+            yt = SH - 4; yb = fs + 2
             mid = (yt + yb) / 2
-            stub = (yt - yb) * 0.42   # stub reaches ~42% of height from each end
-            d.add(Line(xl, yt, xr, yt, strokeWidth=lw, strokeColor=_BLACK))  # top span
-            d.add(Line(xl, yb, xr, yb, strokeWidth=lw, strokeColor=_BLACK))  # bottom span
-            d.add(Line(xl, yb, xl, yt, strokeWidth=lw, strokeColor=_BLACK))  # left connector
-            d.add(Line(xr, yt, xr, yt - stub, strokeWidth=lw, strokeColor=_BLACK))  # top-right stub
-            d.add(Line(xr, yb, xr, yb + stub, strokeWidth=lw, strokeColor=_BLACK))  # bot-right stub
+            tail_len = 8   # visual length for tail stubs
+            d.add(Line(xl, yt, xr, yt, strokeWidth=lw, strokeColor=_BLACK))  # B: top span
+            d.add(Line(xl, yb, xr, yb, strokeWidth=lw, strokeColor=_BLACK))  # D: bottom span
+            d.add(Line(xl, yb, xl, yt, strokeWidth=lw, strokeColor=_BLACK))  # left side
+            d.add(Line(xr, yb, xr, yt, strokeWidth=lw, strokeColor=_BLACK))  # right side
+            d.add(Line(xl, yt, xl - tail_len, yt, strokeWidth=lw, strokeColor=_BLACK))  # A tail
+            d.add(Line(xr, yt, xr + tail_len, yt, strokeWidth=lw, strokeColor=_BLACK))  # G tail
+            d.add(Line(xl, yb, xl - tail_len, yb, strokeWidth=lw, strokeColor=_BLACK))  # C tail
             if a:
-                d.add(GStr(xl - 3, mid, a, fontSize=fs, textAnchor="end",   fillColor=_BLACK))
+                d.add(GStr(xl - tail_len - 1, yt + 1, a, fontSize=fs - 0.5, textAnchor="end", fillColor=_BLACK))
             if b:
-                d.add(GStr((xl + xr) / 2, yt + 1, b, fontSize=fs, textAnchor="middle", fillColor=_BLACK))
+                d.add(GStr((xl + xr) / 2, yt + 1, b, fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
             if c:
-                d.add(GStr(xr + 3, mid, c, fontSize=fs, textAnchor="start", fillColor=_BLACK))
+                d.add(GStr(xl - tail_len - 1, yb - 1, c, fontSize=fs - 0.5, textAnchor="end", fillColor=_BLACK))
+            if dd:
+                d.add(GStr((xl + xr) / 2, 1, dd, fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
+            if g:
+                d.add(GStr(xr + tail_len + 1, yt + 1, g, fontSize=fs - 0.5, textAnchor="start", fillColor=_BLACK))
 
         elif shape == "Rect":
             lx = m + 4; rx = SW - m - 4
@@ -1249,12 +1260,12 @@ with inp_col:
         _ye_key = f"_g2_ye_{_tname}"
         # Force the computed values into session state so they always display
         # correctly even if the user typed something in the field
-        st.session_state[_yi_key] = _format_ft_in(_Y_INT_IN / 12.0)
+        st.session_state[_yi_key] = "3'-0\""   # 2'-11 3/8" rounded up to next foot
         st.session_state[_ye_key] = _format_ft_in(_y_ext_in / 12.0)
         c3, c4 = st.columns(2)
         with c3:
             st.text_input("Y Interior", key=_yi_key,
-                          help="Fixed at 2'-11 3/8\" per Caltrans D73A — updates automatically")
+                          help="Caltrans D73A minimum 2'-11 3/8\" — rounded up to 3'-0\" for barlist")
         with c4:
             st.text_input("Y Exterior", key=_ye_key,
                           help=f"Y Interior + 2 \u00d7 {int(_tv)}\" — updates with wall thickness")
@@ -1469,7 +1480,8 @@ if bars is not None:
         "Mark":   b.mark,  "Size":   b.size,   "Qty":    b.qty,
         "Length": b.length_ft_in,
         "Type":   SHAPE_SYMBOLS.get(b.shape, b.shape),
-        "Leg A":  b.leg_a_ft_in, "Leg B":  b.leg_b_ft_in, "Leg C":  b.leg_c_ft_in,
+        "A":  b.leg_a_ft_in, "B":  b.leg_b_ft_in, "C":  b.leg_c_ft_in,
+        "D":  b.leg_d_ft_in, "G":  b.leg_g_ft_in,
         "Notes":  b.notes, "Ref":    b.ref,    "Review": b.review_flag,
     } for b in bars])
 

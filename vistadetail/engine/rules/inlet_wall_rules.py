@@ -567,7 +567,10 @@ _HP_TAIL_HOOK  = 5.5   # hook side tail
 
 
 def rule_g2_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """Hoops at grate level — U-bars spanning gut_dim, 6.5\" plain / 5.5\" hook tails."""
+    """Hoops at grate level — S6 bend type spanning gut_dim.
+
+    Bend chart S6: A=5.5\" B=gut C=6.5\" D=gut G=5.5\"
+    """
     if p.gut_dim <= 0:
         log.step("Hoops: skipped (gut_dim ≤ 0)")
         return []
@@ -576,14 +579,19 @@ def rule_g2_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
     hp_total = p.gut_dim + _HP_TAIL_PLAIN + _HP_TAIL_HOOK   # gut + 12"
 
     log.step(f"HP1: qty=CEIL({fmt_inches(p.y_ext_in)}/5×{p.n_struct})={qty}, "
-             f"span={fmt_inches(p.gut_dim)}, 6.5\" + 5.5\" tails, "
+             f"span={fmt_inches(p.gut_dim)}, S6 bend, "
              f"total={fmt_inches(hp_total)}")
 
     return [BarRow(
         mark="HP1", size="#5", qty=qty,
         length_in=hp_total,
-        shape="Hoop", leg_a_in=_HP_TAIL_PLAIN, leg_b_in=p.gut_dim, leg_c_in=_HP_TAIL_HOOK,
-        notes=f"Hoops @5oc, 6.5\" / 5.5\" tails",
+        shape="Hoop",
+        leg_a_in=_HP_TAIL_HOOK,    # A = 5.5"
+        leg_b_in=p.gut_dim,        # B = gut span (variable)
+        leg_c_in=_HP_TAIL_PLAIN,   # C = 6.5"
+        leg_d_in=p.gut_dim,        # D = gut span (variable)
+        leg_g_in=_HP_TAIL_HOOK,    # G = 5.5"
+        notes="Hoops @5oc, S6 bend",
         source_rule="rule_g2_hoops",
     )]
 
@@ -749,11 +757,12 @@ def rule_g2exp_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 
 def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """Expanded G2 hoops — U-bars, 6.5\" plain / 5.5\" hook tails.
+    """Expanded G2 hoops — S6 bend type.
 
     Excel formulas:
       Reg:    ROUNDUP((Y_exp_ext) / 5 * n, 0)    span = gut_dim
       Notch:  ROUNDUP((X_ext) / 5 * 2 * n, 0)   span = notch_dim
+    Bend chart S6: A=5.5" B=span C=6.5" D=span G=5.5"
     """
     bars: list[BarRow] = []
     n = p.n_struct
@@ -765,8 +774,13 @@ def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
                  f"span={fmt_inches(p.gut_dim)}, total={fmt_inches(hp1_total)}")
         bars.append(BarRow(
             mark="HP1", size="#5", qty=qty_reg, length_in=hp1_total,
-            shape="Hoop", leg_a_in=_HP_TAIL_PLAIN, leg_b_in=p.gut_dim, leg_c_in=_HP_TAIL_HOOK,
-            notes="Reg Hoops @5oc, 6.5\" / 5.5\" tails",
+            shape="Hoop",
+            leg_a_in=_HP_TAIL_HOOK,    # A = 5.5"
+            leg_b_in=p.gut_dim,        # B = gut span
+            leg_c_in=_HP_TAIL_PLAIN,   # C = 6.5"
+            leg_d_in=p.gut_dim,        # D = gut span
+            leg_g_in=_HP_TAIL_HOOK,    # G = 5.5"
+            notes="Reg Hoops @5oc, S6 bend",
             source_rule="rule_g2exp_hoops",
         ))
 
@@ -777,8 +791,13 @@ def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
                  f"span={fmt_inches(p.notch_dim)}, total={fmt_inches(hp2_total)}")
         bars.append(BarRow(
             mark="HP2", size="#5", qty=qty_notch, length_in=hp2_total,
-            shape="Hoop", leg_a_in=_HP_TAIL_PLAIN, leg_b_in=p.notch_dim, leg_c_in=_HP_TAIL_HOOK,
-            notes="Notched Hoops @5oc, 6.5\" / 5.5\" tails",
+            shape="Hoop",
+            leg_a_in=_HP_TAIL_HOOK,    # A = 5.5"
+            leg_b_in=p.notch_dim,      # B = notch span
+            leg_c_in=_HP_TAIL_PLAIN,   # C = 6.5"
+            leg_d_in=p.notch_dim,      # D = notch span
+            leg_g_in=_HP_TAIL_HOOK,    # G = 5.5"
+            notes="Notched Hoops @5oc, S6 bend",
             source_rule="rule_g2exp_hoops",
         ))
 
