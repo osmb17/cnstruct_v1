@@ -316,15 +316,18 @@ def _inlet_defaults() -> dict:
 
 
 class TestGenerateInletBarlist:
-    def test_returns_3_marks(self, log):
-        """Default inlet params should produce exactly 3 mark types: H1, V1, C1."""
+    def test_returns_expected_marks(self, log):
+        """Default inlet params should produce the full G2 Inlet mark set."""
         bars = generate_barlist(INLET_TEMPLATE, _inlet_defaults(), log, call_ai=False)
         marks = {b.mark for b in bars}
-        assert marks == {"H1", "V1", "C1"}
+        assert marks == {
+            "A1", "B1", "BM1", "BM2", "H1", "H2", "H3", "H4",
+            "HP1", "RA1", "V1", "V2",
+        }
 
-    def test_returns_3_barrow_objects(self, log):
+    def test_returns_12_barrow_objects(self, log):
         bars = generate_barlist(INLET_TEMPLATE, _inlet_defaults(), log, call_ai=False)
-        assert len(bars) == 3
+        assert len(bars) == 12
 
     def test_all_bars_have_nonempty_ref(self, log):
         """After generate_barlist, every bar must have a non-empty ref."""
@@ -339,8 +342,8 @@ class TestGenerateInletBarlist:
         with pytest.raises(ValueError):
             generate_barlist(INLET_TEMPLATE, bad_params, log, call_ai=False)
 
-    def test_corner_bars_no_gives_2_marks(self, log):
-        """With corner_bars='no', only H1 and V1 should be produced."""
+    def test_corner_bars_no_excludes_C1(self, log):
+        """With corner_bars='no', C1 should not be produced."""
         params = _inlet_defaults()
         params["corner_bars"] = "no"
         bars = generate_barlist(INLET_TEMPLATE, params, log, call_ai=False)

@@ -217,11 +217,33 @@ def bar_diameter(bar_size: str) -> float:
     return d
 
 
-def development_length_tension(bar_size: str, fc_psi: float = 4000, fy_psi: float = 60000,
-                                 cover_in: float = 2.0, epoxy: bool = False) -> float:
+def min_bend_diameter(bar_size: str, is_stirrup: bool = False) -> float:
+    """Minimum inside bend diameter per ACI 318-19 Table 25.3.1.
+
+    Stirrups/ties #3-#5: 4db
+    All other #3-#8:     6db
+    #9-#11:              8db
     """
-    Basic tension development length per ACI 318-19 Section 25.5.2.
-    Uses simplified formula (no transverse reinforcement).
+    db = bar_diameter(bar_size)
+    size_num = int(bar_size.lstrip("#"))
+    if is_stirrup and size_num <= 5:
+        return 4.0 * db
+    elif size_num <= 8:
+        return 6.0 * db
+    else:
+        return 8.0 * db
+
+
+def development_length_tension(bar_size: str, fc_psi: float = 4000, fy_psi: float = 60000,
+                                 cover_in: float = 2.0, spacing_in: float | None = None,
+                                 epoxy: bool = False) -> float:
+    """
+    Tension development length per ACI 318-19 Section 25.5.2.1a.
+    Uses simplified formula (Ktr = 0, no transverse reinforcement credit).
+
+    cb = min(cover, spacing/2) per ACI 318-19 25.5.2.1.
+    If spacing_in is None, falls back to cover only (conservative).
+
     Returns inches.
     """
     import math
@@ -231,15 +253,15 @@ def development_length_tension(bar_size: str, fc_psi: float = 4000, fy_psi: floa
     psi_s = 0.8 if bar_size in ("#3", "#4", "#5", "#6") else 1.0
     lam = 1.0     # normal weight concrete
 
-    # cb = smaller of cover or half clear spacing; conservatively use cover
-    cb = cover_in
+    # cb = smaller of cover or half center-to-center spacing (ACI 318-19 25.5.2.1)
+    if spacing_in is not None:
+        cb = min(cover_in, spacing_in / 2.0)
+    else:
+        cb = cover_in
     cb_over_db = min(cb / db, 2.5)  # cap per ACI
 
-    numerator = (3 / 40) * (fy_psi / (lam * math.sqrt(fc_psi)))
-    denominator = (cb_over_db / psi_t / psi_e / psi_s)  # simplified
-    ld = numerator * psi_t * psi_e * psi_s * db / (lam * math.sqrt(fc_psi))
-    # Full ACI 25.5.2.1a formula:
+    # ACI 318-19 Eq. 25.5.2.1a (Ktr = 0, no transverse reinforcement credit)
     ld = ((3 * fy_psi * psi_t * psi_e * psi_s) /
-          (40 * lam * math.sqrt(fc_psi) * (cb_over_db + 0))) * db
+          (40 * lam * math.sqrt(fc_psi) * cb_over_db)) * db
     ld = max(ld, 12.0)  # ACI minimum 12 in
     return round(ld, 2)
