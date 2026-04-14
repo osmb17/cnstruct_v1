@@ -9,5 +9,11 @@ font = "sans serif"
 [server]
 headless = true
 
+[client]
+# "minimal" hides the Share / Star / GitHub fork buttons from the top-right
+# toolbar on Streamlit Community Cloud. Combined with the CSS injected in
+# app.py, this removes all default Streamlit chrome from the UI.
+toolbarMode = "minimal"
+
 [browser]
 gatherUsageStats = false

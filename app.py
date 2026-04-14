@@ -53,8 +53,18 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-/* ── Base & page ─────────────────────────────────────────────── */
+/* ── Hide Streamlit chrome ────────────────────────────────────── *
+ * Removes all default Streamlit UI elements so the app looks like
+ * a standalone tool, not a Streamlit demo:
+ *   - collapsedControl: the sidebar toggle arrow
+ *   - stHeader: the top bar with Share, Star, GitHub, and deploy menu
+ *   - MainMenu: the hamburger (three-dot) menu in the top-right
+ *   - stDecoration: the thin colored line across the top of the page
+ * Also set toolbarMode = "minimal" in .streamlit/config.toml.       */
 [data-testid="collapsedControl"] { display: none; }
+header[data-testid="stHeader"] { display: none !important; }
+#MainMenu { visibility: hidden; }
+[data-testid="stDecoration"] { display: none !important; }
 
 .block-container {
     padding-top: 1.5rem !important;

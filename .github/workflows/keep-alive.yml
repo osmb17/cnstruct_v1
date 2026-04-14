@@ -1,0 +1,30 @@
+# ---------------------------------------------------------------------------
+# Keep-alive ping for Streamlit Community Cloud
+#
+# Streamlit's free tier puts apps to sleep after 7 days of no web traffic.
+# This workflow runs a lightweight HTTP request (curl) against the app URL
+# every 4 hours via GitHub Actions cron, which counts as a visit and resets
+# the inactivity timer. The app stays awake 24/7 at zero cost.
+#
+# You can also trigger it manually from the Actions tab (workflow_dispatch).
+# ---------------------------------------------------------------------------
+
+name: Keep Streamlit alive
+
+on:
+  schedule:
+    # Run every 4 hours (6 pings/day) — well within the 7-day sleep window
+    - cron: "0 */4 * * *"
+  workflow_dispatch:  # allow manual trigger from GitHub Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Streamlit app to prevent sleep
+        run: |
+          # Hit the app URL; any HTTP response (even a redirect) counts as
+          # a visit and keeps the app awake. "|| true" ensures the workflow
+          # doesn't fail if the app is temporarily unreachable.
+          curl -sS -o /dev/null -w "HTTP %{http_code} in %{time_total}s\n" \
+            "https://cnstructv1-yzwdtrvedcaybpq6xhtune.streamlit.app/" || true
