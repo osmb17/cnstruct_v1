@@ -188,7 +188,8 @@ def rule_stem_dowels(p: Params, log: ReasoningLogger) -> list[BarRow]:
     embed_in = p.footing_depth_in - p.cover_in
 
     # Lap splice into stem: Class B = 1.3 x ld
-    ld_in = development_length_tension(p.vert_bar_size, cover_in=p.cover_in)
+    ld_in = development_length_tension(p.vert_bar_size, cover_in=p.cover_in,
+                                       spacing_in=p.vert_spacing_in)
     lap_in = math.ceil(1.3 * ld_in)
 
     bar_len_in = embed_in + lap_in
@@ -226,21 +227,20 @@ def rule_shear_key(p: Params, log: ReasoningLogger) -> list[BarRow]:
     wall_len_in = p.wall_length_ft * 12.0
     qty = math.floor((wall_len_in - 2.0 * p.cover_in) / p.footing_spacing_in) + 1
 
-    # U-bar: two legs each = key_depth_in + cover; bend at bottom adds ~4db
-    from vistadetail.engine.hooks import bar_diameter
-    db = bar_diameter(p.footing_bar_size)
+    # U-bar: two legs each = key_depth - cover; bend per ACI 318-19 Table 25.3.1
+    from vistadetail.engine.hooks import min_bend_diameter
+    bend_d = min_bend_diameter(p.footing_bar_size)  # 6db (#3-#8) or 8db (#9+)
     leg_in = p.key_depth_in - p.cover_in
-    bend_add_in = 4.0 * db  # inside bend radius allowance
-    bar_len_in = (2.0 * leg_in) + bend_add_in
+    bar_len_in = (2.0 * leg_in) + bend_d
     bar_len_in = max(bar_len_in, 12.0)
 
     log.step(f"Shear key requested — key depth = {p.key_depth_in} in")
-    log.step(f"U-bar qty = {qty}  |  leg = {leg_in:.1f} in × 2 + {bend_add_in:.2f} bend = {bar_len_in:.2f} in")
+    log.step(f"U-bar qty = {qty}  |  leg = {leg_in:.1f} in × 2 + {bend_d:.2f} bend = {bar_len_in:.2f} in")
     log.result("KW1", f"{p.footing_bar_size} × {qty} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
         mark="KW1", size=p.footing_bar_size, qty=qty, length_in=bar_len_in,
-        shape="U", leg_a_in=leg_in, leg_b_in=bend_add_in, leg_c_in=leg_in,
+        shape="U", leg_a_in=leg_in, leg_b_in=bend_d, leg_c_in=leg_in,
         notes="Shear Key U-bars", source_rule="rule_shear_key",
     )]
 

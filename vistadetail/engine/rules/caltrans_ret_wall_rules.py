@@ -119,8 +119,9 @@ def rule_ct_rw_stem_vert(p: Params, log: ReasoningLogger) -> list[BarRow]:
         s_size = row["s"]
         s_spacing = row["sS"]
         s_qty = math.floor((wall_len_in - 2 * _STEM_COVER) / s_spacing) + 1
-        # s-bars: shorter, only upper portion of stem (Zone 2)
-        s_len = stem_ht_in * 0.6  # approximate Zone 2 length
+        # Zone 2 length: approximated as 60% of stem height.
+        # Actual zone boundary varies by height per B3-1 plan sheet.
+        s_len = stem_ht_in * 0.6
 
         log.step(
             f"CW8: s-bars = {s_size} @ {s_spacing}\" oc (Zone 2, H >= 18')",
@@ -133,6 +134,7 @@ def rule_ct_rw_stem_vert(p: Params, log: ReasoningLogger) -> list[BarRow]:
             mark="CW8", size=s_size, qty=s_qty, length_in=s_len,
             shape="Str", notes=f"s-bars Zone 2 vert @ {s_spacing}\" oc (B3-1A)",
             source_rule="rule_ct_rw_stem_vert",
+            review_flag="Zone 2 length uses 0.6×H approximation — verify against B3-1 plan sheet",
         ))
 
     log.result("CW1", f"{c_size} x {qty} @ {fmt_inches(bar_len)}",
@@ -323,14 +325,15 @@ def rule_ct_rw_shear_key(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     # Key depth: 1'-0" typical for all heights per B3-1
     key_depth = 12.0
-    from vistadetail.engine.hooks import bar_diameter
-    db = bar_diameter(d_size)
+    from vistadetail.engine.hooks import min_bend_diameter
+    bend_d = min_bend_diameter(d_size)   # ACI 318-19 Table 25.3.1
     leg = key_depth - _FTG_COVER
-    bar_len = 2 * leg + 4 * db
+    bar_len = 2 * leg + bend_d
     bar_len = max(bar_len, 12.0)
 
     log.step(
-        f"CW9 shear key: {d_size} U-bars @ {d_spacing}\" oc, {qty} bars",
+        f"CW9 shear key: {d_size} U-bars @ {d_spacing}\" oc, {qty} bars, "
+        f"bend dia={bend_d:.2f}\"",
         source="CaltransRetWallRules",
     )
     log.result("CW9", f"{d_size} x {qty} @ {fmt_inches(bar_len)}",
@@ -338,7 +341,7 @@ def rule_ct_rw_shear_key(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="CW9", size=d_size, qty=qty, length_in=bar_len,
-        shape="U", leg_a_in=leg, leg_b_in=4 * db, leg_c_in=leg,
+        shape="U", leg_a_in=leg, leg_b_in=bend_d, leg_c_in=leg,
         notes=f"shear key U-bars @ {d_spacing}\" oc (B3-1)",
         source_rule="rule_ct_rw_shear_key",
     )]

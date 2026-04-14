@@ -228,21 +228,26 @@ def _gt_top_slab(p: Params, log: ReasoningLogger, label: str) -> list[BarRow]:
 def _gt_hoops(p: Params, log: ReasoningLogger, label: str) -> list[BarRow]:
     """
     Hoops per D72C Table 2: #4@5" rectangular, at grate level along L.
-    Hoop perimeter = 2 × (w_bar + t_in).
+    Stock length = 2×(w + t) − bend_reduce(shape_4, #4) for 4-bend closed hoop.
     """
+    from vistadetail.engine.hooks import bend_reduce
+
     qty    = math.ceil(p.l_bar / 5.0) + 1
     perim  = 2.0 * (p.w_bar + p.t_in)
+    deduct = bend_reduce("shape_4", "#4")
+    stock  = perim - deduct
 
     log.step(
-        f"{label} hoops #4@5\": qty={qty}, perim={fmt_inches(perim)}",
+        f"{label} hoops #4@5\": qty={qty}, perim={fmt_inches(perim)}, "
+        f"−{deduct}\" bend deduction = {fmt_inches(stock)}",
         source=f"{label}Hoops",
     )
-    log.result("HP", f"#4 x {qty} @ {fmt_inches(perim)}", "Hoops #4@5oc",
+    log.result("HP", f"#4 x {qty} @ {fmt_inches(stock)}", "Hoops #4@5oc",
                source=f"{label}Hoops")
 
     return [
         BarRow(mark="HP", size="#4", qty=qty,
-               length_in=perim, shape="Rect",
+               length_in=stock, shape="Rect",
                leg_a_in=p.w_bar, leg_b_in=p.t_in,
                notes="#4 hoops @5oc", source_rule=f"rule_{label.lower()}_hoops"),
     ]

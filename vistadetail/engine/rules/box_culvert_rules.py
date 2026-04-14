@@ -75,7 +75,8 @@ def rule_wall_vertical(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Exterior wall vertical bars each face — from bottom slab to top slab.
     Length = clear rise + development into top + bottom slabs.
     """
-    ld_in = development_length_tension(p.wall_bar_size, cover_in=p.cover_in)
+    ld_in = development_length_tension(p.wall_bar_size, cover_in=p.cover_in,
+                                       spacing_in=p.wall_spacing_in)
     bar_len_in = (p.clear_rise_ft * 12) + (2 * ld_in)
 
     usable_len = (p.barrel_length_ft * 12) - (2 * p.cover_in)
@@ -146,7 +147,8 @@ def rule_haunch_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Qty = bars along barrel length at haunch_spacing.
     """
     haunch_leg_in = getattr(p, "haunch_size_in", 12.0)
-    ld_in = development_length_tension(p.slab_bar_size, cover_in=p.cover_in)
+    ld_in = development_length_tension(p.slab_bar_size, cover_in=p.cover_in,
+                                       spacing_in=p.slab_spacing_in)
     # L-bar: each leg runs along slab/wall face = haunch_leg + development
     leg_total = haunch_leg_in + ld_in
     bar_len_in = 2 * leg_total
