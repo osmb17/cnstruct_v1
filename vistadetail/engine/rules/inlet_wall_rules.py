@@ -562,25 +562,44 @@ def rule_g2_right_angle(p: Params, log: ReasoningLogger) -> list[BarRow]:
     )]
 
 
-_HP_TAIL_PLAIN = 6.5   # plain (non-hook) side tail
-_HP_TAIL_HOOK  = 5.5   # hook side tail
+_HP_TAIL_PLAIN = 6.5   # C: plain tail (bottom span of S6)
+_HP_TAIL_HOOK  = 5.5   # A and G: hook tails (top extensions of S6)
+_HP_BAR_SIZE   = "#5"
+
+
+def _s6_total(gut: float) -> float:
+    """Total developed (stock) length for an S6 hoop.
+
+    S6 bar path: A(tail) → down B(gut) → across C(6.5\") → up D(gut) → G(tail)
+    Sum of legs = A + B + C + D + G = 5.5 + gut + 6.5 + gut + 5.5 = 2×gut + 17.5
+    Minus shape_4 bend deduction for #5 bar = 6.0\" (4 bends).
+    Stock length = 2×gut + 11.5\"
+    """
+    from vistadetail.engine.hooks import bend_reduce
+    legs_sum = _HP_TAIL_HOOK + gut + _HP_TAIL_PLAIN + gut + _HP_TAIL_HOOK
+    return legs_sum - bend_reduce("shape_4", _HP_BAR_SIZE)
 
 
 def rule_g2_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """Hoops at grate level — S6 bend type spanning gut_dim.
 
-    Bend chart S6: A=5.5\" B=gut C=6.5\" D=gut G=5.5\"
+    Bend chart S6 (from Vista scan_20260131.pdf):
+      A = 5.5\"  (hook tail, top-left)
+      B = gut    (left side height, variable)
+      C = 6.5\"  (bottom span)
+      D = gut    (right side height, variable)
+      G = 5.5\"  (hook tail, top-right)
+    Stock = A+B+C+D+G − bend_reduce(shape_4,#5) = 2×gut + 11.5\"
     """
     if p.gut_dim <= 0:
         log.step("Hoops: skipped (gut_dim ≤ 0)")
         return []
 
     qty = math.ceil(p.y_ext_in / 5.0 * p.n_struct)
-    hp_total = p.gut_dim + _HP_TAIL_PLAIN + _HP_TAIL_HOOK   # gut + 12"
+    hp_total = _s6_total(p.gut_dim)
 
     log.step(f"HP1: qty=CEIL({fmt_inches(p.y_ext_in)}/5×{p.n_struct})={qty}, "
-             f"span={fmt_inches(p.gut_dim)}, S6 bend, "
-             f"total={fmt_inches(hp_total)}")
+             f"gut={fmt_inches(p.gut_dim)}, S6 stock=2×gut+11.5\"={fmt_inches(hp_total)}")
 
     return [BarRow(
         mark="HP1", size="#5", qty=qty,
@@ -769,16 +788,16 @@ def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     if p.gut_dim > 0:
         qty_reg = math.ceil(p.y_exp_ext_in / 5.0 * n)
-        hp1_total = p.gut_dim + _HP_TAIL_PLAIN + _HP_TAIL_HOOK
+        hp1_total = _s6_total(p.gut_dim)
         log.step(f"HP1 reg: CEIL({fmt_inches(p.y_exp_ext_in)}/5*{n}) = {qty_reg}, "
-                 f"span={fmt_inches(p.gut_dim)}, total={fmt_inches(hp1_total)}")
+                 f"gut={fmt_inches(p.gut_dim)}, S6 stock=2×gut+11.5\"={fmt_inches(hp1_total)}")
         bars.append(BarRow(
             mark="HP1", size="#5", qty=qty_reg, length_in=hp1_total,
             shape="Hoop",
             leg_a_in=_HP_TAIL_HOOK,    # A = 5.5"
-            leg_b_in=p.gut_dim,        # B = gut span
-            leg_c_in=_HP_TAIL_PLAIN,   # C = 6.5"
-            leg_d_in=p.gut_dim,        # D = gut span
+            leg_b_in=p.gut_dim,        # B = left side height
+            leg_c_in=_HP_TAIL_PLAIN,   # C = 6.5" bottom span
+            leg_d_in=p.gut_dim,        # D = right side height
             leg_g_in=_HP_TAIL_HOOK,    # G = 5.5"
             notes="Reg Hoops @5oc, S6 bend",
             source_rule="rule_g2exp_hoops",
@@ -786,9 +805,9 @@ def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     if p.notch_dim > 0:
         qty_notch = math.ceil(p.x_ext_in / 5.0 * 2 * n)
-        hp2_total = p.notch_dim + _HP_TAIL_PLAIN + _HP_TAIL_HOOK
+        hp2_total = _s6_total(p.notch_dim)
         log.step(f"HP2 notch: CEIL({fmt_inches(p.x_ext_in)}/5*2*{n}) = {qty_notch}, "
-                 f"span={fmt_inches(p.notch_dim)}, total={fmt_inches(hp2_total)}")
+                 f"notch={fmt_inches(p.notch_dim)}, S6 stock=2×notch+11.5\"={fmt_inches(hp2_total)}")
         bars.append(BarRow(
             mark="HP2", size="#5", qty=qty_notch, length_in=hp2_total,
             shape="Hoop",
