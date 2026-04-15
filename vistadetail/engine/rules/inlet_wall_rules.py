@@ -476,30 +476,33 @@ def rule_g2_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
       V1: CEIL((X_bar×2 − 2×grate_ded + Y_bar + 6) / 5)
       V2: CEIL((Y_bar + 2×grate_ded + 4) / 5)
 
-    V1 has a 12" (1 ft) tail at one end (hook into footing).
-    V2 (grate side) also has a 12" (1 ft) tail at one end.
+    V1 gets a 12" (1 ft) L-bend at the top: after the first pour the bar is
+    bent horizontally to support the hoops and top deck.  Total = h_adj + 12".
+    V2 (grate side) is a straight bar — no top extension.  Total = h_adj.
     """
     spacing = 5.0
     gd2 = 2 * p.grate_ded   # 48 for Type 24, 36 for Type 18
-    tail_in = 12.0           # 1 ft tail (both V1 and V2)
+    v1_ext = 12.0            # 1 ft top extension on V1 for bending over hoops
 
     qty_v1 = math.ceil((p.x_bar * 2 - gd2 + p.y_bar + 6) / spacing)
     qty_v2 = math.ceil((p.y_bar + gd2 + 4) / spacing)
 
-    v1_len = p.h_adj + tail_in
-    v2_len = p.h_adj + tail_in   # grate side also gets 1ft tail
+    v1_len = p.h_adj + v1_ext
+    v2_len = p.h_adj
 
-    log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}×2 − {gd2:.0f} + {fmt_inches(p.y_bar)} + 6)/{spacing}) = {qty_v1}, 12\" tail")
-    log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + {gd2:.0f} + 4)/{spacing}) = {qty_v2}, 12\" tail (grate side)")
+    log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}×2 − {gd2:.0f} + {fmt_inches(p.y_bar)} + 6)/{spacing}) = {qty_v1}, "
+             f"len={fmt_inches(v1_len)} (h_adj + 12\" top bend)")
+    log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + {gd2:.0f} + 4)/{spacing}) = {qty_v2}, "
+             f"len={fmt_inches(v2_len)} (h_adj, straight)")
 
     return [
         BarRow(mark="V1", size="#5", qty=qty_v1, length_in=v1_len,
-               shape="L", leg_a_in=p.h_adj, leg_b_in=tail_in,
-               notes="Verticals @5oc, 1ft tail",
+               shape="L", leg_a_in=p.h_adj, leg_b_in=v1_ext,
+               notes="Verticals @5oc, 1ft top bend for hoops",
                source_rule="rule_g2_verticals"),
         BarRow(mark="V2", size="#5", qty=qty_v2, length_in=v2_len,
-               shape="L", leg_a_in=p.h_adj, leg_b_in=tail_in,
-               notes="Verticals Grate Side @5oc, 1ft tail",
+               shape="Str",
+               notes="Verticals Grate Side @5oc",
                source_rule="rule_g2_verticals"),
     ]
 
@@ -706,23 +709,25 @@ def rule_g2exp_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
       V1: ROUNDUP((X_bar*2 + Y_bar + 6*T) / 5, 0)
       V2: ROUNDUP((Y_bar + 2*T) / 5, 0)
 
-    NOTE: The Excel workbook does not carry a bar-length cell for these bars.
-    Currently coded as straight bars (h_adj, no footing tail).  The standard
-    G2 verticals carry a 12" footing hook tail (shape="L").  If the expanded
-    inlet also anchors into a footing, these bars should be changed to:
-      length_in=p.h_adj + 12.0, shape="L", leg_a_in=p.h_adj, leg_b_in=12.0
-    Confirm with engineer before changing.
+    V1 gets a 12" (1 ft) L-bend at the top: after the first pour the bar is
+    bent horizontally to support the hoops and top deck.  Total = h_adj + 12".
+    V2 (grate side) is a straight bar.  Total = h_adj.
     """
     t = p.t_in
+    v1_ext = 12.0   # 1 ft top extension on V1 for bending over hoops
+
     qty_v1 = math.ceil((p.x_bar * 2 + p.y_bar + 6 * t) / 5.0)
     qty_v2 = math.ceil((p.y_bar + 2 * t) / 5.0)
 
-    log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}*2 + {fmt_inches(p.y_bar)} + 6*{t:.0f})/ 5) = {qty_v1}")
-    log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + 2*{t:.0f})/5) = {qty_v2}")
+    log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}*2 + {fmt_inches(p.y_bar)} + 6*{t:.0f})/ 5) = {qty_v1}, "
+             f"len={fmt_inches(p.h_adj + v1_ext)} (h_adj + 12\" top bend)")
+    log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + 2*{t:.0f})/5) = {qty_v2}, "
+             f"len={fmt_inches(p.h_adj)} (h_adj, straight)")
 
     return [
-        BarRow(mark="V1", size="#5", qty=qty_v1, length_in=p.h_adj,
-               shape="Str", notes="Verticals @5oc",
+        BarRow(mark="V1", size="#5", qty=qty_v1, length_in=p.h_adj + v1_ext,
+               shape="L", leg_a_in=p.h_adj, leg_b_in=v1_ext,
+               notes="Verticals @5oc, 1ft top bend for hoops",
                source_rule="rule_g2exp_verticals"),
         BarRow(mark="V2", size="#5", qty=qty_v2, length_in=p.h_adj,
                shape="Str", notes="Verticals Grate Side @5oc",
@@ -907,21 +912,31 @@ def rule_g2top_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """G2 Inlet Top verticals -- same qty formulas as standard, shorter length.
 
     Qty uses the standard -48/+52 constants (grate_ded parameterized).
-    Length = vert_extension_in + 10 (top-slab extension, NOT full wall H_adj).
+    Length base = vert_extension_in + 10 (top-slab extension, NOT full wall H_adj).
+
+    V1 gets a 12" (1 ft) L-bend at the top for supporting hoops and top deck.
+    V2 (grate side) is a straight bar.
     """
     gd2 = 2 * p.grate_ded
+    v1_ext = 12.0   # 1 ft top extension on V1 for bending over hoops
+
     qty_v1 = math.ceil((p.x_bar * 2 - gd2 + p.y_bar + 6) / 5.0)
     qty_v2 = math.ceil((p.y_bar + gd2 + 4) / 5.0)
 
-    log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}*2 - {gd2:.0f} + {fmt_inches(p.y_bar)} + 6)/5) = {qty_v1}")
-    log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + {gd2:.0f} + 4)/5) = {qty_v2}")
-    log.step(f"Vert bar length = {fmt_inches(p.vert_height)}")
+    v1_len = p.vert_height + v1_ext
+    v2_len = p.vert_height
+
+    log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}*2 - {gd2:.0f} + {fmt_inches(p.y_bar)} + 6)/5) = {qty_v1}, "
+             f"len={fmt_inches(v1_len)} (vert_height + 12\" top bend)")
+    log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + {gd2:.0f} + 4)/5) = {qty_v2}, "
+             f"len={fmt_inches(v2_len)} (vert_height, straight)")
 
     return [
-        BarRow(mark="V1", size="#5", qty=qty_v1, length_in=p.vert_height,
-               shape="Str", notes="Verticals @5oc",
+        BarRow(mark="V1", size="#5", qty=qty_v1, length_in=v1_len,
+               shape="L", leg_a_in=p.vert_height, leg_b_in=v1_ext,
+               notes="Verticals @5oc, 1ft top bend for hoops",
                source_rule="rule_g2top_verticals"),
-        BarRow(mark="V2", size="#5", qty=qty_v2, length_in=p.vert_height,
+        BarRow(mark="V2", size="#5", qty=qty_v2, length_in=v2_len,
                shape="Str", notes="Verticals Grate Side @5oc",
                source_rule="rule_g2top_verticals"),
     ]
