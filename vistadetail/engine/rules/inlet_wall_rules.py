@@ -705,6 +705,13 @@ def rule_g2exp_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Excel formulas:
       V1: ROUNDUP((X_bar*2 + Y_bar + 6*T) / 5, 0)
       V2: ROUNDUP((Y_bar + 2*T) / 5, 0)
+
+    NOTE: The Excel workbook does not carry a bar-length cell for these bars.
+    Currently coded as straight bars (h_adj, no footing tail).  The standard
+    G2 verticals carry a 12" footing hook tail (shape="L").  If the expanded
+    inlet also anchors into a footing, these bars should be changed to:
+      length_in=p.h_adj + 12.0, shape="L", leg_a_in=p.h_adj, leg_b_in=12.0
+    Confirm with engineer before changing.
     """
     t = p.t_in
     qty_v1 = math.ceil((p.x_bar * 2 + p.y_bar + 6 * t) / 5.0)

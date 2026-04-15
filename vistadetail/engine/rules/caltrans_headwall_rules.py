@@ -220,14 +220,14 @@ def rule_ct_hw_pipe_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """Pipe hoop bars: 2-#6 around pipe opening per D89."""
     pipe_dia = p.pipe_dia_in
     pipe_circ = math.pi * pipe_dia
-    # Hoop = circumference + 2 x development length (~12 x db for #6)
+    # Ring stock length = circumference + lap splice (each free end gets 1 dev length)
     from vistadetail.engine.hooks import bar_diameter
     db = bar_diameter("#6")
     dev_len = 12 * db
     hoop_len = pipe_circ + 2 * dev_len
 
     log.step(
-        f"HW6: 2-#6 pipe hoops, circ = {pipe_circ:.0f}\" + 2x{dev_len:.0f}\" dev = {fmt_inches(hoop_len)}",
+        f"HW6: 2-#6 pipe rings, circ = {pipe_circ:.0f}\" + 2x{dev_len:.0f}\" lap = {fmt_inches(hoop_len)}",
         source="CaltransHeadwallRules",
     )
     log.result("HW6", f"#6 x 2 @ {fmt_inches(hoop_len)}",
@@ -235,7 +235,7 @@ def rule_ct_hw_pipe_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="HW6", size="#6", qty=2, length_in=hoop_len,
-        shape="Hoop", notes="pipe hoop 2-#6 around opening (D89)",
+        shape="Rng", notes="pipe ring 2-#6 around opening (D89)",
         source_rule="rule_ct_hw_pipe_hoops",
     )]
 
