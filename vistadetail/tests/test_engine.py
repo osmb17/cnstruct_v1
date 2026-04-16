@@ -1170,7 +1170,9 @@ class TestPipeEncasement:
         """
         Gold: Route 118 Sand Canyon encasement — 234 linear ft, #5@9oc, n_long_bars=12.
           E1 qty = floor(2808/9) = 312
-          E2 qty = 12 (longitudinals)
+          E2: run = 2808-4 = 2804", ld=#4=12", lap=ceil(1.3*12)=16",
+              effective/piece = 720-16 = 704", pieces = ceil(2804/704) = 4
+              qty = 12 positions * 4 pieces = 48 bars @ 60'-0" (stock)
         """
         params = {
             "encasement_length_ft": 234.0,
@@ -1181,7 +1183,8 @@ class TestPipeEncasement:
         bars = generate_barlist(PE_TEMPLATE, params, log, call_ai=False)
         bar_map = {b.mark: b for b in bars}
         assert bar_map["E1"].qty == _m3.floor(2808 / 9)
-        assert bar_map["E2"].qty == 12
+        assert bar_map["E2"].qty == 48          # 12 positions x 4 pieces (spliced run)
+        assert bar_map["E2"].length_in == 720.0 # 60ft stock bar per piece
 
 
 class TestFuelFoundation:
