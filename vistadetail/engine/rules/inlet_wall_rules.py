@@ -394,6 +394,8 @@ def rule_g2_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
         log.warn(f"Interior X = {fmt_inches(x_inside)} ≤ 0 — X exterior too small for T={t:.0f}\"")
     if gut_dim <= 0:
         log.warn(f"Gut dimension = {fmt_inches(gut_dim)} ≤ 0 — check X dimension vs grate type")
+    if 0 < gut_dim < 8.0:
+        log.warn(f"Gut dimension = {fmt_inches(gut_dim)} < 8\" — tight grate opening, verify bar spacing")
 
     log.result("GEOMETRY",
         f"X={fmt_inches(x_ext)} (int {fmt_inches(x_inside)}), "
@@ -690,8 +692,12 @@ def rule_g2exp_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     if gut_dim <= 0:
         log.warn(f"Gut dimension = {fmt_inches(gut_dim)} <= 0")
+    if 0 < gut_dim < 8.0:
+        log.warn(f"Gut dimension = {fmt_inches(gut_dim)} < 8\" — tight grate opening, verify bar spacing")
     if notch_dim <= 0:
         log.warn(f"Notch dimension = {fmt_inches(notch_dim)} <= 0")
+    if 0 < notch_dim < 8.0:
+        log.warn(f"Notch dimension = {fmt_inches(notch_dim)} < 8\" — tight opening, verify bar spacing")
 
     log.result("GEOMETRY",
         f"X={fmt_inches(x_ext)} (int {fmt_inches(x_inside)}), "
@@ -900,6 +906,8 @@ def rule_g2top_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     if gut_dim <= 0:
         log.warn(f"Gut dimension = {fmt_inches(gut_dim)} <= 0")
+    if 0 < gut_dim < 8.0:
+        log.warn(f"Gut dimension = {fmt_inches(gut_dim)} < 8\" — tight grate opening, verify bar spacing")
 
     log.result("GEOMETRY",
         f"X={fmt_inches(x_ext)}, Y={fmt_inches(y_ext)}, T={t:.0f}\", "
