@@ -503,7 +503,7 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
         Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
     )
     from reportlab.graphics.shapes import (
-        Drawing, Line, Rect, Circle, String as GStr,
+        Drawing, Line, Rect, Circle, String as GStr, Path as RLPath,
     )
     from collections import defaultdict as _dd
     from vistadetail.engine.hooks import BAR_WEIGHT_LB_FT as _WLBFT
@@ -576,32 +576,37 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
                            fontSize=fs, textAnchor="middle", fillColor=_BLACK))
 
         elif shape == "Hoop":
-            # S6 bend: rectangular hoop with tails.
-            # A (left tail) ─┐ B (top span) ┌─ G (right tail)
-            #                 │              │
-            #                 └── D (bot) ───┘
-            #                    C (bottom tail)
-            xl = m + 16; xr = SW - m - 16
-            yt = SH - 4; yb = fs + 2
-            mid = (yt + yb) / 2
-            tail_len = 8   # visual length for tail stubs
-            d.add(Line(xl, yt, xr, yt, strokeWidth=lw, strokeColor=_BLACK))  # B: top span
-            d.add(Line(xl, yb, xr, yb, strokeWidth=lw, strokeColor=_BLACK))  # D: bottom span
-            d.add(Line(xl, yb, xl, yt, strokeWidth=lw, strokeColor=_BLACK))  # left side
-            d.add(Line(xr, yb, xr, yt, strokeWidth=lw, strokeColor=_BLACK))  # right side
-            d.add(Line(xl, yt, xl - tail_len, yt, strokeWidth=lw, strokeColor=_BLACK))  # A tail
-            d.add(Line(xr, yt, xr + tail_len, yt, strokeWidth=lw, strokeColor=_BLACK))  # G tail
-            d.add(Line(xl, yb, xl - tail_len, yb, strokeWidth=lw, strokeColor=_BLACK))  # C tail
-            if a:
-                d.add(GStr(xl - tail_len - 1, yt + 1, a, fontSize=fs - 0.5, textAnchor="end", fillColor=_BLACK))
+            # S6 hoop — sketch style: rectangle body, top bar overshoots
+            # the right side and curves down, suggesting a closed loop.
+            # Bottom stays straight (matches field hand-draw convention).
+            xl    = m + 8          # left edge of rectangle
+            xr    = SW * 0.60      # right edge of rectangle body
+            yt    = SH - 5         # top y
+            yb    = fs + 3         # bottom y
+            x_ext = SW - m - 10    # top bar extends this far right (past xr)
+
+            # Rectangle: bottom, left side, right side
+            d.add(Line(xl, yb, xr, yb, strokeWidth=lw, strokeColor=_BLACK))
+            d.add(Line(xl, yb, xl, yt, strokeWidth=lw, strokeColor=_BLACK))
+            d.add(Line(xr, yb, xr, yt, strokeWidth=lw, strokeColor=_BLACK))
+            # Top bar overshooting past right side
+            d.add(Line(xl, yt, x_ext, yt, strokeWidth=lw, strokeColor=_BLACK))
+            # Curving hook from overshoot end, looping down
+            hook = RLPath(strokeWidth=lw, strokeColor=_BLACK, fillColor=None)
+            hook.moveTo(x_ext, yt)
+            hook.curveTo(x_ext + 6, yt - 5,
+                         x_ext + 5, yt - 16,
+                         x_ext - 1, yt - 22)
+            d.add(hook)
+
+            # Key dimension labels only (B = side height, C = bottom span)
+            rect_cx = (xl + xr) / 2
             if b:
-                d.add(GStr((xl + xr) / 2, yt + 1, b, fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
+                d.add(GStr(xl - 2, (yt + yb) / 2, b,
+                           fontSize=fs - 0.5, textAnchor="end", fillColor=_BLACK))
             if c:
-                d.add(GStr(xl - tail_len - 1, yb - 1, c, fontSize=fs - 0.5, textAnchor="end", fillColor=_BLACK))
-            if dd:
-                d.add(GStr((xl + xr) / 2, 1, dd, fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
-            if g:
-                d.add(GStr(xr + tail_len + 1, yt + 1, g, fontSize=fs - 0.5, textAnchor="start", fillColor=_BLACK))
+                d.add(GStr(rect_cx, 1, c,
+                           fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
 
         elif shape == "Rect":
             lx = m + 4; rx = SW - m - 4
