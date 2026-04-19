@@ -38,11 +38,11 @@ from vistadetail.engine.templates.g6_inlet import TEMPLATE as G6_INLET
 
 TEMPLATE_REGISTRY: dict = {
     # ── G-Type CIP Inlets (D72B) ──────────────────────────────────────────────
-    G1_INLET.name:               G1_INLET,
     INLET_9IN_WALL.name:         INLET_9IN_WALL,
     G2_EXPANDED_INLET.name:      G2_EXPANDED_INLET,
     G2_INLET_TOP.name:           G2_INLET_TOP,
     G2_EXPANDED_INLET_TOP.name:  G2_EXPANDED_INLET_TOP,
+    G1_INLET.name:               G1_INLET,
     G3_INLET.name:               G3_INLET,
     G4_INLET.name:               G4_INLET,
     G5_INLET.name:               G5_INLET,
