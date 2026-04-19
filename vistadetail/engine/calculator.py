@@ -174,21 +174,17 @@ def _apply_learned_adjustments(
 # ---------------------------------------------------------------------------
 
 _REF_MAP: dict[str, str] = {
-    # ── Headwall ─────────────────────────────────────────────────────────
-    "rule_front_face_horiz":    "ACI 318-19 §11.7.2, §24.3.2",
-    "rule_front_face_vert":     "ACI 318-19 §11.7.2",
-    "rule_back_face_horiz":     "ACI 318-19 §11.7.2, §24.3.2",
-    "rule_top_bars":            "ACI 318-19 §11.7.2",
-    "rule_bottom_bars":         "ACI 318-19 §11.7.2",
-    "rule_connection_dowels":   "ACI 318-19 §25.5.2 (dev. length, tension)",
-    "rule_headwall_c_bars":     "Caltrans D89a mk 500; ACI 318-19 §25.3 (C-bar hairpin, 2 bends, H1 height)",
-    "rule_headwall_fdn_mat":    "Caltrans D89a FM1 — foundation mat perpendicular bars",
-    "rule_headwall_fdn_horiz":  "Caltrans D89a FH1 — foundation distribution bars, 2 layers",
-    "rule_headwall_pipe_hoops": "Caltrans D89a PH1 — circular pipe hoops, stock=π×OD+lap",
-    "rule_headwall_d_bars":     "Caltrans D89a DB1 — D-bars framing pipe opening",
-    "rule_headwall_pipe_bars":  "Caltrans D89a PB1 — pipe opening trim bars, ACI §25.5 dev. length",
-    "rule_headwall_spreaders":  "Caltrans D89a mk 401 — U-shape wall spreaders, Vista Steel bend table",
-    "rule_headwall_standees":   "Caltrans D89a mk 400 — S-shape mat standees, Vista Steel bend table",
+    # ── Headwall (D89A) ───────────────────────────────────────────────────
+    "rule_hw_d_bars":           "Caltrans D89A D1 — top invert transverse #5 @8\"",
+    "rule_hw_trans_footing":    "Caltrans D89A TF — transverse footing #4 @12\"",
+    "rule_hw_long_invert":      "Caltrans D89A LI — longitudinal invert #4 @8\", 2 layers",
+    "rule_hw_long_wall":        "Caltrans D89A LW — longitudinal wall #4 @12\", 2 faces",
+    "rule_hw_top_wall":         "Caltrans D89A TW — top of wall #5 Tot 3",
+    "rule_hw_vert_wall":        "Caltrans D89A VW — vertical wall #4 @12\"",
+    "rule_hw_c_bars":           "Caltrans D89A CB — C-bar hairpin #4 @12\"; ACI 318-19 §25.3",
+    "rule_hw_spreaders":        "Caltrans D89A WS — wall spreaders U-shape #4 @24\"",
+    "rule_hw_standees":         "Caltrans D89A ST — mat standees S-shape #5 @12\"",
+    "rule_validate_headwall":   "Caltrans D89A — height validation vs. table max",
     # ── Wing Wall ────────────────────────────────────────────────────────
     "rule_wing_horiz":          "ACI 318-19 §11.7.2, §24.3.2",
     "rule_wing_vert":           "ACI 318-19 §11.7.2",
