@@ -399,102 +399,173 @@ def _diag_inlet_top() -> bytes:
 
 
 def _diag_headwall() -> bytes:
-    """Front elevation of straight headwall -- W wide x H tall."""
-    W, H = 6.0, 4.0
+    """Combined front elevation + typical section for a D89A straight headwall."""
+    # Default preview dimensions (5'-11" × 8'-0")
+    L    = 8.0
+    H    = 5.917
+    H_in = H * 12.0
+    H1   = H + 1.0
 
-    fig, ax = _fig(7.0, 6.0)
-    ax.set_xlim(-1.5, W + 2.0)
-    ax.set_ylim(-1.2, H + 1.5)
+    # D89A table lookup
+    try:
+        from vistadetail.engine.rules.headwall_rules import _D89A_ROWS
+        row = _D89A_ROWS[-1]
+        for r in _D89A_ROWS:
+            if r["H"] >= H_in - 0.1:
+                row = r
+                break
+    except Exception:
+        row = {"T": 10, "W": 64, "C": 16, "B": 48, "F": 12,
+               "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p": 8}
 
-    _rect(ax, 0, 0, W, H, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
+    T_in = row["T"];  W_in = row["W"];  C_in = row["C"]
+    B_in = row["B"];  F_in = row["F"]
+    c_sp = row["c_p"]; d_sp = row["d_p"]
+    c_sz = row["c_s"]; d_sz = row["d_s"]
 
-    # Rebar hints
-    for xi in [0.3, 0.6, W - 0.6, W - 0.3]:
-        ax.plot([xi, xi], [0.3, H - 0.3], color=_REBAR, lw=1.0, zorder=4)
-    for yi in [0.5, 1.2, 2.0, 2.8, 3.5]:
-        ax.plot([0.1, W - 0.1], [yi, yi], color=_REBAR, lw=0.8, zorder=4)
+    T = T_in / 12.0;  W = W_in / 12.0;  C = C_in / 12.0
+    B = B_in / 12.0;  F = F_in / 12.0
+    cov  = 2.0 / 12.0
+    fcov = 3.0 / 12.0
 
-    # Pipe opening
-    circ = mpatches.Circle((W / 2, H * 0.38), 0.55,
-                            fc="white", ec=_OUTLINE, lw=1.5, zorder=3)
-    ax.add_patch(circ)
-    ax.text(W / 2, H * 0.38, "pipe\nopening", ha="center", va="center",
-            fontsize=6.5, color="#666", zorder=4)
+    s = min(4.5 / max(L, 1.0), 3.0 / max(H + F, 1.0))
+    s = max(s, 0.30)
 
-    # Dimensions
-    _ext_dim_h(ax, 0, W, 0, -0.7, "W")
-    _ext_dim_v(ax, 0, H, W, W + 0.7, "H")
+    fig, ax = _fig(w=13.0, h=6.5)
 
-    # T callout
-    ax.annotate("T (thickness)", xy=(0, H / 2), xytext=(-1.0, H / 2),
-                fontsize=8, color=_LABEL, fontweight="bold",
-                arrowprops=dict(arrowstyle="->", color=_DIM, lw=0.8),
-                ha="right", va="center",
-                bbox=dict(boxstyle="round,pad=0.2", fc="white", ec=_DIM, lw=0.6))
+    # ── FRONT ELEVATION ──────────────────────────────────────────────────
+    ex = 0.6
+    ey = 0.5 + F * s
 
-    _axes_compass(ax, -1.2, -1.0)
-    _title(ax, "STRAIGHT HEADWALL -- FRONT ELEVATION")
+    # Footing strip
+    _rect(ax, ex, ey - F*s, L*s, F*s, fc="#b0b8c0", ec=_OUTLINE, lw=1.0)
+    # Wall body
+    _rect(ax, ex, ey, L*s, H*s)
 
-    return _to_png(fig)
+    # LW horizontal bars at 12" oc
+    n_lw = int(H1) + 1
+    for i in range(n_lw + 1):
+        yy = ey + i * s
+        if yy > ey + H*s: break
+        ax.plot([ex + cov*s, ex + L*s - cov*s], [yy, yy],
+                color=_REBAR, lw=0.7, zorder=4)
 
+    # VW vertical bars at 12" oc
+    n_vw = int(L - 2*cov) + 1
+    for i in range(n_vw + 1):
+        xx = ex + cov*s + i * s
+        if xx > ex + L*s - cov*s: break
+        ax.plot([xx, xx], [ey + cov*s, ey + H*s - cov*s],
+                color=_REBAR, lw=0.7, zorder=4)
 
-def _diag_caltrans_headwall() -> bytes:
-    """Front elevation of Caltrans headwall (D86B) -- rectangular wall
-    with circular pipe opening.  Matches Section A-A on standard plans."""
-    W, H = 6.0, 4.5
-    T = 0.4           # wall thickness (shown as depth callout)
-    pipe_r = 0.9      # pipe opening radius
+    # TW dots — 3 at top
+    for frac in [0.25, 0.5, 0.75]:
+        ax.plot(ex + L*s * frac, ey + H*s - cov*s, "o",
+                color=_REBAR, ms=5, zorder=5)
 
-    fig, ax = _fig(7.5, 6.5)
-    ax.set_xlim(-1.5, W + 2.5)
-    ax.set_ylim(-1.5, H + 1.5)
-
-    # Rectangular headwall
-    _rect(ax, 0, 0, W, H, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
-
-    # Pipe opening (center-low, matching field placement)
-    cx, cy = W / 2, H * 0.40
-    circ = mpatches.Circle((cx, cy), pipe_r, fc="white", ec=_OUTLINE, lw=2.0, zorder=3)
-    ax.add_patch(circ)
-    ax.text(cx, cy, "pipe", ha="center", va="center", fontsize=7, color="#555", zorder=4)
-
-    # Pipe diameter dimension
-    ax.annotate("", xy=(cx + pipe_r, cy), xytext=(cx - pipe_r, cy),
-                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0, mutation_scale=9))
-    ax.text(cx, cy - pipe_r - 0.3, "D (pipe dia)", ha="center", va="top", fontsize=9,
-            color=_LABEL, fontweight="bold")
-
-    # Rebar hints (vertical each face)
-    for xi in [0.25, 0.50, W - 0.50, W - 0.25]:
-        ax.plot([xi, xi], [0.3, H - 0.3], color=_REBAR, lw=1.0, zorder=4)
-    # Horizontal rebar
-    for yi in [0.4, 1.0, H - 1.0, H - 0.4]:
-        ax.plot([0.1, W - 0.1], [yi, yi], color=_REBAR, lw=0.8, zorder=4)
-
-    # Spacers at pipe (2"-0" into headwall per D86B)
-    for ang_deg in [45, 135, 225, 315]:
-        sx = cx + (pipe_r + 0.15) * math.cos(math.radians(ang_deg))
-        sy = cy + (pipe_r + 0.15) * math.sin(math.radians(ang_deg))
-        ax.plot(sx, sy, "s", color=_REBAR, ms=4, zorder=5)
-
-    # Apron / cutoff wall hint at base
-    _rect(ax, -0.15, -0.35, W + 0.30, 0.35, fc="#b0b8c0", ec=_OUTLINE, lw=1.0)
-    ax.text(W / 2, -0.18, "apron / cutoff wall", ha="center", va="center",
-            fontsize=6, color="#555")
+    # D1 transverse dots at footing junction
+    n_d1 = math.floor(L / (d_sp / 12.0)) + 1
+    for i in range(n_d1 + 1):
+        xx = ex + i * (d_sp / 12.0) * s
+        if xx > ex + L*s: break
+        ax.plot(xx, ey, "o", color=_REBAR, ms=4, zorder=5)
 
     # Dimensions
-    _ext_dim_h(ax, 0, W, H, H + 0.7, "W")
-    _ext_dim_v(ax, 0, H, W, W + 0.8, "H")
+    _ext_dim_h(ax, ex, ex + L*s, ey - F*s, ey - F*s - 0.32, "W")
+    _ext_dim_v(ax, ey, ey + H*s, ex, ex - 0.55, "H")
 
-    # T callout (thickness = depth into page)
-    ax.annotate("T (thickness)", xy=(0, H * 0.7), xytext=(-1.1, H * 0.7),
-                fontsize=8, color=_LABEL, fontweight="bold",
-                arrowprops=dict(arrowstyle="->", color=_DIM, lw=0.8),
-                ha="right", va="center",
-                bbox=dict(boxstyle="round,pad=0.2", fc="white", ec=_DIM, lw=0.6))
+    # Callouts
+    ax.text(ex + L*s * 0.5, ey + H*s + 0.22, "FRONT ELEVATION",
+            ha="center", va="bottom", fontsize=8, color=_LABEL,
+            fontweight="bold", zorder=6)
+    ax.text(ex + L*s * 0.5, ey + H*s + 0.08,
+            f"LW/VW #{c_sz[1]}@12\"  |  TW {d_sz} Tot 3  |  D1 {d_sz}@{d_sp}\"",
+            ha="center", va="top", fontsize=6.5, color=_REBAR, zorder=6)
 
-    _axes_compass(ax, -1.2, -1.2)
-    _title(ax, "CALTRANS HEADWALL -- FRONT ELEVATION (D86B)")
+    # ── TYPICAL SECTION ──────────────────────────────────────────────────
+    gap = 1.2
+    tx  = ex + L*s + gap
+    ty  = ey
+    wx  = tx + C * s
+
+    # Footing
+    _rect(ax, tx, ty - F*s, W*s, F*s, fc="#b0b8c0", ec=_OUTLINE, lw=1.0)
+
+    # Earth hatching (heel side)
+    earth_x = wx + T*s
+    for i in range(9):
+        ye = ty - F*s * 0.4 + i * (H*s + F*s * 0.4) / 8
+        ax.plot([earth_x + 0.04, earth_x + 0.22], [ye, ye - 0.15],
+                color=_SOIL, lw=0.8, alpha=0.7, zorder=1)
+
+    # Wall stem
+    _rect(ax, wx, ty, T*s, H*s)
+
+    # Bar dots both faces
+    for i in range(n_lw + 1):
+        yy = ty + i * s
+        if yy > ty + H*s: break
+        ax.plot(wx + cov*s,         yy, "o", color=_REBAR, ms=4, zorder=5)
+        ax.plot(wx + T*s - cov*s,   yy, "o", color=_REBAR, ms=4, zorder=5)
+
+    # TW top center dot
+    ax.plot(wx + T*s / 2, ty + H*s - cov*s, "o", color=_REBAR, ms=6, zorder=5)
+
+    # TF dots across footing
+    n_tf = math.floor(W) + 1
+    for i in range(n_tf + 1):
+        xx = tx + fcov*s + i * s
+        if xx > tx + W*s - fcov*s: break
+        ax.plot(xx, ty - F*s / 2, "o", color=_REBAR, ms=3.5, zorder=5)
+
+    # CB c-bar — U-shape
+    cb_leg  = 14.0 / 12.0 * s
+    cb_lx   = wx - cb_leg
+    cb_rx   = wx + T*s + cb_leg
+    cb_top  = ty + H*s + 0.12
+    cb_base = ty + cov*s
+    ax.plot([cb_lx, cb_lx], [cb_top, cb_base], color=_REBAR, lw=1.5, zorder=4)
+    ax.plot([cb_lx, cb_rx], [cb_base, cb_base], color=_REBAR, lw=1.5, zorder=4)
+    ax.plot([cb_rx, cb_rx], [cb_base, cb_top], color=_REBAR, lw=1.5, zorder=4)
+    ax.text(cb_lx - 0.08, ty + H*s * 0.75, f'"{c_sz}" C-BAR',
+            ha="right", va="center", fontsize=6.5, color=_REBAR, zorder=6,
+            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.85))
+    ax.text(cb_rx + 0.08, cb_base + 0.04, "R=9\"",
+            ha="left", va="center", fontsize=6, color=_REBAR, zorder=6)
+
+    # WS spreader — small U
+    ws_cy  = ty + H*s * 0.52
+    ws_b   = 5.0  / 12.0 * s
+    ws_leg = 4.5  / 12.0 * s
+    wsL    = wx + T*s / 2 - ws_b / 2
+    wsR    = wx + T*s / 2 + ws_b / 2
+    for seg in [([wsL-ws_leg, wsL-ws_leg], [ws_cy, ws_cy-ws_leg]),
+                ([wsL-ws_leg, wsR+ws_leg], [ws_cy-ws_leg, ws_cy-ws_leg]),
+                ([wsR+ws_leg, wsR+ws_leg], [ws_cy-ws_leg, ws_cy])]:
+        ax.plot(seg[0], seg[1], color=_REBAR, lw=1.0, zorder=4)
+
+    # Section dimensions
+    _ext_dim_v(ax, ty, ty + H*s, wx, wx - 0.58, "H")
+    _dim_v(ax, ty - F*s, ty, tx - 0.1, f"F={F_in:.0f}\"", gap=0.22, fontsize=7)
+    _ext_dim_h(ax, tx, tx + W*s, ty - F*s, ty - F*s - 0.32, "W")
+    ax.annotate(f"T={T_in:.0f}\"", xy=(wx + T*s/2, ty + H*s*0.35),
+                xytext=(wx + T*s + 0.75, ty + H*s*0.5),
+                fontsize=7.5, color=_LABEL, fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color=_DIM, lw=0.7),
+                bbox=dict(boxstyle="round,pad=0.2", fc="white", ec=_DIM, lw=0.5))
+    ax.text(tx + C*s/2, ty - F*s - 0.15, f"C={C_in:.0f}\"",
+            ha="center", va="top", fontsize=7, color=_LABEL, fontweight="bold")
+    ax.text(wx + T*s + B*s/2, ty - F*s - 0.15, f"B={B_in:.0f}\"",
+            ha="center", va="top", fontsize=7, color=_LABEL, fontweight="bold")
+
+    ax.text(wx + T*s / 2, ty + H*s + 0.22, "TYPICAL SECTION",
+            ha="center", va="bottom", fontsize=8, color=_LABEL,
+            fontweight="bold", zorder=6)
+
+    # ── Bounds ───────────────────────────────────────────────────────────
+    ax.set_xlim(ex - 1.4, tx + W*s + 1.2)
+    ax.set_ylim(ty - F*s - 0.75, ty + H*s + 0.9)
+    _title(ax, "STRAIGHT HEADWALL  (D89A)")
 
     return _to_png(fig)
 
@@ -1346,7 +1417,6 @@ _DIAGRAM_FN: dict[str, callable] = {
     "G2 Inlet Top":            _diag_inlet_top,
     "G2 Expanded Inlet Top":   lambda: _diag_rect_plan("G2 EXPANDED INLET TOP -- PLAN VIEW"),
     "Straight Headwall":       _diag_headwall,
-    "Caltrans Headwall":       _diag_caltrans_headwall,
     "Wing Wall":               _diag_wing_wall,
     "Spread Footing":          _diag_footing,
     "Box Culvert":             _diag_box_culvert,
@@ -1392,7 +1462,6 @@ _FIELD_LABELS: dict[str, dict[str, str]] = {
     "G2 Inlet Top":          {"x_dim_ft": "X", "y_dim_ft": "Y"},
     "G2 Expanded Inlet Top": {"slab_length_ft": "L", "slab_width_ft": "W"},
     "Straight Headwall":     {"wall_width_ft": "W", "wall_height_ft": "H"},
-    "Caltrans Headwall":     {"wall_width_ft": "W", "wall_height_ft": "H"},
     "Wing Wall":             {"wing_length_ft": "L",
                               "hw_height_ft": "H\u2081",
                               "tip_height_ft": "H\u2082"},

@@ -360,56 +360,171 @@ def _draw_slab_plan(ax, p: dict, title: str):
 
 def _draw_headwall(ax, p: dict, title: str):
     """
-    Cross-section of a straight headwall (Caltrans D89a style).
-    Shows wall body, C-bars wrapping around, front/back face bars, footing.
+    Combined front-elevation (left) + typical section (right) for a Caltrans
+    D89A straight headwall.  Geometry is pulled live from the D89A table by H.
     """
-    WW  = _p(p, "wall_width_ft", 8)
-    WH  = _p(p, "wall_height_ft", 5.9)
-    WT  = _p(p, "wall_thick_in", 12) / 12
-    cov = _p(p, "cover_in", 2) / 12
-    hs  = _p(p, "horiz_spacing_in", 12) / 12
-    leg = _p(p, "c_bar_leg_in", 14) / 12
-    fw  = _p(p, "footing_width_ft", 5.33)
-    sx, sy = 1.5, 1.2
+    L    = _p(p, "wall_width_ft",  8.0)
+    H    = _p(p, "wall_height_ft", 5.917)
+    H_in = H * 12.0
+    H1   = H + 1.0          # H + 12" extension
+
+    # ── D89A table lookup ────────────────────────────────────────────────
+    try:
+        from vistadetail.engine.rules.headwall_rules import _D89A_ROWS
+        row = _D89A_ROWS[-1]
+        for r in _D89A_ROWS:
+            if r["H"] >= H_in - 0.1:   # 0.1" tolerance for float inputs
+                row = r
+                break
+    except Exception:
+        row = {"T": 10, "W": 64, "C": 16, "B": 48, "F": 12,
+               "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p": 8}
+
+    T_in = row["T"];  W_in = row["W"];  C_in = row["C"]
+    B_in = row["B"];  F_in = row["F"]
+    c_sp = row["c_p"]; d_sp = row["d_p"]
+    c_sz = row["c_s"]; d_sz = row["d_s"]
+
+    T = T_in / 12.0;  W = W_in / 12.0;  C = C_in / 12.0
+    B = B_in / 12.0;  F = F_in / 12.0
+    cov  = 2.0 / 12.0    # 2" stem cover
+    fcov = 3.0 / 12.0    # 3" footing cover
+
+    # ── Shared scale (both views same vertical scale) ────────────────────
+    s = min(4.8 / max(L, 1.0), 3.2 / max(H + F, 1.0))
+    s = max(s, 0.30)
+
+    # ── FRONT ELEVATION ─────────────────────────────────────────────────
+    ex = 0.6
+    ey = 0.5 + F * s        # wall/footing junction
+
+    # Footing strip (hint)
+    _rect(ax, ex, ey - F*s, L*s, F*s, fc="#BBBBBB", ec=_CD)
+
+    # Wall body
+    _rect(ax, ex, ey, L*s, H*s)
+
+    # LW horizontal bars at 12" oc (shown as lines, both faces merged)
+    n_lw = int(H1) + 1
+    for i in range(n_lw + 1):
+        yy = ey + i * s
+        if yy > ey + H*s: break
+        _bar(ax, ex + cov*s, yy, ex + L*s - cov*s, yy, lw=0.65)
+
+    # VW vertical bars at 12" oc
+    n_vw = int(L - 2*cov) + 1
+    for i in range(n_vw + 1):
+        xx = ex + cov*s + i * s
+        if xx > ex + L*s - cov*s: break
+        _bar(ax, xx, ey + cov*s, xx, ey + H*s - cov*s, lw=0.65)
+
+    # TW bars — 3 prominent dots at top
+    for frac in [0.25, 0.5, 0.75]:
+        _dot(ax, ex + L*s * frac, ey + H*s - cov*s, s=24)
+
+    # D1 transverse dots along footing junction (top of invert)
+    n_d1 = math.floor(L / (d_sp / 12.0)) + 1
+    for i in range(n_d1 + 1):
+        xx = ex + i * (d_sp / 12.0) * s
+        if xx > ex + L*s: break
+        _dot(ax, xx, ey, s=11)
+
+    # Dimension labels
+    _dim_h(ax, ex, ex + L*s, ey - F*s, f"L = {_fmt_in(L*12)}", y_off=-0.28)
+    _dim_v(ax, ey, ey + H*s, ex, f"H = {_fmt_in(H_in)}", x_off=-0.45)
+
+    # Callouts
+    _callout(ax, (ex + cov*s + 0.05, ey + H*s * 0.6),
+             f"LW #{c_sz[1]}@12\"", (ex - 1.2, ey + H*s * 0.75))
+    _callout(ax, (ex + s * 0.5, ey + cov*s + 0.05),
+             f"VW #{c_sz[1]}@12\"", (ex - 1.2, ey + H*s * 0.25))
+    _callout(ax, (ex + L*s * 0.5, ey + H*s - cov*s),
+             f"TW {d_sz} Tot 3", (ex + L*s * 0.5, ey + H*s + 0.6))
+    _callout(ax, (ex + (d_sp/12.0) * s, ey),
+             f"D1 {d_sz}@{d_sp}\"", (ex + L*s * 0.3, ey - F*s - 0.5))
+
+    _label(ax, ex + L*s / 2, ey + H*s + 0.26,
+           "FRONT ELEVATION", fs=6.5, bold=True, color=_H)
+
+    # ── TYPICAL SECTION ──────────────────────────────────────────────────
+    gap = 1.3
+    tx  = ex + L*s + gap    # left edge of footing (toe)
+    ty  = ey                 # top of footing / base of wall
+
+    wx  = tx + C * s         # front face of wall in section
 
     # Footing
-    fsx = sx + WW/2 - fw/2
-    _rect(ax, fsx, sy - 1.0, fw, 1.0, fc="#BBBBBB")
+    _rect(ax, tx, ty - F*s, W*s, F*s, fc="#BBBBBB", ec=_CD)
 
-    # Wall body (front elevation cross-section — we show side view)
-    # Draw as section: wall is WT wide (thick), WH tall
-    sect_x = sx + WW/2 - WT/2
-    _rect(ax, sect_x, sy, WT, WH)
+    # Earth hatching on heel (back) side
+    earth_x = wx + T*s
+    for i in range(9):
+        ye = ty - F*s * 0.5 + i * (H*s + F*s * 0.5) / 8
+        ax.plot([earth_x + 0.04, earth_x + 0.25],
+                [ye, ye - 0.17], color=_E, lw=0.6, alpha=0.5, zorder=1)
 
-    # Front face bars
-    n_h = max(1, int((WH - 2*cov) / hs))
-    for i in range(n_h + 1):
-        yy = sy + cov + i * hs
-        if yy > sy + WH - cov: break
-        _dot(ax, sect_x + cov, yy)          # front face dot
-        _dot(ax, sect_x + WT - cov, yy)     # back face dot
+    # Wall stem
+    _rect(ax, wx, ty, T*s, H*s)
 
-    # C-bars shown as U-shape brackets on the front face
-    c_yy = sy + WH + 0.15
-    _bar(ax, sect_x - leg, c_yy, sect_x - leg, sy + cov)           # left leg
-    _bar(ax, sect_x - leg, sy + cov, sect_x + WT + leg, sy + cov)  # bottom
-    _bar(ax, sect_x + WT + leg, sy + cov, sect_x + WT + leg, c_yy) # right leg
-    _label(ax, sect_x - leg - 0.25, sy + WH/2, "C-bar\nleg", fs=6.5)
+    # Bar dots both faces at 12" oc
+    for i in range(n_lw + 1):
+        yy = ty + i * s
+        if yy > ty + H*s: break
+        _dot(ax, wx + cov*s,           yy, s=12)
+        _dot(ax, wx + T*s - cov*s,     yy, s=12)
 
-    # Dimensions
-    _dim_v(ax, sy, sy + WH, sect_x, "wall_height_ft", x_off=-0.6)
-    _callout(ax, (sect_x + WT/2, sy + WH * 0.6), f"wall_thick_in={int(_p(p,'wall_thick_in',12))}\"",
-             (sect_x + WT + 1.8, sy + WH * 0.7))
-    _callout(ax, (sect_x + WT/2, sy - 0.5), f"footing_width_ft={_p(p,'footing_width_ft',5.33):.1f}'",
-             (sect_x + WT + 1.8, sy - 0.3))
-    _callout(ax, (sect_x - leg - 0.05, sy + WH/2), f"c_bar_leg_in={int(_p(p,'c_bar_leg_in',14))}\"",
-             (sect_x - leg - 1.6, sy + WH * 0.85))
-    _label(ax, sx + WW/2, sy + WH + 0.5,
-           f"wall_width_ft = {WW:.0f}'  (plan, see front elevation)",
-           fs=6.5, color="#555555")
+    # TW — one dot at top center
+    _dot(ax, wx + T*s / 2, ty + H*s - cov*s, s=24)
 
-    ax.set_xlim(sect_x - 2.5, sect_x + WT + 3.0)
-    ax.set_ylim(sy - 1.5, sy + WH + 1.0)
+    # TF dots across footing width
+    n_tf = math.floor(W) + 1
+    for i in range(n_tf + 1):
+        xx = tx + fcov*s + i * s
+        if xx > tx + W*s - fcov*s: break
+        _dot(ax, xx, ty - F*s / 2, s=10)
+
+    # CB c-bar — U-shape over wall height
+    cb_leg  = 14.0 / 12.0 * s
+    cb_lx   = wx - cb_leg
+    cb_rx   = wx + T*s + cb_leg
+    cb_top  = ty + H*s + 0.14
+    cb_base = ty + cov*s
+    _bar(ax, cb_lx, cb_top,  cb_lx, cb_base)
+    _bar(ax, cb_lx, cb_base, cb_rx, cb_base)
+    _bar(ax, cb_rx, cb_base, cb_rx, cb_top)
+    _label(ax, cb_lx - 0.10, ty + H*s * 0.75,
+           f'"{c_sz}" C-BAR', fs=5.5, color=_R, ha="right")
+    _label(ax, cb_rx + 0.10, cb_base + 0.06,
+           "R=9\"", fs=5.5, color=_R, ha="left")
+
+    # WS spreader — small U inside wall at mid-height
+    ws_cy  = ty + H*s * 0.52
+    ws_b   = 5.0  / 12.0 * s    # 5" body
+    ws_leg = 4.5  / 12.0 * s    # 4.5" legs
+    wsL    = wx + T*s / 2 - ws_b / 2
+    wsR    = wx + T*s / 2 + ws_b / 2
+    _bar(ax, wsL - ws_leg, ws_cy,              wsL - ws_leg, ws_cy - ws_leg)
+    _bar(ax, wsL - ws_leg, ws_cy - ws_leg,     wsR + ws_leg, ws_cy - ws_leg)
+    _bar(ax, wsR + ws_leg, ws_cy - ws_leg,     wsR + ws_leg, ws_cy)
+    _label(ax, wx + T*s / 2, ws_cy + 0.06, "WS", fs=5.0, color=_R)
+
+    # Dimension callouts for section
+    _dim_v(ax, ty, ty + H*s, wx, f"H = {_fmt_in(H_in)}", x_off=-0.52)
+    _dim_v(ax, ty - F*s, ty, tx - 0.08, f"F={_fmt_in(F_in)}", x_off=-0.26)
+    _dim_h(ax, tx, tx + W*s, ty - F*s, f"W = {_fmt_in(W_in)}", y_off=-0.28)
+    _callout(ax, (wx + T*s / 2, ty + H*s * 0.3),
+             f"T = {T_in:.0f}\"", (wx + T*s + 0.9, ty + H*s * 0.45))
+    _callout(ax, (tx + C*s / 2, ty - F*s * 0.55),
+             f"C={_fmt_in(C_in)}", (tx - 0.05, ty - F*s - 0.45))
+    _callout(ax, (wx + T*s + B*s / 2, ty - F*s * 0.55),
+             f"B={_fmt_in(B_in)}", (wx + T*s + B*s + 0.2, ty - F*s - 0.45))
+
+    _label(ax, wx + T*s / 2, ty + H*s + 0.26,
+           "TYPICAL SECTION", fs=6.5, bold=True, color=_H)
+
+    # ── Bounds ───────────────────────────────────────────────────────────
+    ax.set_xlim(ex - 1.6, tx + W*s + 1.3)
+    ax.set_ylim(ty - F*s - 0.8, ty + H*s + 1.0)
     ax.set_title(title, fontsize=_FS_TITLE, fontweight="bold", color=_H, pad=6)
 
 
@@ -993,6 +1108,10 @@ def generate_diagram_png(template_name: str, params: dict | None = None) -> byte
     if params is None:
         params = {}
     draw_fn = _DRAW_MAP.get(template_name, _draw_generic)
-    fig, ax = _fig(title="")
+    # Headwall needs extra width for the combined two-view layout
+    if template_name == "Straight Headwall":
+        fig, ax = _fig(w=12.0, h=6.0, title="")
+    else:
+        fig, ax = _fig(title="")
     draw_fn(ax, params, template_name)
     return _to_png(fig)

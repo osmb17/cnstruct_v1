@@ -58,6 +58,8 @@ SHL_MAP = {
     "Str":    "S",
     "L":      "L",
     "U":      "U",
+    "C":      "L",   # C-bar hairpin (2-bend U-shape)
+    "S":      "L",   # S-shaped standee (3-bend)
     "Hook":   "H",
     "Hoop":   "S",
     "Spiral": "S",
@@ -68,6 +70,8 @@ TYPE_MAP = {
     "Str":    "0",
     "L":      "1",
     "U":      "2",
+    "C":      "11",  # C-bar / hairpin — Type 11 (Caltrans/Vista bend schedule)
+    "S":      "3",   # S-shaped standee — 3 bends
     "Hook":   "1",
     "Hoop":   "S6",
     "Spiral": "SPI",

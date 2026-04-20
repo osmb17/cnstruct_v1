@@ -26,45 +26,48 @@ from vistadetail.engine.schema import BarRow, Params, fmt_inches
 
 
 # ---------------------------------------------------------------------------
-# Caltrans D89A lookup table
-# Key = pipe diameter (in) — used only for ordering; lookup is by H.
-# Values: H  = minimum wall height (in)
-#         T  = wall thickness (in)
-#         F  = footing depth (in)
-#         W  = footing width (in)
-#         B  = back projection of footing from wall face (in)
-#         C  = front projection of footing from wall face (in)
+# Caltrans D89A lookup table — keyed by row index, ordered by H.
+# Source: Caltrans Standard Plan sheet D89A.
+#
+# H   = design wall height (in)
+# T   = wall thickness (in)
+# W   = footing width (in)
+# C   = toe (front projection, in)
+# B   = heel (back projection, in)
+# F   = footing depth (in)
+# c_s = "c" bar size (#4 or #5)
+# c_p = "c" bar spacing (in)
+# d_s = "d" bar size (#5 or #6)
+# d_p = "d" bar spacing (in)
 # ---------------------------------------------------------------------------
 
-_D89_TABLE: dict[int, dict] = {
-    12: {"H": 47, "T": 8, "F": 8, "W": 42, "B": 24, "C": 18},
-    15: {"H": 50, "T": 8, "F": 8, "W": 44, "B": 26, "C": 18},
-    18: {"H": 53, "T": 8, "F": 8, "W": 46, "B": 28, "C": 18},
-    21: {"H": 56, "T": 8, "F": 8, "W": 50, "B": 30, "C": 20},
-    24: {"H": 59, "T": 8, "F": 8, "W": 52, "B": 32, "C": 20},
-    27: {"H": 62, "T": 8, "F": 8, "W": 56, "B": 34, "C": 22},
-    30: {"H": 65, "T": 8, "F": 8, "W": 60, "B": 36, "C": 24},
-    33: {"H": 68, "T": 8, "F": 8, "W": 64, "B": 38, "C": 26},
-    36: {"H": 71, "T": 8, "F": 8, "W": 68, "B": 40, "C": 28},
-    39: {"H": 74, "T": 8, "F": 8, "W": 72, "B": 42, "C": 30},
-    42: {"H": 77, "T": 8, "F": 8, "W": 76, "B": 44, "C": 32},
-    45: {"H": 80, "T": 8, "F": 8, "W": 80, "B": 46, "C": 34},
-    48: {"H": 83, "T": 8, "F": 8, "W": 84, "B": 48, "C": 36},
-    51: {"H": 86, "T": 8, "F": 8, "W": 88, "B": 50, "C": 38},
-    54: {"H": 89, "T": 8, "F": 8, "W": 92, "B": 52, "C": 40},
-}
+_D89A_ROWS: list[dict] = [
+    # H   T    W   C   B   F  c_s   c_p  d_s   d_p    label
+    {"H": 47, "T": 10, "W": 58, "C": 12, "B": 46, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p": 12},  # 3'-11"
+    {"H": 50, "T": 10, "W": 58, "C": 12, "B": 46, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p": 12},  # 4'-2"
+    {"H": 53, "T": 10, "W": 60, "C": 12, "B": 48, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p":  8},  # 4'-5"
+    {"H": 56, "T": 10, "W": 64, "C": 16, "B": 48, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p":  8},  # 4'-8"
+    {"H": 59, "T": 10, "W": 64, "C": 16, "B": 48, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p":  8},  # 4'-11"
+    {"H": 62, "T": 10, "W": 64, "C": 16, "B": 48, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p":  8},  # 5'-2"
+    {"H": 65, "T": 10, "W": 64, "C": 16, "B": 48, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p":  8},  # 5'-5"
+    {"H": 68, "T": 10, "W": 64, "C": 16, "B": 48, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#6", "d_p":  8},  # 5'-8"
+    {"H": 71, "T": 10, "W": 64, "C": 16, "B": 48, "F": 12, "c_s": "#5", "c_p": 12, "d_s": "#6", "d_p":  8},  # 5'-11"
+    {"H": 74, "T": 12, "W": 64, "C": 16, "B": 48, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#6", "d_p":  8},  # 6'-2"
+    {"H": 77, "T": 12, "W": 66, "C": 18, "B": 48, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#6", "d_p":  8},  # 6'-5"
+    {"H": 80, "T": 12, "W": 69, "C": 18, "B": 51, "F": 14, "c_s": "#5", "c_p":  9, "d_s": "#6", "d_p":  6},  # 6'-8"
+    {"H": 83, "T": 12, "W": 72, "C": 18, "B": 54, "F": 14, "c_s": "#5", "c_p":  9, "d_s": "#6", "d_p":  6},  # 6'-11"
+]
 
 _COVER_STEM = 2.0   # wall face cover (in)
 _COVER_FTG  = 3.0   # footing bottom cover (in)
 
 
 def _d89_by_height(h_in: float) -> dict:
-    """Return first D89A row with H >= h_in (rounds up for safety)."""
-    for dia in sorted(_D89_TABLE.keys()):
-        row = _D89_TABLE[dia]
+    """Return first D89A row whose H >= h_in (round up for safety)."""
+    for row in _D89A_ROWS:
         if row["H"] >= h_in:
             return row
-    return _D89_TABLE[54]
+    return _D89A_ROWS[-1]
 
 
 # ---------------------------------------------------------------------------
@@ -188,14 +191,16 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     CB — C-bar hairpin (#4 @ 12" oc).
 
     U/C hairpin spanning wall height H1 with two 14" horizontal legs.
-    Body = H1 − 2 × 1.5" (leg-tip cover at each end).
+    Body ("0") = H1 − 2 × 2" cover = H1 − 4".
+    Inner ("d") = H (actual wall height input, between bend tangent points).
     Stock = body + 2 × leg − bend_reduce("shape_2", "#4").
     """
     L      = p.wall_width_ft * 12
     H      = p.wall_height_ft * 12
     H1     = H + 12.0
-    c_cov  = 1.5
-    body   = H1 - 2 * c_cov
+    c_cov  = 2.0          # 2" clear cover at each leg tip (standard)
+    body   = H1 - 2 * c_cov   # outer span = "0" dimension in barlist sketch
+    inner  = H            # inner dimension = wall height = "d" in barlist sketch
     leg    = 14.0
     R      = 9.0
     deduct = bend_reduce("shape_2", "#4")
@@ -203,8 +208,8 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     qty    = math.floor(L / 12) + 1
 
     log.step(
-        f"CB: H1={H1:.0f}\"  body={fmt_inches(body)}  legs=1'-2\"×2  R=9\"  "
-        f"stock={fmt_inches(stock)}",
+        f"CB: H1={H1:.0f}\"  body={fmt_inches(body)}  inner={fmt_inches(inner)}  "
+        f"legs=1'-2\"×2  R=9\"  stock={fmt_inches(stock)}",
         source="HeadwallRules",
     )
     log.step(f"qty=⌊{L}/12⌋+1={qty}", source="HeadwallRules")
@@ -212,8 +217,8 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="CB", size="#4", qty=qty, length_in=stock, shape="C",
-        leg_a_in=body, leg_b_in=leg, leg_c_in=leg,
-        notes=f"C-bar @12\" oc  body={fmt_inches(body)}  legs=1'-2\"×2  R=9\"",
+        leg_a_in=body, leg_b_in=leg, leg_c_in=leg, leg_d_in=inner,
+        notes=f"C-bar @12\" oc  body={fmt_inches(body)}  inner={fmt_inches(inner)}  legs=1'-2\"×2  R=9\"",
         source_rule="rule_hw_c_bars",
     )]
 

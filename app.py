@@ -631,6 +631,60 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
                 d.add(GStr(cx, cy - fs / 2, a,
                            fontSize=fs, textAnchor="middle", fillColor=_BLACK))
 
+        elif shape == "C":
+            # C-bar / hairpin — U-shape with legs at each end.
+            # leg_a = body ("0"); leg_b=leg_c = horizontal legs; leg_d = inner ("d")
+            xl = m + 14; xr = SW - m - 14
+            yt = SH - 4; yb = fs + 4
+            # U shape: two vertical legs + horizontal base
+            d.add(Line(xl, yt, xr, yt, strokeWidth=lw, strokeColor=_BLACK))  # top span (body)
+            d.add(Line(xl, yt, xl, yb, strokeWidth=lw, strokeColor=_BLACK))  # left leg
+            d.add(Line(xr, yt, xr, yb, strokeWidth=lw, strokeColor=_BLACK))  # right leg
+            # label "0" on body (top span)
+            if a:
+                d.add(GStr((xl + xr) / 2, yt + 2, f"0={a}",
+                           fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
+            # label "d" on inner span (below body)
+            if dd:
+                d.add(GStr((xl + xr) / 2, (yt + yb) / 2 + 2, f"d={dd}",
+                           fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
+            # label "c" and "B" on the two legs
+            if b:
+                d.add(GStr(xl - 2, yb + 1, f"c={b}",
+                           fontSize=fs - 0.5, textAnchor="end", fillColor=_BLACK))
+                d.add(GStr(xr + 2, yb + 1, f"B={b}",
+                           fontSize=fs - 0.5, textAnchor="start", fillColor=_BLACK))
+
+        elif shape == "S":
+            # S-shaped standee — four segments: top hook, riser, seat, base.
+            # leg_a=top, leg_b=riser, leg_c=seat, leg_d=base
+            # Draw as a step profile (side view): top tab, step down, seat tab, base
+            x0  = m + 6
+            x1  = SW / 2 - 4
+            x2  = SW / 2 + 4
+            x3  = SW - m - 6
+            ytop = SH - 4
+            ymid = SH / 2
+            ybot = fs + 3
+            # top tab (left, at top)
+            d.add(Line(x0, ytop, x1, ytop, strokeWidth=lw, strokeColor=_BLACK))
+            # riser (vertical drop)
+            d.add(Line(x1, ytop, x1, ymid, strokeWidth=lw, strokeColor=_BLACK))
+            # seat (horizontal right at mid)
+            d.add(Line(x1, ymid, x2, ymid, strokeWidth=lw, strokeColor=_BLACK))
+            # base (right, going down)
+            d.add(Line(x2, ymid, x2, ybot, strokeWidth=lw, strokeColor=_BLACK))
+            # labels
+            if b:  # riser
+                d.add(GStr(x1 - 2, (ytop + ymid) / 2, b,
+                           fontSize=fs - 0.5, textAnchor="end", fillColor=_BLACK))
+            if a:  # top tab
+                d.add(GStr((x0 + x1) / 2, ytop + 2, a,
+                           fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
+            if dd:  # base
+                d.add(GStr(x2 + 2, (ymid + ybot) / 2, dd,
+                           fontSize=fs - 0.5, textAnchor="start", fillColor=_BLACK))
+
         else:
             y = SH * 0.65
             d.add(Line(m, y, SW - m, y, strokeWidth=lw, strokeColor=_BLACK))
