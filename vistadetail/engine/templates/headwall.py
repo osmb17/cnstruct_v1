@@ -25,13 +25,27 @@ class HeadwallTemplate(BaseTemplate):
                 hint="Total wall length (parallel to pipe axis)",
             ),
             InputField(
-                "wall_height_ft", float, label="Wall Height (ft)",
+                "wall_height_ft", float, label="Wall Height H (ft)",
                 min=2.0, max=12.0, default=5.917,
                 hint=(
                     "Wall height H above footing top — "
                     "footing width W, thickness T, and all bar sizes "
-                    "are looked up from the D89A table by this value"
+                    "are looked up from the D89A table by this value. "
+                    "H1 = H + 1'-0\" is shown automatically."
                 ),
+            ),
+            InputField(
+                "pipe_qty", int, label="Number of Pipes",
+                min=1, max=4, default=1,
+                group="Pipe",
+                hint="Number of pipes passing through the headwall (1–4)",
+            ),
+            InputField(
+                "pipe_dia_in", str, label="Pipe Diameter",
+                choices=["12\"", "15\"", "18\"", "21\"", "24\"", "27\"",
+                         "30\"", "33\"", "36\"", "42\"", "48\"", "54\""],
+                default="24\"",
+                hint="Nominal RCP pipe diameter",
             ),
         ]
 

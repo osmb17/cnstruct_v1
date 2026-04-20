@@ -1439,6 +1439,46 @@ with inp_col:
             params_raw[name] = val
 
     # ======================================================================
+    # Straight Headwall — show H1 computed field + pipe inputs
+    # ======================================================================
+    elif template_name == "Straight Headwall":
+        _hw_w_field = next(f for f in template.inputs if f.name == "wall_width_ft")
+        _hw_h_field = next(f for f in template.inputs if f.name == "wall_height_ft")
+        _hw_pq_field = next(f for f in template.inputs if f.name == "pipe_qty")
+        _hw_pd_field = next(f for f in template.inputs if f.name == "pipe_dia_in")
+
+        # Wall Width
+        name, val = _widget(_hw_w_field, key_prefix=f"primary_{_tname}", container=st)
+        params_raw[name] = val
+
+        # Wall Height H + computed H1 side by side
+        _hw_h_key = f"primary_{_tname}__wall_height_ft"
+        c1, c2 = st.columns(2)
+        with c1:
+            name, val = _widget(_hw_h_field, key_prefix=f"primary_{_tname}", container=st)
+            params_raw[name] = val
+        with c2:
+            # H1 = H + 1'-0" — always computed, never editable
+            try:
+                _h_raw = st.session_state.get(_hw_h_key, str(_hw_h_field.default or "5'-11\""))
+                _h_ft  = _parse_ft_in(str(_h_raw)) if isinstance(_h_raw, str) else float(_h_raw or 0)
+                _h1_str = _format_ft_in(_h_ft + 1.0)
+            except Exception:
+                _h1_str = "—"
+            st.text_input("H1 = H + 1'-0\"", value=_h1_str, disabled=True,
+                          help="H1 is always wall height + 1 foot. Used for C-bar body, LW, and VW lengths.")
+
+        # Pipe info
+        st.markdown("**Pipe**")
+        c3, c4 = st.columns(2)
+        with c3:
+            name, val = _widget(_hw_pq_field, key_prefix=f"primary_{_tname}", container=c3)
+            params_raw[name] = val
+        with c4:
+            name, val = _widget(_hw_pd_field, key_prefix=f"primary_{_tname}", container=c4)
+            params_raw[name] = val
+
+    # ======================================================================
     # All other templates — standard primary / advanced layout
     # ======================================================================
     else:
