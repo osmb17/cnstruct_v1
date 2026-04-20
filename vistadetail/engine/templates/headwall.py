@@ -36,9 +36,9 @@ class HeadwallTemplate(BaseTemplate):
             ),
             InputField(
                 "pipe_qty", int, label="Number of Pipes",
-                min=1, max=4, default=1,
+                min=0, max=4, default=1,
                 group="Pipe",
-                hint="Number of pipes passing through the headwall (1–4)",
+                hint="Number of existing pipes through the headwall (0 = none)",
             ),
             InputField(
                 "pipe_dia_in", str, label="Pipe Diameter",
