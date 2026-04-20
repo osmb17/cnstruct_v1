@@ -25,13 +25,13 @@ class HeadwallTemplate(BaseTemplate):
                 hint="Total wall length (parallel to pipe axis)",
             ),
             InputField(
-                "wall_height_ft", float, label="Wall Height H (ft)",
-                min=2.0, max=12.0, default=5.917,
+                "design_pipe_dia_in", str, label="Design Pipe Diameter (in)",
+                choices=["36", "42", "48", "54", "60", "66", "72"],
+                default="60",
                 hint=(
-                    "Wall height H above footing top — "
-                    "footing width W, thickness T, and all bar sizes "
-                    "are looked up from the D89A table by this value. "
-                    "H1 = H + 1'-0\" is shown automatically."
+                    "Nominal RCP diameter. Determines D89A table row — "
+                    "wall height H, footing width W/depth F, and all bar sizes. "
+                    "H = pipe + 11\". Example: 60\" pipe → H = 71\" = 5'-11\"."
                 ),
             ),
             InputField(
@@ -64,7 +64,8 @@ class HeadwallTemplate(BaseTemplate):
 
     def evaluate_triggers(self, params: Params) -> list[str]:
         triggers: list[str] = []
-        if params.wall_height_ft * 12 > 89:
+        H = float(params.design_pipe_dia_in) + 11.0
+        if H > 89:
             triggers.append("height_exceeds_d89_table")
         return triggers
 

@@ -1225,27 +1225,27 @@ class TestHeadwallD89A:
     """
     Gold tests for Straight Headwall (D89A) template.
 
-    Reference case: H=5'-11" (71\"), L=8'-0" (96\").
-    D89A table row H=71\": W=64\", T=10\", F=12\", B=48\", C=16\".
+    Reference case: 60\" pipe (design_pipe_dia_in="60"), L=8'-0" (96\").
+    H = 60+11 = 71\" = 5'-11\".  D89A row H=71\": W=64\", T=10\", F=12\".
     H1 = 71+12 = 83\".
     """
 
     def test_d1_mark_and_size(self, log):
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
+        p = _hw_params(wall_width_ft=8.0, design_pipe_dia_in="60")
         bars = rule_hw_d_bars(p, log)
         assert bars[0].mark == "D1"
         assert bars[0].size == "#5"
 
     def test_d1_gold(self, log):
         """D1: qty=floor(96/8)+1=13, len=W-4=64-4=60\"=5'-0\"."""
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
+        p = _hw_params(wall_width_ft=8.0, design_pipe_dia_in="60")
         bars = rule_hw_d_bars(p, log)
         assert bars[0].qty == 13
         assert bars[0].length_in == pytest.approx(60.0)
 
     def test_tf_gold(self, log):
         """TF: qty=floor(96/12)+1=9, len=W-4=64-4=60\"."""
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
+        p = _hw_params(wall_width_ft=8.0, design_pipe_dia_in="60")
         bars = rule_hw_trans_footing(p, log)
         assert bars[0].mark == "TF"
         assert bars[0].qty == 9
@@ -1253,7 +1253,7 @@ class TestHeadwallD89A:
 
     def test_li_gold(self, log):
         """LI: qty=2*floor(64/8)=16, len=96-6=90\"=7'-6\"."""
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
+        p = _hw_params(wall_width_ft=8.0, design_pipe_dia_in="60")
         bars = rule_hw_long_invert(p, log)
         assert bars[0].mark == "LI"
         assert bars[0].qty == 16
@@ -1261,7 +1261,7 @@ class TestHeadwallD89A:
 
     def test_lw_gold(self, log):
         """LW: qty=2*(floor(83/12)+1)=14, len=92\"=7'-8\"."""
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
+        p = _hw_params(wall_width_ft=8.0, design_pipe_dia_in="60")
         bars = rule_hw_long_wall(p, log)
         assert bars[0].mark == "LW"
         assert bars[0].qty == 14
@@ -1269,7 +1269,7 @@ class TestHeadwallD89A:
 
     def test_tw_gold(self, log):
         """TW: 3 × #5 @ 7'-8\"."""
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
+        p = _hw_params(wall_width_ft=8.0, design_pipe_dia_in="60")
         bars = rule_hw_top_wall(p, log)
         assert bars[0].mark == "TW"
         assert bars[0].qty == 3
@@ -1278,7 +1278,7 @@ class TestHeadwallD89A:
 
     def test_vw_gold(self, log):
         """VW: qty=floor(96/12)+1=9, len=H1-4=83-4=79\"=6'-7\"."""
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
+        p = _hw_params(wall_width_ft=8.0, design_pipe_dia_in="60")
         bars = rule_hw_vert_wall(p, log)
         assert bars[0].mark == "VW"
         assert bars[0].qty == 9
@@ -1286,7 +1286,7 @@ class TestHeadwallD89A:
 
     def test_cb_gold(self, log):
         """CB: #4 shape=C, qty=9, body=H1-4=83-4=79\", inner=H=71\", stock=79+28-2=105\"."""
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
+        p = _hw_params(wall_width_ft=8.0, design_pipe_dia_in="60")
         bars = rule_hw_c_bars(p, log)
         assert bars[0].mark == "CB"
         assert bars[0].size == "#4"
@@ -1297,11 +1297,11 @@ class TestHeadwallD89A:
         assert bars[0].leg_a_in == pytest.approx(79.0)   # body = "0" = 6'-7"
         assert bars[0].leg_b_in == pytest.approx(14.0)
         assert bars[0].leg_c_in == pytest.approx(14.0)
-        assert bars[0].leg_d_in == pytest.approx(71.0)   # inner = "d" = wall height
+        assert bars[0].leg_d_in == pytest.approx(71.0)   # inner = "d" = H=60+11
 
     def test_ws_gold(self, log):
         """WS: qty=floor(96/24)=4, stock=5+9-2=12\"."""
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
+        p = _hw_params(wall_width_ft=8.0, design_pipe_dia_in="60")
         bars = rule_hw_spreaders(p, log)
         assert bars[0].mark == "WS"
         assert bars[0].qty == 4
@@ -1309,22 +1309,21 @@ class TestHeadwallD89A:
 
     def test_st_gold(self, log):
         """ST: qty=floor(96/12)=8, stock=35-4.5=30.5\"."""
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
+        p = _hw_params(wall_width_ft=8.0, design_pipe_dia_in="60")
         bars = rule_hw_standees(p, log)
         assert bars[0].mark == "ST"
         assert bars[0].size == "#5"
         assert bars[0].qty == 8
         assert bars[0].length_in == pytest.approx(30.5)
 
-    def test_d89_table_lookup_rounds_up(self, log):
-        """H=5'-0\" (60\") rounds up to row H=62\", W=64\" → len=64-4=60\"."""
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5.0)
+    def test_d89_48in_pipe(self, log):
+        """48\" pipe: H=59\", table row H=59 exact, W=64\" → D1 len=60\"."""
+        p = _hw_params(wall_width_ft=8.0, design_pipe_dia_in="48")
         bars = rule_hw_d_bars(p, log)
-        # W=64\" for H=62\" row → len=64-4=60\"
         assert bars[0].length_in == pytest.approx(60.0)
 
-    def test_d89_table_exact_match(self, log):
-        """H=5'-11\" (71\") matches row exactly → W=64\" → len=60\"."""
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
-        bars = rule_hw_d_bars(p, log)
-        assert bars[0].length_in == pytest.approx(60.0)  # W=64-4
+    def test_d89_54in_pipe_vw(self, log):
+        """54\" pipe: H=65\", H1=77\", VW=77-4=73\"=6'-1\"."""
+        p = _hw_params(wall_width_ft=8.0, design_pipe_dia_in="54")
+        bars = rule_hw_vert_wall(p, log)
+        assert bars[0].length_in == pytest.approx(73.0)

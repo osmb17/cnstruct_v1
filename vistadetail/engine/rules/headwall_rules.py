@@ -77,7 +77,7 @@ def _d89_by_height(h_in: float) -> dict:
 def rule_hw_d_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """D1 — Top invert D-bars, transverse (#5 @ 8" oc)."""
     L   = p.wall_width_ft * 12
-    H   = p.wall_height_ft * 12
+    H   = float(p.design_pipe_dia_in) + 11.0
     row = _d89_by_height(H)
     W   = row["W"]
     qty    = math.floor(L / 8) + 1
@@ -97,7 +97,7 @@ def rule_hw_d_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 def rule_hw_trans_footing(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """TF — Transverse footing bars (#4 @ 12" oc)."""
     L   = p.wall_width_ft * 12
-    H   = p.wall_height_ft * 12
+    H   = float(p.design_pipe_dia_in) + 11.0
     row = _d89_by_height(H)
     W   = row["W"]
     qty    = math.floor(L / 12) + 1
@@ -116,7 +116,7 @@ def rule_hw_trans_footing(p: Params, log: ReasoningLogger) -> list[BarRow]:
 def rule_hw_long_invert(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """LI — Longitudinal invert bars, 2 layers (#4 @ 8" oc)."""
     L   = p.wall_width_ft * 12
-    H   = p.wall_height_ft * 12
+    H   = float(p.design_pipe_dia_in) + 11.0
     row = _d89_by_height(H)
     W   = row["W"]
     qty    = 2 * math.floor(W / 8)
@@ -135,7 +135,7 @@ def rule_hw_long_invert(p: Params, log: ReasoningLogger) -> list[BarRow]:
 def rule_hw_long_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """LW — Longitudinal wall bars, 2 faces (#4 @ 12" oc)."""
     L  = p.wall_width_ft * 12
-    H  = p.wall_height_ft * 12
+    H  = float(p.design_pipe_dia_in) + 11.0
     H1 = H + 12.0
     qty    = 2 * (math.floor(H1 / 12) + 1)
     length = L - 4.0
@@ -170,7 +170,7 @@ def rule_hw_top_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
 def rule_hw_vert_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """VW — Vertical wall bars (#4 @ 12" oc)."""
     L  = p.wall_width_ft * 12
-    H  = p.wall_height_ft * 12
+    H  = float(p.design_pipe_dia_in) + 11.0
     H1 = H + 12.0
     qty    = math.floor(L / 12) + 1
     length = H1 - 2 * _COVER_STEM
@@ -196,7 +196,7 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Stock = body + 2 × leg − bend_reduce("shape_2", "#4").
     """
     L      = p.wall_width_ft * 12
-    H      = p.wall_height_ft * 12
+    H      = float(p.design_pipe_dia_in) + 11.0
     H1     = H + 12.0
     c_cov  = 2.0          # 2" clear cover at each leg tip (standard)
     body   = H1 - 2 * c_cov   # outer span = "0" dimension in barlist sketch
@@ -284,7 +284,7 @@ def rule_hw_standees(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 
 def rule_validate_headwall(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    H = p.wall_height_ft * 12
+    H = float(p.design_pipe_dia_in) + 11.0
     if H > 89:
         log.warn(
             f"Wall height {fmt_inches(H)} exceeds D89A table max 7'-5\" — "
