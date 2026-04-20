@@ -32,6 +32,19 @@ class G2InletTopTemplate(BaseTemplate):
                 label="X -- Exterior Width (ft)",
                 min=2.5, max=20.0, default=5.667,
                 hint="Same exterior width as the inlet below",
+                group="Geometry",
+            ),
+            InputField(
+                "wall_thick_in", int,
+                label="Wall Thickness (in)",
+                min=0, max=24, default=0,
+                hint="0 = auto (9\" if interior X<=54\", 11\" otherwise)",
+            ),
+            InputField(
+                "wall_height_ft", float,
+                label="Height",
+                min=2.0, max=20.0, default=7.0,
+                hint="Height from top of existing box to top of grade",
             ),
             InputField(
                 "y_dim_ft", float,
@@ -40,22 +53,10 @@ class G2InletTopTemplate(BaseTemplate):
                 hint="Same exterior depth as the inlet below",
             ),
             InputField(
-                "wall_height_ft", float,
-                label="Wall Height (ft)",
-                min=2.0, max=20.0, default=7.0,
-                hint="Full wall height (for horizontal bar counts)",
-            ),
-            InputField(
                 "vert_extension_in", float,
                 label="Vertical Extension (in)",
                 min=6.0, max=60.0, default=20.0,
                 hint="Height of vertical bars extending into top slab (inches)",
-            ),
-            InputField(
-                "wall_thick_in", int,
-                label="Wall Thickness (in)",
-                min=0, max=24, default=0,
-                hint="0 = auto (9\" if interior X<=54\", 11\" otherwise)",
             ),
             InputField(
                 "grate_type", str,

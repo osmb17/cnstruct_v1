@@ -1216,22 +1216,22 @@ if generate_btn:
                 st.session_state.bars      = None
                 st.session_state._pdf_bytes = None
 
-    # Stream AI explanation immediately after engine run (if API key is set)
-    if st.session_state.get("bars") and _api_key_available():
-        with st.spinner("AI is explaining the barlist…"):
-            try:
-                chunks = []
-                for chunk in asst.explain_barlist_stream(
-                    template_name=template_name,
-                    params_raw=params_raw,
-                    bars=st.session_state.bars,
-                    warnings=st.session_state.warnings,
-                    log_lines=st.session_state.get("log_lines"),
-                ):
-                    chunks.append(chunk)
-                st.session_state.explanation = "".join(chunks)
-            except Exception:
-                st.session_state.explanation = None
+    # AI explanation disabled (paused to save API usage — re-enable when needed)
+    # if st.session_state.get("bars") and _api_key_available():
+    #     with st.spinner("AI is explaining the barlist…"):
+    #         try:
+    #             chunks = []
+    #             for chunk in asst.explain_barlist_stream(
+    #                 template_name=template_name,
+    #                 params_raw=params_raw,
+    #                 bars=st.session_state.bars,
+    #                 warnings=st.session_state.warnings,
+    #                 log_lines=st.session_state.get("log_lines"),
+    #             ):
+    #                 chunks.append(chunk)
+    #             st.session_state.explanation = "".join(chunks)
+    #         except Exception:
+    #             st.session_state.explanation = None
 
     st.rerun()   # always rerun — prevents stale bars from rendering on error
 
