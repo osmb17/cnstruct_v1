@@ -1,39 +1,37 @@
 """
-Template: Flat Slab  (v1.0)
+Template: Flat Slab  (v2.0)
 
-Rectangular slab-on-grade with a single bar size and uniform spacing each way.
+Rectangular flat slab with #5@12oc uniform spacing each way.
 Two straight bar marks: S1 (long-way) and S2 (short-way).
 
 Covers 20 PDFs in the clean_examples set:
   flatslab.10.2x3.6, flatslab.10.2x4.4, flatslab5x4, flatslab7x3, etc.
 
 Formula (verified against gold barlists):
-  bar_length = span_dim - 2 × cover
-  qty        = floor(perpendicular_dim / spacing)
+  bar_length = span_dim - 2 × 3.0 (cover)
+  qty        = floor(perpendicular_dim / 12.0 (spacing))
 """
 
 from __future__ import annotations
 
-from vistadetail.engine.schema import BAR_SIZES, InputField, Params
+from vistadetail.engine.schema import InputField, Params
 from vistadetail.engine.templates.base import BaseTemplate
 
 
 class FlatSlabTemplate(BaseTemplate):
     name: str = "Flat Slab"
-    version: str = "1.0"
+    version: str = "2.0"
     description: str = (
-        "Rectangular flat slab with uniform rebar each way. "
-        "Straight bars only — no hooks. "
+        "Rectangular flat slab with uniform #5@12oc rebar each way. "
         "Generates S1 (long-way) and S2 (short-way) marks."
     )
 
     def __init__(self):
         super().__init__()
         self.name        = "Flat Slab"
-        self.version     = "1.0"
+        self.version     = "2.0"
         self.description = (
-            "Rectangular flat slab with uniform rebar each way. "
-            "Straight bars only — no hooks. "
+            "Rectangular flat slab with uniform #5@12oc rebar each way. "
             "Generates S1 (long-way) and S2 (short-way) marks."
         )
 
@@ -50,24 +48,6 @@ class FlatSlabTemplate(BaseTemplate):
                 min=2.0, max=120.0, default=3.5,       # 3'-6"
                 hint="Shorter plan dimension in feet (decimals OK: 3.5 = 3'6\")",
             ),
-            InputField(
-                "bar_size", str,
-                label="Bar Size",
-                choices=BAR_SIZES, default="#5",
-                hint="Same bar size used both ways (EW)",
-            ),
-            InputField(
-                "spacing_in", float,
-                label="Spacing (in) — both ways",
-                min=6.0, max=18.0, default=12.0,
-                hint="Center-to-center bar spacing, same each way",
-            ),
-            InputField(
-                "cover_in", float,
-                label="Clear Cover (in)",
-                min=1.5, max=4.0, default=3.0,
-                hint="3 in for concrete cast against earth (ACI Table 20.6.1.3.1)",
-            ),
         ]
 
         self.rules = [
@@ -78,10 +58,6 @@ class FlatSlabTemplate(BaseTemplate):
 
     def evaluate_triggers(self, params: Params) -> list[str]:
         triggers: list[str] = []
-        if params.spacing_in > 16.0:
-            triggers.append("spacing_near_max_slab")
-        if params.cover_in < 3.0:
-            triggers.append("cover_below_earth_min")
         ratio = params.slab_length_ft / max(params.slab_width_ft, 0.1)
         if ratio > 4.0:
             triggers.append("high_aspect_ratio_slab")

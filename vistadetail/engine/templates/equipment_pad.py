@@ -1,48 +1,40 @@
 """
-Template: Equipment / Concrete Pad  (v1.0)
+Template: Equipment / Concrete Pad  (v2.0)
 
 Rectangular concrete equipment pad placed on compacted earth.
-Supports single mat and double mat reinforcing configurations.
-
-Single mat:  P1 (long) + P2 (short)
-Double mat:  P1 (bottom long) + P2 (bottom short) + P3 (top long) + P4 (top short)
-
-Cover default: 3.0 in — concrete cast against and permanently exposed to earth
-               (ACI 318-19 Table 20.6.1.3.1).
+Single mat: P1 (long) + P2 (short). #4@12oc, 3\" cover.
 
 Covers 3 PDFs in the clean_examples set:
   1.s3.concrete.pad.plans       — 8'-6"×4'-1", 6"t, #4@12oc, single mat, 3" cover
-  example.equipementfloor.detail — 43'-1"×24'-8.25", 12"t, #4 typ, double mat, 3" cover
-  transformerpad.doublemat      — 4'-4"×4'-0", double mat explicit
+  example.equipementfloor.detail — 43'-1"×24'-8.25", 12"t, #4 typ, 3" cover
+  transformerpad.doublemat      — 4'-4"×4'-0"
 
 Formulas (ACI 318-19 / ACI 360R-10):
-  bar_length = span_dim_in - 2 × cover_in
-  qty        = floor(perpendicular_dim_in / spacing_in)
+  bar_length = span_dim_in - 2 × 3.0 (cover)
+  qty        = floor(perpendicular_dim_in / 12.0 (spacing))
 """
 
 from __future__ import annotations
 
-from vistadetail.engine.schema import BAR_SIZES, InputField, Params
+from vistadetail.engine.schema import InputField, Params
 from vistadetail.engine.templates.base import BaseTemplate
 
 
 class EquipmentPadTemplate(BaseTemplate):
     name: str = "Equipment Pad"
-    version: str = "1.0"
+    version: str = "2.0"
     description: str = (
-        "Rectangular concrete equipment or transformer pad on compacted earth. "
-        "Single or double reinforcing mat (P1/P2 bottom, P3/P4 top). "
-        "Cover default 3 in per ACI cast-against-earth requirement."
+        "Concrete equipment pad. #4@12oc top and bottom, 3\" cover. "
+        "Optional anchor dowels."
     )
 
     def __init__(self):
         super().__init__()
         self.name        = "Equipment Pad"
-        self.version     = "1.0"
+        self.version     = "2.0"
         self.description = (
-            "Rectangular concrete equipment or transformer pad on compacted earth. "
-            "Single or double reinforcing mat (P1/P2 bottom, P3/P4 top). "
-            "Cover default 3 in per ACI cast-against-earth requirement."
+            "Concrete equipment pad. #4@12oc top and bottom, 3\" cover. "
+            "Optional anchor dowels."
         )
 
         self.inputs = [
@@ -65,43 +57,11 @@ class EquipmentPadTemplate(BaseTemplate):
                 min=4.0, max=36.0, default=6.0,
                 hint="Nominal pad thickness (typical: 6 in light equip, 12 in heavy equip)",
             ),
-            # ── Bottom mat (always present) ───────────────────────────────
             InputField(
-                "bar_size", str,
-                label="Bar Size  (bottom mat)",
-                choices=BAR_SIZES, default="#4",
-                hint="Bar size for bottom mat — used both directions",
-            ),
-            InputField(
-                "spacing_in", float,
-                label="Spacing (in)  — bottom mat, both ways",
-                min=6.0, max=18.0, default=12.0,
-                hint="Center-to-center bar spacing EW for bottom mat",
-            ),
-            InputField(
-                "cover_in", float,
-                label="Clear Cover (in)",
-                min=2.0, max=6.0, default=3.0,
-                hint="3 in for concrete cast against earth (ACI Table 20.6.1.3.1)",
-            ),
-            # ── Double mat (optional) ─────────────────────────────────────
-            InputField(
-                "has_double_mat", float,
-                label="Double Mat? (0=No 1=Yes)",
+                "has_vertical_dowels", float,
+                label="Vertical Anchor Dowels? (0=No 1=Yes)",
                 min=0.0, max=1.0, default=0.0,
-                hint="1 = add top mat (P3 and P4) for heavy equipment or thick pads",
-            ),
-            InputField(
-                "top_bar_size", str,
-                label="Top Bar Size  (if double mat)",
-                choices=BAR_SIZES, default="#4",
-                hint="Bar size for top mat — used both directions",
-            ),
-            InputField(
-                "top_spacing_in", float,
-                label="Top Spacing (in)  (if double mat)",
-                min=6.0, max=18.0, default=12.0,
-                hint="Center-to-center bar spacing EW for top mat",
+                hint="1 = generate D1 anchor dowel grid projecting above pad",
             ),
         ]
 
@@ -118,10 +78,6 @@ class EquipmentPadTemplate(BaseTemplate):
         area = params.pad_length_ft * params.pad_width_ft
         if area > 500.0:
             triggers.append("large_equipment_pad_contraction_joints_required")
-        if bool(params.has_double_mat) and params.pad_thickness_in < 8.0:
-            triggers.append("thin_double_mat_verify_cover_clearance")
-        if params.spacing_in > 15.0:
-            triggers.append("pad_spacing_near_max")
         return triggers
 
 

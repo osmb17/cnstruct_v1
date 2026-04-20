@@ -19,11 +19,12 @@ class G2InletTopTemplate(BaseTemplate):
     def __init__(self):
         super().__init__()
         self.name = "G2 Inlet Top"
-        self.version = "2.0"
+        self.version = "3.0"
         self.description = (
             "Top extension rebar for a G2 inlet -- horizontals, verticals, "
             "A&B bars, right angle, and hoops. "
-            "Bar sizes/spacings per Vista Steel spreadsheet."
+            "Bar sizes/spacings per Vista Steel spreadsheet. "
+            "Wall thickness auto-derives; vertical extension fixed at 20\"."
         )
 
         self.inputs = [
@@ -33,12 +34,6 @@ class G2InletTopTemplate(BaseTemplate):
                 min=2.5, max=20.0, default=5.667,
                 hint="Same exterior width as the inlet below",
                 group="Geometry",
-            ),
-            InputField(
-                "wall_thick_in", int,
-                label="Wall Thickness (in)",
-                min=0, max=24, default=0,
-                hint="0 = auto (9\" if interior X<=54\", 11\" otherwise)",
             ),
             InputField(
                 "wall_height_ft", float,
@@ -51,12 +46,6 @@ class G2InletTopTemplate(BaseTemplate):
                 label="Y -- Exterior Depth (ft)",
                 min=2.5, max=10.0, default=5.0,
                 hint="Same exterior depth as the inlet below",
-            ),
-            InputField(
-                "vert_extension_in", float,
-                label="Vertical Extension (in)",
-                min=6.0, max=60.0, default=20.0,
-                hint="Height of vertical bars extending into top slab (inches)",
             ),
             InputField(
                 "grate_type", str,

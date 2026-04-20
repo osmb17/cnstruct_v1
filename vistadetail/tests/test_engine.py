@@ -836,56 +836,19 @@ class TestPadBottomShort:
 
 class TestPadTopMat:
     def test_single_mat_produces_no_top_bars(self, log):
-        """has_double_mat=0 → P3 and P4 both return empty."""
-        p = _epad_params(has_double_mat=0.0)
+        """Equipment pad has_double_mat hardcoded 0.0 → P3 and P4 always return empty."""
+        p = _epad_params()
         assert rule_pad_top_long(p, log) == []
         assert rule_pad_top_short(p, log) == []
-
-    def test_double_mat_top_long_mark(self, log):
-        """P3 mark with double mat."""
-        p = _epad_params(has_double_mat=1.0, top_bar_size="#4",
-                         top_spacing_in=12.0)
-        bars = rule_pad_top_long(p, log)
-        assert len(bars) == 1
-        assert bars[0].mark == "P3"
-
-    def test_double_mat_top_short_mark(self, log):
-        """P4 mark with double mat."""
-        p = _epad_params(has_double_mat=1.0, top_bar_size="#4",
-                         top_spacing_in=12.0)
-        bars = rule_pad_top_short(p, log)
-        assert len(bars) == 1
-        assert bars[0].mark == "P4"
-
-    def test_double_mat_top_uses_top_spacing(self, log):
-        """P3 qty uses top_spacing_in, not spacing_in."""
-        p = _epad_params(
-            pad_length_ft=8.0, pad_width_ft=4.0,
-            has_double_mat=1.0, spacing_in=12.0, top_spacing_in=6.0,
-            cover_in=3.0,
-        )
-        bars_top = rule_pad_top_long(p, log)
-        bars_bot = rule_pad_bottom_long(p, log)
-        # top spacing 6 → twice as many bars as bottom spacing 12
-        assert bars_top[0].qty == bars_bot[0].qty * 2
 
 
 class TestGenerateEquipmentPadBarlist:
     def test_single_mat_marks(self, log):
-        """Single mat → only P1 and P2."""
+        """Equipment pad hardcodes single mat → only P1 and P2."""
         params = EPAD_TEMPLATE.input_defaults()
-        params["has_double_mat"] = 0.0
         bars = generate_barlist(EPAD_TEMPLATE, params, log, call_ai=False)
         marks = {b.mark for b in bars}
         assert marks == {"P1", "P2"}
-
-    def test_double_mat_marks(self, log):
-        """Double mat → P1, P2, P3, P4."""
-        params = EPAD_TEMPLATE.input_defaults()
-        params["has_double_mat"] = 1.0
-        bars = generate_barlist(EPAD_TEMPLATE, params, log, call_ai=False)
-        marks = {b.mark for b in bars}
-        assert marks == {"P1", "P2", "P3", "P4"}
 
     def test_all_bars_have_ref(self, log):
         """All generated bars must have a populated ref field."""
@@ -897,7 +860,7 @@ class TestGenerateEquipmentPadBarlist:
     def test_gold_concrete_pad_8ft6_by_4ft1(self, log):
         """
         Gold check: PDF 1 (1.s3.concrete.pad.plans.pdf)
-        8'-6" × 4'-1" pad, 6" thick, #4@12oc, 3" cover, single mat.
+        8'-6" × 4'-1" pad, 6" thick. cover=3.0 and spacing=12.0 now hardcoded.
           P1: qty = floor(49/12) = 4, len = 102-6 = 96.0 in  (8'-0")
           P2: qty = floor(102/12) = 8, len = 49-6  = 43.0 in  (3'-7")
         Note: 8'-6" = 102 in, 4'-1" = 49 in.
@@ -906,12 +869,6 @@ class TestGenerateEquipmentPadBarlist:
             "pad_length_ft": 8.5,
             "pad_width_ft":  4.0833,   # ≈ 4'-1"
             "pad_thickness_in": 6.0,
-            "bar_size": "#4",
-            "spacing_in": 12.0,
-            "cover_in": 3.0,
-            "has_double_mat": 0.0,
-            "top_bar_size": "#4",
-            "top_spacing_in": 12.0,
         }
         bars = generate_barlist(EPAD_TEMPLATE, params, log, call_ai=False)
         bar_map = {b.mark: b for b in bars}
@@ -945,17 +902,16 @@ class TestPadVerticalDowels:
         assert rule_pad_vertical_dowels(p, log) == []
 
     def test_dowel_length_formula(self, log):
-        """D1 length = embed + project."""
-        p = _swbd_params(dowel_embed_in=12.0, dowel_project_in=18.0,
-                         has_vertical_dowels=1.0)
+        """D1 length = embed(12) + project(18) = 30 in (hardcoded)."""
+        p = _swbd_params(has_vertical_dowels=1.0)
         bars = rule_pad_vertical_dowels(p, log)
         assert bars[0].length_in == pytest.approx(30.0)
 
     def test_dowel_qty_grid(self, log):
-        """D1 qty = floor(L/ds) × floor(W/ds)."""
+        """D1 qty = floor(L/12) × floor(W/12) (spacing hardcoded 12)."""
         import math as _m
         p = _swbd_params(pad_length_ft=9.6, pad_width_ft=4.0,
-                         dowel_spacing_in=12.0, has_vertical_dowels=1.0)
+                         has_vertical_dowels=1.0)
         bars = rule_pad_vertical_dowels(p, log)
         expected = _m.floor(9.6 * 12 / 12) * _m.floor(4.0 * 12 / 12)
         assert bars[0].qty == expected
@@ -991,23 +947,17 @@ class TestGenerateSwitchboardPadBarlist:
     def test_gold_9ft6_by_4ft_double_mat(self, log):
         """
         Gold check: Doublemat.verticaldowels.9.6x4.clean.pdf
-        9.6' × 4', double mat, #4@12oc, 3" cover, vertical dowels.
+        9.6' × 4', double mat, #4@12oc, 3" cover (all hardcoded), vertical dowels.
           P1 (bot long):  qty=floor(48/12)=4,  len=115.2-6=109.2 in
           P2 (bot short): qty=floor(115.2/12)=9, len=48-6=42 in
           P3 (top long):  qty=4, len=109.2 in
           P4 (top short): qty=9, len=42 in
           D1 (dowels):    qty=floor(115.2/12)×floor(48/12)=9×4=36
         """
-        import math as _m
         params = {
             "pad_length_ft": 9.6, "pad_width_ft": 4.0,
             "pad_thickness_in": 8.0,
-            "bar_size": "#4", "spacing_in": 12.0, "cover_in": 3.0,
-            "top_bar_size": "#4", "top_spacing_in": 12.0,
-            "has_double_mat": 1.0,
             "has_vertical_dowels": 1.0,
-            "dowel_bar_size": "#4", "dowel_spacing_in": 12.0,
-            "dowel_embed_in": 12.0, "dowel_project_in": 18.0,
         }
         bars = generate_barlist(SWBD_TEMPLATE, params, log, call_ai=False)
         bar_map = {b.mark: b for b in bars}
@@ -1188,16 +1138,9 @@ class TestPipeEncasement:
 
 
 class TestFuelFoundation:
-    def test_single_mat_marks(self, log):
-        params = FF_TEMPLATE.input_defaults()
-        params["has_top_mat"] = 0.0
-        bars = generate_barlist(FF_TEMPLATE, params, log, call_ai=False)
-        marks = {b.mark for b in bars}
-        assert marks == {"F1", "F2"}
-
     def test_double_mat_marks(self, log):
+        """Fuel foundation always double mat (has_top_mat hardcoded 1.0)."""
         params = FF_TEMPLATE.input_defaults()
-        params["has_top_mat"] = 1.0
         bars = generate_barlist(FF_TEMPLATE, params, log, call_ai=False)
         marks = {b.mark for b in bars}
         assert {"F1", "F2", "F3", "F4"}.issubset(marks)
@@ -1215,18 +1158,6 @@ class TestDualSlab:
                                 log, call_ai=False)
         marks = {b.mark for b in bars}
         assert marks == {"A1", "A2", "B1", "B2"}
-
-    def test_independent_spacings(self, log):
-        """Slabs A and B can have different spacings → different qty."""
-        params = DS_TEMPLATE.input_defaults()
-        params.update({
-            "slab_a_length_ft": 8.0, "slab_a_width_ft": 4.0, "slab_a_spacing_in": 12.0,
-            "slab_b_length_ft": 8.0, "slab_b_width_ft": 4.0, "slab_b_spacing_in": 6.0,
-        })
-        bars = generate_barlist(DS_TEMPLATE, params, log, call_ai=False)
-        bar_map = {b.mark: b for b in bars}
-        # B has half the spacing → twice as many bars as A (same dimension)
-        assert bar_map["B1"].qty == bar_map["A1"].qty * 2
 
     def test_all_bars_have_ref(self, log):
         bars = generate_barlist(DS_TEMPLATE, DS_TEMPLATE.input_defaults(),

@@ -48,20 +48,20 @@ def rule_stem_horiz(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Total qty = qty_per_face * 2 faces.
     """
     wall_len_in = p.wall_length_ft * 12.0
-    usable_h_in = (p.stem_height_ft * 12.0) - (2.0 * p.cover_in)
-    qty_per_face = math.floor(usable_h_in / p.horiz_spacing_in) + 1
+    usable_h_in = (p.stem_height_ft * 12.0) - (2.0 * 2.0)
+    qty_per_face = math.floor(usable_h_in / 12.0) + 1
     qty_total = qty_per_face * 2   # each face
 
     # Horizontal bar runs the full wall length
-    bar_len_in = wall_len_in - (2.0 * p.cover_in)
+    bar_len_in = wall_len_in - (2.0 * 2.0)
     bar_len_in = max(bar_len_in, 12.0)
 
     log.step(f"Stem usable height = {usable_h_in:.1f} in  ->  {qty_per_face} bars/face x 2 faces = {qty_total}")
-    log.step(f"Bar length = {fmt_inches(wall_len_in)} - 2x{p.cover_in} = {fmt_inches(bar_len_in)} (along wall)")
-    log.result("SW1", f"{p.horiz_bar_size} x {qty_total} @ {fmt_inches(bar_len_in)}")
+    log.step(f"Bar length = {fmt_inches(wall_len_in)} - 2x{2.0} = {fmt_inches(bar_len_in)} (along wall)")
+    log.result("SW1", f"#4 x {qty_total} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
-        mark="SW1", size=p.horiz_bar_size, qty=qty_total, length_in=bar_len_in,
+        mark="SW1", size="#4", qty=qty_total, length_in=bar_len_in,
         shape="Str", notes="Stem Horiz EF", source_rule="rule_stem_horiz",
     )]
 
@@ -81,19 +81,19 @@ def rule_stem_vert(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Total qty = qty_per_face * 2 faces.
     """
     wall_len_in = p.wall_length_ft * 12.0
-    usable_len_in = wall_len_in - (2.0 * p.cover_in)
-    qty_per_face = math.floor(usable_len_in / p.vert_spacing_in) + 1
+    usable_len_in = wall_len_in - (2.0 * 2.0)
+    qty_per_face = math.floor(usable_len_in / 12.0) + 1
     qty_total = qty_per_face * 2   # each face
 
-    bot_hook_in = hook_add("std_90", p.vert_bar_size)
+    bot_hook_in = hook_add("std_90", "#5")
     bar_len_in = (p.stem_height_ft * 12.0) + bot_hook_in + 6.0
 
     log.step(f"Wall length = {fmt_inches(wall_len_in)}, usable = {usable_len_in:.1f} in  ->  {qty_per_face} bars/face x 2 = {qty_total}")
     log.step(f"Bar length = {p.stem_height_ft * 12:.0f} + {bot_hook_in} hook + 6 top dev = {fmt_inches(bar_len_in)}")
-    log.result("SW2", f"{p.vert_bar_size} x {qty_total} @ {fmt_inches(bar_len_in)}")
+    log.result("SW2", f"#5 x {qty_total} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
-        mark="SW2", size=p.vert_bar_size, qty=qty_total, length_in=bar_len_in,
+        mark="SW2", size="#5", qty=qty_total, length_in=bar_len_in,
         shape="L", leg_a_in=p.stem_height_ft * 12.0 + 6.0, leg_b_in=bot_hook_in,
         notes="Stem Vert EF", source_rule="rule_stem_vert",
     )]
@@ -117,19 +117,19 @@ def rule_toe_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     footing_len_in = p.footing_length_ft * 12.0
 
     # Bars spaced along the wall length
-    qty = math.floor((wall_len_in - 2.0 * p.cover_in) / p.footing_spacing_in) + 1
+    qty = math.floor((wall_len_in - 2.0 * 2.0) / 12.0) + 1
 
     # Bar spans the full footing cross-section width with hook at toe
-    hook_in = hook_add("std_90", p.footing_bar_size)
-    bar_len_in = footing_len_in - p.cover_in + hook_in
+    hook_in = hook_add("std_90", "#5")
+    bar_len_in = footing_len_in - 2.0 + hook_in
 
-    log.step(f"Toe bars spaced along wall length {fmt_inches(wall_len_in)}: {qty} bars @ {p.footing_spacing_in}\" oc")
-    log.step(f"Bar length = {fmt_inches(footing_len_in)} - {p.cover_in} + {hook_in} hook = {fmt_inches(bar_len_in)}")
-    log.result("TW1", f"{p.footing_bar_size} x {qty} @ {fmt_inches(bar_len_in)}")
+    log.step(f"Toe bars spaced along wall length {fmt_inches(wall_len_in)}: {qty} bars @ {12.0}\" oc")
+    log.step(f"Bar length = {fmt_inches(footing_len_in)} - {2.0} + {hook_in} hook = {fmt_inches(bar_len_in)}")
+    log.result("TW1", f"#5 x {qty} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
-        mark="TW1", size=p.footing_bar_size, qty=qty, length_in=bar_len_in,
-        shape="L", leg_a_in=footing_len_in - p.cover_in, leg_b_in=hook_in,
+        mark="TW1", size="#5", qty=qty, length_in=bar_len_in,
+        shape="L", leg_a_in=footing_len_in - 2.0, leg_b_in=hook_in,
         notes="Toe Bars Bot", source_rule="rule_toe_bars",
     )]
 
@@ -150,18 +150,18 @@ def rule_heel_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     wall_len_in = p.wall_length_ft * 12.0
     footing_len_in = p.footing_length_ft * 12.0
 
-    qty = math.floor((wall_len_in - 2.0 * p.cover_in) / p.footing_spacing_in) + 1
+    qty = math.floor((wall_len_in - 2.0 * 2.0) / 12.0) + 1
 
-    hook_in = hook_add("std_90", p.footing_bar_size)
-    bar_len_in = footing_len_in - p.cover_in + hook_in
+    hook_in = hook_add("std_90", "#5")
+    bar_len_in = footing_len_in - 2.0 + hook_in
 
-    log.step(f"Heel bars spaced along wall length {fmt_inches(wall_len_in)}: {qty} bars @ {p.footing_spacing_in}\" oc")
-    log.step(f"Bar length = {fmt_inches(footing_len_in)} - {p.cover_in} + {hook_in} hook = {fmt_inches(bar_len_in)}")
-    log.result("HW1", f"{p.footing_bar_size} x {qty} @ {fmt_inches(bar_len_in)}")
+    log.step(f"Heel bars spaced along wall length {fmt_inches(wall_len_in)}: {qty} bars @ {12.0}\" oc")
+    log.step(f"Bar length = {fmt_inches(footing_len_in)} - {2.0} + {hook_in} hook = {fmt_inches(bar_len_in)}")
+    log.result("HW1", f"#5 x {qty} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
-        mark="HW1", size=p.footing_bar_size, qty=qty, length_in=bar_len_in,
-        shape="L", leg_a_in=footing_len_in - p.cover_in, leg_b_in=hook_in,
+        mark="HW1", size="#5", qty=qty, length_in=bar_len_in,
+        shape="L", leg_a_in=footing_len_in - 2.0, leg_b_in=hook_in,
         notes="Heel Bars Top", source_rule="rule_heel_bars",
     )]
 
@@ -182,25 +182,25 @@ def rule_stem_dowels(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Class B splice = 1.3 × ld (ACI 318-19 §25.5.2).
     """
     wall_len_in = p.wall_length_ft * 12.0
-    qty = math.floor((wall_len_in - 2.0 * p.cover_in) / p.vert_spacing_in) + 1
+    qty = math.floor((wall_len_in - 2.0 * 2.0) / 12.0) + 1
 
     # Embed into footing: footing depth minus top cover
-    embed_in = p.footing_depth_in - p.cover_in
+    embed_in = 18.0 - 2.0
 
     # Lap splice into stem: Class B = 1.3 x ld
-    ld_in = development_length_tension(p.vert_bar_size, cover_in=p.cover_in,
-                                       spacing_in=p.vert_spacing_in)
+    ld_in = development_length_tension("#5", cover_in=2.0,
+                                       spacing_in=12.0)
     lap_in = math.ceil(1.3 * ld_in)
 
     bar_len_in = embed_in + lap_in
 
-    log.step(f"Dowel qty = {qty} at {p.vert_spacing_in}\" oc along wall length {fmt_inches(wall_len_in)}")
+    log.step(f"Dowel qty = {qty} at {12.0}\" oc along wall length {fmt_inches(wall_len_in)}")
     log.step(f"Embed = {embed_in:.1f} in  |  Class B lap = 1.3 x {ld_in:.1f} = {lap_in} in")
     log.step(f"Total dowel length = {bar_len_in:.1f} in")
-    log.result("DW1", f"{p.vert_bar_size} × {qty} @ {fmt_inches(bar_len_in)}")
+    log.result("DW1", f"#5 × {qty} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
-        mark="DW1", size=p.vert_bar_size, qty=qty, length_in=bar_len_in,
+        mark="DW1", size="#5", qty=qty, length_in=bar_len_in,
         shape="Str", notes="Stem-Ftg Dowels", source_rule="rule_stem_dowels",
     )]
 
@@ -225,21 +225,21 @@ def rule_shear_key(p: Params, log: ReasoningLogger) -> list[BarRow]:
         return []
 
     wall_len_in = p.wall_length_ft * 12.0
-    qty = math.floor((wall_len_in - 2.0 * p.cover_in) / p.footing_spacing_in) + 1
+    qty = math.floor((wall_len_in - 2.0 * 2.0) / 12.0) + 1
 
     # U-bar: two legs each = key_depth - cover; bend per ACI 318-19 Table 25.3.1
     from vistadetail.engine.hooks import min_bend_diameter
-    bend_d = min_bend_diameter(p.footing_bar_size)  # 6db (#3-#8) or 8db (#9+)
-    leg_in = p.key_depth_in - p.cover_in
+    bend_d = min_bend_diameter("#5")  # 6db (#3-#8) or 8db (#9+)
+    leg_in = 12.0 - 2.0
     bar_len_in = (2.0 * leg_in) + bend_d
     bar_len_in = max(bar_len_in, 12.0)
 
-    log.step(f"Shear key requested — key depth = {p.key_depth_in} in")
+    log.step(f"Shear key requested — key depth = {12.0} in")
     log.step(f"U-bar qty = {qty}  |  leg = {leg_in:.1f} in × 2 + {bend_d:.2f} bend = {bar_len_in:.2f} in")
-    log.result("KW1", f"{p.footing_bar_size} × {qty} @ {fmt_inches(bar_len_in)}")
+    log.result("KW1", f"#5 × {qty} @ {fmt_inches(bar_len_in)}")
 
     return [BarRow(
-        mark="KW1", size=p.footing_bar_size, qty=qty, length_in=bar_len_in,
+        mark="KW1", size="#5", qty=qty, length_in=bar_len_in,
         shape="U", leg_a_in=leg_in, leg_b_in=bend_d, leg_c_in=leg_in,
         notes="Shear Key U-bars", source_rule="rule_shear_key",
     )]
@@ -256,9 +256,9 @@ def rule_validate_retaining_wall(p: Params, log: ReasoningLogger) -> list[BarRow
             f"Stem thickness {p.stem_thick_in} in < 10 in — verify cover and constructability "
             "(ACI 318-19 §11.7.2 requires min. 6 in for walls; Caltrans detail practice typically ≥ 10 in)"
         )
-    if p.cover_in < 2.0:
+    if 2.0 < 2.0:
         log.warn(
-            f"Cover {p.cover_in} in < 2.0 in minimum for retaining wall (ACI 318-19 §20.6.1.3)"
+            f"Cover {2.0} in < 2.0 in minimum for retaining wall (ACI 318-19 §20.6.1.3)"
         )
     if p.stem_height_ft > 15.0:
         log.warn(

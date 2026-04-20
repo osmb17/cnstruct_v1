@@ -169,9 +169,9 @@ def rule_sw_wall_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     # a-bars: vertical flexural bars, each face
     a_spacing = tbl["a_spacing"]
-    a_qty_per_face = math.floor((wall_len_in - 2 * p.cover_in) / a_spacing) + 1
+    a_qty_per_face = math.floor((wall_len_in - 2 * 2.0) / a_spacing) + 1
     a_qty = a_qty_per_face * 2  # each face
-    a_len = wall_ht_in - 2 * p.cover_in
+    a_len = wall_ht_in - 2 * 2.0
 
     log.step(
         f"B15-1 table H={h}': a-bars = {tbl['a_size']} @ {a_spacing}\" oc",
@@ -193,10 +193,10 @@ def rule_sw_wall_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     # b-bars: secondary vertical, H >= 8' only
     if tbl["b_size"] is not None:
         b_spacing = tbl["b_spacing"]
-        b_qty_per_face = math.floor((wall_len_in - 2 * p.cover_in) / b_spacing) + 1
+        b_qty_per_face = math.floor((wall_len_in - 2 * 2.0) / b_spacing) + 1
         b_qty = b_qty_per_face * 2
         # b-bars are shorter -- typically only in lower portion
-        b_len = wall_ht_in - 2 * p.cover_in
+        b_len = wall_ht_in - 2 * 2.0
 
         log.step(
             f"WV2: b-bars = {tbl['b_size']} @ {b_spacing}\" oc, {b_qty} total",
@@ -232,7 +232,7 @@ def rule_sw_wall_horizontals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     n_bond_beams = math.floor(wall_ht_in / bond_beam_spacing) + 1
 
     # #5 continuous at each bond beam per B15-1/3
-    bar_len = wall_len_in - 2 * p.cover_in
+    bar_len = wall_len_in - 2 * 2.0
     # 2 bars per bond beam (continuous #5 at each bond beam)
     qty = n_bond_beams * 2
 
@@ -268,7 +268,7 @@ def rule_sw_footing_dowels(p: Params, log: ReasoningLogger) -> list[BarRow]:
     wall_len_in = p.wall_length_ft * 12.0
 
     d_spacing = tbl["d_spacing"]
-    qty = math.floor((wall_len_in - 2 * p.cover_in) / d_spacing) + 1
+    qty = math.floor((wall_len_in - 2 * 2.0) / d_spacing) + 1
 
     # Dowel length: embed into footing + lap into wall
     # Per B15-1: #5 @ 16, typical dowel = footing depth + 2'-8" lap
@@ -314,8 +314,8 @@ def rule_sw_footing_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
         footing_depth = 12.0  # 1'-0" per B15-1
 
         # Transverse bars: #4 @ 18" max, across footing width
-        trans_qty = math.floor((wall_len_in - 2 * p.cover_in) / 18.0) + 1
-        trans_len = w_in - 2 * p.cover_in
+        trans_qty = math.floor((wall_len_in - 2 * 2.0) / 18.0) + 1
+        trans_len = w_in - 2 * 2.0
 
         log.step(
             f"Spread footing W = {fmt_inches(w_in)} for H={h}'",
@@ -335,7 +335,7 @@ def rule_sw_footing_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
         ))
 
         # Longitudinal bars: #4 Tot 2 top, #4 Tot 2 bottom = 4 total
-        long_len = wall_len_in - 2 * p.cover_in
+        long_len = wall_len_in - 2 * 2.0
         long_qty = 4
 
         log.step(f"FL1: #4 Tot 4 longitudinal @ {fmt_inches(long_len)}", source="SoundWallRules")
@@ -354,7 +354,7 @@ def rule_sw_footing_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
         # Trench footing: #4 @ 12 max horizontally, #4 @ 12 max vertically
         # Horizontal trench bars along wall length
         horiz_qty = math.floor(depth_in / 12.0) + 1
-        horiz_len = wall_len_in - 2 * p.cover_in
+        horiz_len = wall_len_in - 2 * 2.0
 
         log.step(
             f"Trench footing D = {fmt_inches(depth_in)} ({case}, H={h}')",
@@ -374,8 +374,8 @@ def rule_sw_footing_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
         ))
 
         # Vertical bars in trench along wall length
-        vert_qty = math.floor((wall_len_in - 2 * p.cover_in) / 12.0) + 1
-        vert_len = depth_in - 2 * p.cover_in
+        vert_qty = math.floor((wall_len_in - 2 * 2.0) / 12.0) + 1
+        vert_len = depth_in - 2 * 2.0
 
         log.step(
             f"FL1: #4 @ 12\" vertical in trench, {vert_qty} bars @ {fmt_inches(vert_len)}",
@@ -405,7 +405,7 @@ def rule_sw_pile_cage(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     h = _snap_height(p.wall_height_ft)
     case = p.ground_case
-    phi = _snap_phi(p.soil_phi_deg)
+    phi = _snap_phi(30.0)
 
     pile_tbl = _PILE_DATA.get(case, _PILE_DATA["case_1"])
     phi_tbl = pile_tbl.get(phi, pile_tbl[30])
@@ -442,7 +442,7 @@ def rule_sw_pile_cage(p: Params, log: ReasoningLogger) -> list[BarRow]:
     # PS1 -- Pile spiral (W8 wire)
     # Spiral pitch: 6" for top 9', 3" below, 2" at top 3' per B15-5
     # Approximate total spiral length per pile:
-    pile_circ_in = math.pi * (_PILE_DIA_IN - 2 * p.cover_in)
+    pile_circ_in = math.pi * (_PILE_DIA_IN - 2 * 2.0)
     # Average pitch ~4" over the pile length
     avg_pitch = 4.0
     n_turns = pile_len_in / avg_pitch
@@ -482,11 +482,11 @@ def rule_sw_pile_cap_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     # Pile cap: #4 @ 12 max vertically each face, 2'-0" deep cap
     cap_depth_in = 24.0  # per B15-3 typical
     n_vert_per_face = math.floor(cap_depth_in / 12.0) + 1
-    qty = math.floor((wall_len_in - 2 * p.cover_in) / 12.0) + 1
+    qty = math.floor((wall_len_in - 2 * 2.0) / 12.0) + 1
 
     # Bar length spans across pile cap width
     cap_width_in = _PILE_CAP_WIDTH_IN
-    bar_len = cap_width_in - 2 * p.cover_in
+    bar_len = cap_width_in - 2 * 2.0
 
     log.step(
         f"PC1: pile cap #4 @ 12\" EF, {qty} bars @ {fmt_inches(bar_len)}",
@@ -515,8 +515,8 @@ def rule_validate_sound_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
         warns.append(f"Wall height {h}' < 6' minimum per B15")
     if h > 16.0:
         warns.append(f"Wall height {h}' > 16' maximum per B15")
-    if p.exp_joint_spacing_ft > 48.0:
-        warns.append(f"Expansion joint spacing {p.exp_joint_spacing_ft}' > 48' max per B15")
+    if 48.0 > 48.0:
+        warns.append(f"Expansion joint spacing {48.0}' > 48' max per B15")
 
     for w in warns:
         log.warn(w, source="SoundWallRules")

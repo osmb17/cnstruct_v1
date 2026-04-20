@@ -6,17 +6,21 @@ Geometry: circular cage for drilled pier / caisson.
   - Standard hoops at uniform spacing over full depth
   - Optional seismic confinement zone at top (closer hoop spacing)
 
-Verified formulas (from gold barlists):
-  vert_length  = cage_depth_in + embed_in
-  ring_OD_in   = hole_diameter_in - 2 × cover_in
-  ring_circ_in = π × ring_OD_in
-  ring_len_in  = ring_circ_in + lap_in
-  std_qty      = floor(cage_depth_in / ring_spacing_in) + 1
-  conf_qty     = floor(confinement_depth_in / conf_spacing_in) + 1  (when enabled)
+Hardcoded constants (removed from user inputs):
+  EMBED_IN   = 6.0"    bottom embedment
+  RING_BAR   = "#4"    hoop bar size
+  LAP_FT     = 3.0     hoop lap length
+  COVER_IN   = 3.0"    clear cover (ACI cast-against-earth)
+  CONF_SPC   = 3.0"    confinement hoop spacing
+  CONF_DEP   = 6.0"    confinement zone depth
 
-Examples confirmed from cage PDFs:
-  5ft deep × 3ft hole, rings @16oc → 4 rings (floor(60/16)+1=4) ✓
-  OD = 36 - 2×3 = 30in = 2'-6" ✓,  ring_len = π×30 + 36(lap) = 94.2+36 = 130.2in ✓
+Verified formulas (from gold barlists):
+  vert_length  = cage_depth_in + EMBED_IN
+  ring_OD_in   = hole_diameter_in - 2 × COVER_IN
+  ring_circ_in = π × ring_OD_in
+  ring_len_in  = ring_circ_in + LAP_FT×12
+  std_qty      = floor(cage_depth_in / ring_spacing_in) + 1
+  conf_qty     = floor(CONF_DEP / CONF_SPC) + 1  (when enabled)
 """
 
 from __future__ import annotations
@@ -29,6 +33,14 @@ from vistadetail.engine.schema import BarRow, Params, fmt_inches
 
 _PI = math.pi
 
+# Hardcoded constants
+_EMBED_IN  = 6.0
+_RING_BAR  = "#4"
+_LAP_FT    = 3.0
+_COVER_IN  = 3.0
+_CONF_SPC  = 3.0
+_CONF_DEP  = 6.0
+
 
 # ---------------------------------------------------------------------------
 # V1 — vertical bars
@@ -38,18 +50,18 @@ def rule_cage_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     Longitudinal bars running the full cage depth + bottom embed.
 
-    Length = cage_depth_in + embed_in
+    Length = cage_depth_in + EMBED_IN (6")
     Qty    = vert_count  (input directly — set by drilled shaft design)
     Mark   = V1
     """
     depth_in  = p.cage_depth_ft * 12
-    bar_len   = depth_in + p.embed_in
+    bar_len   = depth_in + _EMBED_IN
     qty       = int(p.vert_count)
 
     log.step(
-        f"Vert bars (V1): length = {depth_in:.1f} + {p.embed_in} embed = {bar_len:.1f} in"
+        f"Vert bars (V1): length = {depth_in:.1f} + {_EMBED_IN} embed = {bar_len:.1f} in"
         f" = {fmt_inches(bar_len)}",
-        detail="cage_depth_ft×12 + embed_in",
+        detail="cage_depth_ft×12 + 6in embed",
         source="CageRules",
     )
     log.step(
@@ -66,7 +78,7 @@ def rule_cage_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
         qty=qty,
         length_in=bar_len,
         shape="Str",
-        notes=f"cage verticals, {p.embed_in:.0f}in bot. embed",
+        notes=f"cage verticals, {_EMBED_IN:.0f}in bot. embed",
         source_rule="rule_cage_verticals",
     )]
 
@@ -79,22 +91,22 @@ def rule_cage_hoops_standard(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     Circular hoops (rings) at uniform spacing over the full cage depth.
 
-    OD        = hole_diameter_in - 2 × cover_in
+    OD        = hole_diameter_in - 2 × COVER_IN (3")
     circ      = π × OD
-    ring_len  = circ + lap_in
+    ring_len  = circ + LAP_FT×12 (36")
     qty       = floor(cage_depth_in / ring_spacing_in) + 1
     Mark      = H1
     """
     depth_in  = p.cage_depth_ft * 12
     hole_in   = p.hole_diameter_ft * 12
-    OD_in     = hole_in - 2 * p.cover_in
+    OD_in     = hole_in - 2 * _COVER_IN
     circ_in   = _PI * OD_in
-    ring_len  = circ_in + p.lap_ft * 12
+    ring_len  = circ_in + _LAP_FT * 12
     qty       = math.floor(depth_in / p.ring_spacing_in) + 1
 
     log.step(
-        f"Hoop OD = {hole_in:.1f} − 2×{p.cover_in} cover = {OD_in:.1f} in = {fmt_inches(OD_in)}",
-        detail="hole_diameter_in − 2×cover_in",
+        f"Hoop OD = {hole_in:.1f} − 2×{_COVER_IN} cover = {OD_in:.1f} in = {fmt_inches(OD_in)}",
+        detail="hole_diameter_in − 2×3in cover",
         source="CageRules",
     )
     log.step(
@@ -103,9 +115,9 @@ def rule_cage_hoops_standard(p: Params, log: ReasoningLogger) -> list[BarRow]:
         source="CageRules",
     )
     log.step(
-        f"Ring length = {circ_in:.2f} + {p.lap_ft * 12:.1f} lap = {ring_len:.2f} in"
+        f"Ring length = {circ_in:.2f} + {_LAP_FT * 12:.1f} lap = {ring_len:.2f} in"
         f" = {fmt_inches(ring_len)}",
-        detail="circ_in + lap_ft×12",
+        detail="circ_in + 36in lap",
         source="CageRules",
     )
     log.step(
@@ -113,16 +125,16 @@ def rule_cage_hoops_standard(p: Params, log: ReasoningLogger) -> list[BarRow]:
         detail="floor(cage_depth_in / ring_spacing_in) + 1",
         source="CageRules",
     )
-    log.result("H1", f"{p.ring_bar_size} × {qty} @ {fmt_inches(ring_len)} [hoop]",
+    log.result("H1", f"{_RING_BAR} × {qty} @ {fmt_inches(ring_len)} [hoop]",
                detail=f"std hoops @{int(p.ring_spacing_in)}oc", source="CageRules")
 
     return [BarRow(
         mark="H1",
-        size=p.ring_bar_size,
+        size=_RING_BAR,
         qty=qty,
         length_in=ring_len,
         shape="Rng",
-        notes=f"hoops @{int(p.ring_spacing_in)}oc, OD={fmt_inches(OD_in)}, lap={fmt_inches(p.lap_ft*12)}",
+        notes=f"hoops @{int(p.ring_spacing_in)}oc, OD={fmt_inches(OD_in)}, lap={fmt_inches(_LAP_FT*12)}",
         source_rule="rule_cage_hoops_standard",
     )]
 
@@ -137,11 +149,8 @@ def rule_cage_hoops_confinement(p: Params, log: ReasoningLogger) -> list[BarRow]
     Only generated when has_confinement_zone is True.
 
     Uses the same OD / ring length as H1.
-    qty = floor(confinement_depth_in / conf_spacing_in) + 1
+    qty = floor(CONF_DEP / CONF_SPC) + 1  (floor(6/3)+1 = 3)
     Mark = H2
-
-    These are IN ADDITION to the standard H1 hoops (the confinement zone gets
-    the extra closely-spaced rings; H1 covers the full depth at standard spacing).
     """
     if not bool(p.has_confinement_zone):
         log.step(
@@ -152,34 +161,34 @@ def rule_cage_hoops_confinement(p: Params, log: ReasoningLogger) -> list[BarRow]
         return []
 
     hole_in   = p.hole_diameter_ft * 12
-    OD_in     = hole_in - 2 * p.cover_in
+    OD_in     = hole_in - 2 * _COVER_IN
     circ_in   = _PI * OD_in
-    ring_len  = circ_in + p.lap_ft * 12
-    conf_in   = p.confinement_depth_in
-    qty       = math.floor(conf_in / p.conf_spacing_in) + 1
+    ring_len  = circ_in + _LAP_FT * 12
+    conf_in   = _CONF_DEP
+    qty       = math.floor(conf_in / _CONF_SPC) + 1
 
     log.step(
-        f"Confinement zone H2: top {conf_in:.1f} in @ {p.conf_spacing_in} in oc",
+        f"Confinement zone H2: top {conf_in:.1f} in @ {_CONF_SPC} in oc",
         detail=f"seismic confinement zone: first {fmt_inches(conf_in)} of cage",
         source="CageRules",
     )
     log.step(
-        f"Qty H2 = ⌊{conf_in} ÷ {p.conf_spacing_in}⌋ + 1 = {qty}",
-        detail="floor(confinement_depth_in / conf_spacing_in) + 1",
+        f"Qty H2 = ⌊{conf_in} ÷ {_CONF_SPC}⌋ + 1 = {qty}",
+        detail="floor(6in / 3in) + 1 = 3",
         source="CageRules",
     )
-    log.result("H2", f"{p.ring_bar_size} × {qty} @ {fmt_inches(ring_len)} [conf. hoop]",
-               detail=f"confinement hoops @{int(p.conf_spacing_in)}oc top {fmt_inches(conf_in)}",
+    log.result("H2", f"{_RING_BAR} × {qty} @ {fmt_inches(ring_len)} [conf. hoop]",
+               detail=f"confinement hoops @{int(_CONF_SPC)}oc top {fmt_inches(conf_in)}",
                source="CageRules")
 
     return [BarRow(
         mark="H2",
-        size=p.ring_bar_size,
+        size=_RING_BAR,
         qty=qty,
         length_in=ring_len,
         shape="Rng",
         notes=(
-            f"confinement hoops @{int(p.conf_spacing_in)}oc, "
+            f"confinement hoops @{int(_CONF_SPC)}oc, "
             f"top {fmt_inches(conf_in)}, OD={fmt_inches(OD_in)}"
         ),
         source_rule="rule_cage_hoops_confinement",
@@ -193,30 +202,20 @@ def rule_cage_hoops_confinement(p: Params, log: ReasoningLogger) -> list[BarRow]
 def rule_validate_cage(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     Checks:
-      - ACI 318-19 §26.6.2.2  cover ≥ 3 in (cast against earth)
+      - Cover 3 in (hardcoded, cast against earth)
       - Hoop spacing ≤ 18 in max (general stirrup limit)
       - Vert count ≥ 4 (minimum cage redundancy)
       - OD ≥ 6 in (structurally unreasonable below this)
     """
-    depth_in = p.cage_depth_ft * 12
     hole_in  = p.hole_diameter_ft * 12
-    OD_in    = hole_in - 2 * p.cover_in
+    OD_in    = hole_in - 2 * _COVER_IN
 
-    # Cover check
-    if p.cover_in < 3.0:
-        log.warn(
-            f"Cover {p.cover_in} in < 3 in — drilled shafts cast against earth require ≥ 3 in",
-            detail="ACI 318-19 Table 20.6.1.3.1 (cast against earth)",
-            source="Validator",
-        )
-    else:
-        log.ok(
-            f"Cover {p.cover_in} in ≥ 3 in  [ACI Table 20.6.1.3.1]",
-            detail="ACI 318-19 Table 20.6.1.3.1",
-            source="Validator",
-        )
+    log.ok(
+        f"Cover {_COVER_IN} in (standard, cast against earth)  [ACI Table 20.6.1.3.1]",
+        detail="ACI 318-19 Table 20.6.1.3.1",
+        source="Validator",
+    )
 
-    # Hoop spacing check
     if p.ring_spacing_in > 18.0:
         log.warn(
             f"Ring spacing {p.ring_spacing_in} in > 18 in — check ACI §26.7.2",
@@ -230,7 +229,6 @@ def rule_validate_cage(p: Params, log: ReasoningLogger) -> list[BarRow]:
             source="Validator",
         )
 
-    # Min vert count
     if int(p.vert_count) < 4:
         log.warn(
             f"Vert count {int(p.vert_count)} < 4 — practical cage minimum is 4 bars",
@@ -244,7 +242,6 @@ def rule_validate_cage(p: Params, log: ReasoningLogger) -> list[BarRow]:
             source="Validator",
         )
 
-    # OD sanity
     if OD_in < 6.0:
         log.warn(
             f"Ring OD {OD_in:.1f} in < 6 in — cage may be too small to build",
@@ -254,7 +251,7 @@ def rule_validate_cage(p: Params, log: ReasoningLogger) -> list[BarRow]:
     else:
         log.ok(
             f"Ring OD {OD_in:.1f} in = {fmt_inches(OD_in)}  [geometry OK]",
-            detail="OD = hole_diameter_in − 2×cover_in",
+            detail="OD = hole_diameter_in − 2×3in cover",
             source="Validator",
         )
 

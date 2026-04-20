@@ -38,7 +38,7 @@ def _long_bar_calc(p, mark, bar_size, qty_count, label, wall_len_ft, log):
     from vistadetail.engine.hooks import development_length_tension
 
     wall_in = wall_len_ft * 12
-    total_run = wall_in - 2 * p.cover_in
+    total_run = wall_in - 2 * 1.5
     qty_per_pos = int(qty_count)
     max_stock_in = _MAX_STOCK_FT * 12
 
@@ -51,7 +51,7 @@ def _long_bar_calc(p, mark, bar_size, qty_count, label, wall_len_ft, log):
             source="SeatwallRules",
         )
     else:
-        ld_in = development_length_tension(bar_size, cover_in=p.cover_in)
+        ld_in = development_length_tension(bar_size, cover_in=1.5)
         lap_in = math.ceil(1.3 * ld_in)
         effective = max_stock_in - lap_in
         n_pieces = math.ceil(total_run / effective)
@@ -80,7 +80,7 @@ def _long_bar_calc(p, mark, bar_size, qty_count, label, wall_len_ft, log):
 
 def rule_seatwall_top_long(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """Top longitudinal bars -- spliced if wall > 60ft."""
-    return _long_bar_calc(p, "S1", p.top_bar_size, p.top_bar_count, "top",
+    return _long_bar_calc(p, "S1", "#4", p.top_bar_count, "top",
                           p.wall_length_ft, log)
 
 
@@ -90,7 +90,7 @@ def rule_seatwall_top_long(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_seatwall_bot_long(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """Bottom longitudinal bars -- spliced if wall > 60ft."""
-    return _long_bar_calc(p, "S2", p.bot_bar_size, p.bot_bar_count, "bottom",
+    return _long_bar_calc(p, "S2", "#4", p.bot_bar_count, "bottom",
                           p.wall_length_ft, log)
 
 
@@ -110,30 +110,30 @@ def rule_seatwall_transverse(p: Params, log: ReasoningLogger) -> list[BarRow]:
     and resist thermal/shrinkage splitting forces.
     """
     wall_in  = p.wall_length_ft * 12
-    bar_len  = p.wall_width_in  - 2 * p.cover_in
-    qty      = math.floor(wall_in / p.tie_spacing_in)
+    bar_len  = p.wall_width_in  - 2 * 1.5
+    qty      = math.floor(wall_in / 18.0)
 
     log.step(
-        f"Transverse bars (S3): {p.wall_width_in:.2f} − 2×{p.cover_in} cover"
+        f"Transverse bars (S3): {p.wall_width_in:.2f} − 2×{1.5} cover"
         f" = {bar_len:.2f} in = {fmt_inches(bar_len)}",
         detail="wall_width_in − 2×cover_in",
         source="SeatwallRules",
     )
     log.step(
-        f"Qty S3 = ⌊{wall_in:.2f} ÷ {p.tie_spacing_in}⌋ = {qty}",
+        f"Qty S3 = ⌊{wall_in:.2f} ÷ {18.0}⌋ = {qty}",
         detail="floor(wall_length_in / tie_spacing_in)",
         source="SeatwallRules",
     )
-    log.result("S3", f"{p.tie_bar_size} × {qty} @ {fmt_inches(bar_len)} [transverse]",
+    log.result("S3", f"#3 × {qty} @ {fmt_inches(bar_len)} [transverse]",
                detail="transverse bars across seat width", source="SeatwallRules")
 
     return [BarRow(
         mark="S3",
-        size=p.tie_bar_size,
+        size="#3",
         qty=qty,
         length_in=bar_len,
         shape="Str",
-        notes=f"@{int(p.tie_spacing_in)}oc along length",
+        notes=f"@{int(18.0)}oc along length",
         source_rule="rule_seatwall_transverse",
     )]
 
@@ -149,15 +149,15 @@ def rule_validate_seatwall(p: Params, log: ReasoningLogger) -> list[BarRow]:
       - Seat height sanity (warn if < 12 in or > 36 in)
       - Minimum bar count (warn if < 2 longitudinal bars per face)
     """
-    if p.cover_in < 1.5:
+    if 1.5 < 1.5:
         log.warn(
-            f"Cover {p.cover_in} in < 1.5 in minimum (ACI Table 20.6.1.3.1 exposed-to-weather)",
+            f"Cover {1.5} in < 1.5 in minimum (ACI Table 20.6.1.3.1 exposed-to-weather)",
             detail="ACI 318-19 Table 20.6.1.3.1: ≥ 1.5 in, #6 and smaller, exposed to weather",
             source="Validator",
         )
     else:
         log.ok(
-            f"Cover {p.cover_in} in ≥ 1.5 in  [ACI Table 20.6.1.3.1]",
+            f"Cover {1.5} in ≥ 1.5 in  [ACI Table 20.6.1.3.1]",
             detail="ACI 318-19 Table 20.6.1.3.1", source="Validator",
         )
 

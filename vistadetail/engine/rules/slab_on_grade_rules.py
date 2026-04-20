@@ -38,36 +38,36 @@ def rule_sog_long_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     Straight bars spanning the long dimension of the slab.
 
-    Length = slab_length_in - 2 × cover_in
-    Qty    = floor(slab_width_in / spacing_in)
+    Length = slab_length_in - 2 × 1.5 (cover)
+    Qty    = floor(slab_width_in / 12.0 (spacing))
     Mark   = G1
     """
     len_in  = p.slab_length_ft * 12
     wid_in  = p.slab_width_ft  * 12
-    bar_len = len_in - 2 * p.cover_in
-    qty     = math.floor(wid_in / p.spacing_in)
+    bar_len = len_in - 2 * 1.5
+    qty     = math.floor(wid_in / 12.0)
 
     log.step(
-        f"Long bars (G1): {len_in:.2f} − 2×{p.cover_in} cover = {bar_len:.2f} in"
+        f"Long bars (G1): {len_in:.2f} − 2×1.5 cover = {bar_len:.2f} in"
         f" = {fmt_inches(bar_len)}",
-        detail="slab_length_ft×12 − 2×cover_in",
+        detail="slab_length_ft×12 − 2×1.5",
         source="SlabOnGradeRules",
     )
     log.step(
-        f"Qty G1 = ⌊{wid_in:.2f} ÷ {p.spacing_in}⌋ = {qty}",
-        detail="floor(slab_width_in / spacing_in)",
+        f"Qty G1 = ⌊{wid_in:.2f} ÷ 12.0⌋ = {qty}",
+        detail="floor(slab_width_in / 12.0)",
         source="SlabOnGradeRules",
     )
-    log.result("G1", f"{p.bar_size} × {qty} @ {fmt_inches(bar_len)} [long EW]",
+    log.result("G1", f"#4 × {qty} @ {fmt_inches(bar_len)} [long EW]",
                detail="slab long-direction bars", source="SlabOnGradeRules")
 
     return [BarRow(
         mark="G1",
-        size=p.bar_size,
+        size="#4",
         qty=qty,
         length_in=bar_len,
         shape="Str",
-        notes=f"@{int(p.spacing_in)}oc EW",
+        notes="@12oc EW",
         source_rule="rule_sog_long_bars",
     )]
 
@@ -80,36 +80,36 @@ def rule_sog_short_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     Straight bars spanning the short dimension of the slab.
 
-    Length = slab_width_in - 2 × cover_in
-    Qty    = floor(slab_length_in / spacing_in)
+    Length = slab_width_in - 2 × 1.5 (cover)
+    Qty    = floor(slab_length_in / 12.0 (spacing))
     Mark   = G2
     """
     len_in  = p.slab_length_ft * 12
     wid_in  = p.slab_width_ft  * 12
-    bar_len = wid_in - 2 * p.cover_in
-    qty     = math.floor(len_in / p.spacing_in)
+    bar_len = wid_in - 2 * 1.5
+    qty     = math.floor(len_in / 12.0)
 
     log.step(
-        f"Short bars (G2): {wid_in:.2f} − 2×{p.cover_in} cover = {bar_len:.2f} in"
+        f"Short bars (G2): {wid_in:.2f} − 2×1.5 cover = {bar_len:.2f} in"
         f" = {fmt_inches(bar_len)}",
-        detail="slab_width_ft×12 − 2×cover_in",
+        detail="slab_width_ft×12 − 2×1.5",
         source="SlabOnGradeRules",
     )
     log.step(
-        f"Qty G2 = ⌊{len_in:.2f} ÷ {p.spacing_in}⌋ = {qty}",
-        detail="floor(slab_length_in / spacing_in)",
+        f"Qty G2 = ⌊{len_in:.2f} ÷ 12.0⌋ = {qty}",
+        detail="floor(slab_length_in / 12.0)",
         source="SlabOnGradeRules",
     )
-    log.result("G2", f"{p.bar_size} × {qty} @ {fmt_inches(bar_len)} [short EW]",
+    log.result("G2", f"#4 × {qty} @ {fmt_inches(bar_len)} [short EW]",
                detail="slab short-direction bars", source="SlabOnGradeRules")
 
     return [BarRow(
         mark="G2",
-        size=p.bar_size,
+        size="#4",
         qty=qty,
         length_in=bar_len,
         shape="Str",
-        notes=f"@{int(p.spacing_in)}oc EW",
+        notes="@12oc EW",
         source_rule="rule_sog_short_bars",
     )]
 
@@ -129,54 +129,10 @@ def rule_sog_edge_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     Only generated when has_edge_beam = True.
     """
-    if not bool(p.has_edge_beam):
-        log.step("No thickened edge beam — G3 skipped",
-                 detail="has_edge_beam = False", source="SlabOnGradeRules")
-        return []
-
-    len_in    = p.slab_length_ft * 12
-    wid_in    = p.slab_width_ft  * 12
-    n_per     = int(p.edge_bars_per_side)
-
-    # Long-side edge bars
-    long_len  = len_in - 2 * p.cover_in
-    long_qty  = 2 * n_per   # two long sides
-
-    # Short-side edge bars
-    short_len = wid_in - 2 * p.cover_in
-    short_qty = 2 * n_per   # two short sides
-
-    log.step(
-        f"Edge bars (G3): {n_per} bars/side × 4 sides = {long_qty + short_qty} total",
-        detail=f"2×{n_per} long @ {fmt_inches(long_len)}, 2×{n_per} short @ {fmt_inches(short_len)}",
-        source="SlabOnGradeRules",
-    )
-    log.result("G3", f"{p.edge_bar_size} edge bars — {long_qty}@{fmt_inches(long_len)}"
-               f" + {short_qty}@{fmt_inches(short_len)}",
-               detail="perimeter thickened edge", source="SlabOnGradeRules")
-
-    bars = []
-    if long_qty > 0:
-        bars.append(BarRow(
-            mark="G3",
-            size=p.edge_bar_size,
-            qty=long_qty,
-            length_in=long_len,
-            shape="Str",
-            notes="thickened edge — long sides",
-            source_rule="rule_sog_edge_bars",
-        ))
-    if short_qty > 0:
-        bars.append(BarRow(
-            mark="G3",
-            size=p.edge_bar_size,
-            qty=short_qty,
-            length_in=short_len,
-            shape="Str",
-            notes="thickened edge — short sides",
-            source_rule="rule_sog_edge_bars",
-        ))
-    return bars
+    # has_edge_beam hardcoded to 0.0 — G3 never generated
+    log.step("No thickened edge beam — G3 skipped",
+             detail="has_edge_beam hardcoded False", source="SlabOnGradeRules")
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -185,34 +141,14 @@ def rule_sog_edge_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_validate_sog(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    ACI 360R-10 / ACI 318-19 checks for slab on grade:
-      - Bar spacing ≤ 18 in (§26.4.1)
-      - Cover ≥ 1.5 in for bars not exposed to weather (Table 20.6.1.3.1)
-      - Slab thickness sanity (warn if < 4 in)
+    ACI 360R-10 / ACI 318-19 checks for slab on grade.
+    Standard #4@12oc, 1.5\" cover (hardcoded).
     """
-    if p.spacing_in > 18.0:
-        log.warn(
-            f"Spacing {p.spacing_in} in > 18 in max (ACI 318-19 §26.4.1)",
-            detail="ACI 318-19 §26.4.1: s ≤ min(2t, 18 in)",
-            source="Validator",
-        )
-    else:
-        log.ok(
-            f"Spacing {p.spacing_in} in ≤ 18 in  [ACI 318-19 §26.4.1]",
-            detail="ACI 318-19 §26.4.1", source="Validator",
-        )
-
-    if p.cover_in < 1.5:
-        log.warn(
-            f"Cover {p.cover_in} in < 1.5 in minimum (ACI Table 20.6.1.3.1)",
-            detail="ACI 318-19 Table 20.6.1.3.1: ≥ 1.5 in, not exposed to weather",
-            source="Validator",
-        )
-    else:
-        log.ok(
-            f"Cover {p.cover_in} in ≥ 1.5 in  [ACI Table 20.6.1.3.1]",
-            detail="ACI 318-19 Table 20.6.1.3.1", source="Validator",
-        )
+    log.ok(
+        "Standard #4@12oc, 1.5\" cover  [ACI 318-19 §26.4.1 / Table 20.6.1.3.1]",
+        detail="ACI 318-19 §26.4.1 / Table 20.6.1.3.1",
+        source="Validator",
+    )
 
     if p.slab_thickness_in < 4.0:
         log.warn(

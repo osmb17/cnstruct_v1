@@ -44,19 +44,19 @@ def rule_encasement_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
     For simplicity, this template uses the net perimeter length (engineer to verify hook lap).
     """
     length_in  = p.encasement_length_ft * 12
-    hoop_len   = 2 * (p.encasement_width_in  - 2 * p.cover_in) \
-               + 2 * (p.encasement_height_in - 2 * p.cover_in)
-    qty        = math.floor(length_in / p.hoop_spacing_in)
+    hoop_len   = 2 * (p.encasement_width_in  - 2 * 2.0) \
+               + 2 * (p.encasement_height_in - 2 * 2.0)
+    qty        = math.floor(length_in / 9.0)
 
     log.step(
-        f"Hoops (E1): 2×({p.encasement_width_in}-2×{p.cover_in}) + "
-        f"2×({p.encasement_height_in}-2×{p.cover_in}) = {hoop_len:.2f} in"
+        f"Hoops (E1): 2×({p.encasement_width_in}-2×{2.0}) + "
+        f"2×({p.encasement_height_in}-2×{2.0}) = {hoop_len:.2f} in"
         f" = {fmt_inches(hoop_len)}",
         detail="2(W-2c) + 2(H-2c)",
         source="PipeEncasementRules",
     )
     log.step(
-        f"Qty E1 = ⌊{length_in:.1f} ÷ {p.hoop_spacing_in}⌋ = {qty}",
+        f"Qty E1 = ⌊{length_in:.1f} ÷ {9.0}⌋ = {qty}",
         detail="floor(encasement_length_in / hoop_spacing_in)",
         source="PipeEncasementRules",
     )
@@ -69,7 +69,7 @@ def rule_encasement_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
         qty=qty,
         length_in=hoop_len,
         shape="Rect",
-        notes=f"@{int(p.hoop_spacing_in)}oc along pipe",
+        notes=f"@{int(9.0)}oc along pipe",
         source_rule="rule_encasement_hoops",
     )]
 
@@ -88,8 +88,8 @@ def rule_encasement_longitudinals(p: Params, log: ReasoningLogger) -> list[BarRo
     from vistadetail.engine.hooks import bar_diameter, development_length_tension
 
     length_in  = p.encasement_length_ft * 12
-    total_run  = length_in - 2 * p.cover_in
-    n_bars     = int(p.n_long_bars)
+    total_run  = length_in - 2 * 2.0
+    n_bars     = int(12.0)
     max_stock_in = _MAX_STOCK_FT * 12  # 720 in
 
     if total_run <= max_stock_in:
@@ -105,7 +105,7 @@ def rule_encasement_longitudinals(p: Params, log: ReasoningLogger) -> list[BarRo
         )
     else:
         # Break into stock lengths with lap splices
-        ld_in = development_length_tension(p.long_bar_size, cover_in=p.cover_in)
+        ld_in = development_length_tension("#4", cover_in=2.0)
         lap_in = math.ceil(1.3 * ld_in)  # Class B splice
 
         # Each piece covers (stock - lap) of effective run
@@ -130,7 +130,7 @@ def rule_encasement_longitudinals(p: Params, log: ReasoningLogger) -> list[BarRo
         f" @ {fmt_inches(bar_len)}",
         source="PipeEncasementRules",
     )
-    log.result("E2", f"{p.long_bar_size} x {qty} @ {fmt_inches(bar_len)} [longitudinals]",
+    log.result("E2", f"#4 x {qty} @ {fmt_inches(bar_len)} [longitudinals]",
                detail="encasement longitudinal bars", source="PipeEncasementRules")
 
     notes = "longitudinal along pipe"
@@ -139,7 +139,7 @@ def rule_encasement_longitudinals(p: Params, log: ReasoningLogger) -> list[BarRo
 
     return [BarRow(
         mark="E2",
-        size=p.long_bar_size,
+        size="#4",
         qty=qty,
         length_in=bar_len,
         shape="Str",
@@ -155,20 +155,20 @@ def rule_validate_pipe_encasement(p: Params, log: ReasoningLogger) -> list[BarRo
       - Hoop spacing ≤ minimum practical for reinforcing cage assembly
       - Cross-section dimensions sanity
     """
-    if p.cover_in < 2.0:
+    if 2.0 < 2.0:
         log.warn(
-            f"Cover {p.cover_in} in < 2.0 in for buried concrete (ACI Table 20.6.1.3.1)",
+            f"Cover {2.0} in < 2.0 in for buried concrete (ACI Table 20.6.1.3.1)",
             detail="ACI 318-19 Table 20.6.1.3.1: ≥ 2 in for not-cast-against-earth, exposed to earth",
             source="Validator",
         )
     else:
         log.ok(
-            f"Cover {p.cover_in} in ≥ 2.0 in  [ACI Table 20.6.1.3.1 buried]",
+            f"Cover {2.0} in ≥ 2.0 in  [ACI Table 20.6.1.3.1 buried]",
             detail="ACI 318-19 Table 20.6.1.3.1", source="Validator",
         )
 
-    net_w = p.encasement_width_in  - 2 * p.cover_in
-    net_h = p.encasement_height_in - 2 * p.cover_in
+    net_w = p.encasement_width_in  - 2 * 2.0
+    net_h = p.encasement_height_in - 2 * 2.0
     if net_w < 4.0 or net_h < 4.0:
         log.warn(
             f"Net interior dimension ({net_w:.1f} in × {net_h:.1f} in) very small — verify dimensions",

@@ -27,21 +27,17 @@ from vistadetail.engine.templates.base import BaseTemplate
 
 class CageTemplate(BaseTemplate):
     name: str = "Drilled Shaft Cage"
-    version: str = "1.0"
+    version: str = "2.0"
     description: str = (
-        "Circular drilled pier / caisson cage. "
-        "Vertical bars + spiral/ring hoops. "
-        "Optional seismic confinement zone at top."
+        "Drilled shaft cage. #4 rings, 3ft lap, 3\" cover, 3\"oc confinement over 6\" zone."
     )
 
     def __init__(self):
         super().__init__()
         self.name        = "Drilled Shaft Cage"
-        self.version     = "1.0"
+        self.version     = "2.0"
         self.description = (
-            "Circular drilled pier / caisson cage. "
-            "Vertical bars + spiral/ring hoops. "
-            "Optional seismic confinement zone at top."
+            "Drilled shaft cage. #4 rings, 3ft lap, 3\" cover, 3\"oc confinement over 6\" zone."
         )
 
         self.inputs = [
@@ -71,36 +67,12 @@ class CageTemplate(BaseTemplate):
                 min=4.0, max=40.0, default=4.0,
                 hint="Count of vertical bars around cage perimeter (must be ≥ 4)",
             ),
-            InputField(
-                "embed_in", float,
-                label="Bottom Embedment (in)",
-                min=0.0, max=36.0, default=6.0,
-                hint="Extra length added below cage depth for bottom embedment / splice",
-            ),
             # ── Hoops ─────────────────────────────────────────────────────
-            InputField(
-                "ring_bar_size", str,
-                label="Hoop / Ring Bar Size",
-                choices=BAR_SIZES, default="#5",
-                hint="Size of the circular hoop bars",
-            ),
             InputField(
                 "ring_spacing_in", float,
                 label="Standard Hoop Spacing (in)",
                 min=3.0, max=18.0, default=16.0,
                 hint="Center-to-center spacing of standard hoops (full cage depth)",
-            ),
-            InputField(
-                "lap_ft", float,
-                label="Hoop Lap Length (ft)",
-                min=1.0, max=6.0, default=3.0,
-                hint="Lap length added to ring circumference for bar overlap",
-            ),
-            InputField(
-                "cover_in", float,
-                label="Clear Cover (in)",
-                min=2.0, max=6.0, default=3.0,
-                hint="3 in for drilled shafts cast against earth (ACI Table 20.6.1.3.1)",
             ),
             # ── Seismic confinement zone (optional) ───────────────────────
             InputField(
@@ -108,18 +80,6 @@ class CageTemplate(BaseTemplate):
                 label="Seismic Confinement Zone? (0=No 1=Yes)",
                 min=0.0, max=1.0, default=0.0,
                 hint="1 = add closely-spaced hoops at top of cage (seismic requirement)",
-            ),
-            InputField(
-                "conf_spacing_in", float,
-                label="Confinement Hoop Spacing (in)",
-                min=1.0, max=6.0, default=3.0,
-                hint="Close hoop spacing within the seismic confinement zone",
-            ),
-            InputField(
-                "confinement_depth_in", float,
-                label="Confinement Zone Depth (in)",
-                min=3.0, max=36.0, default=6.0,
-                hint="Depth of the seismic confinement zone at the top of the cage",
             ),
         ]
 

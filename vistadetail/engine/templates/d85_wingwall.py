@@ -15,10 +15,10 @@ class D85WingwallTemplate(BaseTemplate):
     def __init__(self):
         super().__init__()
         self.name = "D85 Wingwall"
-        self.version = "1.0"
+        self.version = "2.0"
         self.description = (
             "Caltrans D85 -- Box Culvert Wingwall Types D/E. "
-            "H = height at box face, LOL = length of wall. "
+            "9\" wall, footing auto (0.55×H). "
             "Type D = straight (single span), Type E = stepped (multi-span)."
         )
         self.inputs = [
@@ -33,24 +33,6 @@ class D85WingwallTemplate(BaseTemplate):
                 label="LOL -- Wall Length (ft)",
                 min=1.0, max=60.0, default=10.0,
                 hint="Length of wingwall from box face to toe of slope.",
-            ),
-            InputField(
-                "wall_thick_in", float,
-                label="Wall Thickness (in)",
-                min=9.0, max=24.0, default=9.0,
-                hint="Minimum 9 inches per D85. Used for hoop perimeter.",
-            ),
-            InputField(
-                "footing_width_ft", float,
-                label="Footing Width (ft)",
-                min=0.0, max=12.0, default=0.0,
-                hint="Footing width perpendicular to wall. 0 = auto (0.55 x H).",
-            ),
-            InputField(
-                "cover_in", float,
-                label="Cover (in)",
-                min=1.5, max=4.0, default=2.0,
-                hint="Clear cover to rebar. 2\" wall faces, 3\" footing.",
             ),
             InputField(
                 "num_structures", int,

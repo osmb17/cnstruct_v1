@@ -27,24 +27,26 @@ Cover default: 1.5 in (exposed to weather, ACI Table 20.6.1.3.1).
 
 from __future__ import annotations
 
-from vistadetail.engine.schema import BAR_SIZES, InputField, Params
+from vistadetail.engine.schema import InputField, Params
 from vistadetail.engine.templates.base import BaseTemplate
 
 
 class SeatwallTemplate(BaseTemplate):
     name: str = "Seatwall"
-    version: str = "1.0"
+    version: str = "2.0"
     description: str = (
         "Low concrete playground or landscape bench wall. "
+        "#4 bars, #3 ties @18oc, 1.5\" cover. "
         "S1/S2 longitudinal bars (top + bottom) + S3 transverse bars across seat width."
     )
 
     def __init__(self):
         super().__init__()
         self.name        = "Seatwall"
-        self.version     = "1.0"
+        self.version     = "2.0"
         self.description = (
             "Low concrete playground or landscape bench wall. "
+            "#4 bars, #3 ties @18oc, 1.5\" cover. "
             "S1/S2 longitudinal bars (top + bottom) + S3 transverse bars across seat width."
         )
 
@@ -70,12 +72,6 @@ class SeatwallTemplate(BaseTemplate):
             ),
             # ── Top longitudinal reinforcement ────────────────────────────
             InputField(
-                "top_bar_size", str,
-                label="Top Bar Size",
-                choices=BAR_SIZES, default="#4",
-                hint="Bar size for top longitudinal reinforcement",
-            ),
-            InputField(
                 "top_bar_count", float,
                 label="Top Bar Count",
                 min=1.0, max=8.0, default=2.0,
@@ -83,36 +79,10 @@ class SeatwallTemplate(BaseTemplate):
             ),
             # ── Bottom longitudinal reinforcement ─────────────────────────
             InputField(
-                "bot_bar_size", str,
-                label="Bottom Bar Size",
-                choices=BAR_SIZES, default="#4",
-                hint="Bar size for bottom longitudinal reinforcement",
-            ),
-            InputField(
                 "bot_bar_count", float,
                 label="Bottom Bar Count",
                 min=1.0, max=8.0, default=2.0,
                 hint="Number of longitudinal bars at bottom face (typically 2)",
-            ),
-            # ── Transverse reinforcement ──────────────────────────────────
-            InputField(
-                "tie_bar_size", str,
-                label="Transverse Bar Size",
-                choices=BAR_SIZES, default="#3",
-                hint="Bar size for transverse bars spanning the seat width",
-            ),
-            InputField(
-                "tie_spacing_in", float,
-                label="Transverse Spacing (in)",
-                min=6.0, max=24.0, default=18.0,
-                hint="Center-to-center spacing of transverse bars along wall length",
-            ),
-            # ── Cover ─────────────────────────────────────────────────────
-            InputField(
-                "cover_in", float,
-                label="Clear Cover (in)",
-                min=1.5, max=3.0, default=1.5,
-                hint="1.5 in exposed to weather, ≤#5 bar (ACI Table 20.6.1.3.1)",
             ),
         ]
 
@@ -129,7 +99,7 @@ class SeatwallTemplate(BaseTemplate):
             triggers.append("tall_seatwall_consider_retaining_wall_design")
         total_long = int(params.top_bar_count) + int(params.bot_bar_count)
         if total_long > 6:
-            triggers.append("high_bar_count_verify_cover_clearance")
+            triggers.append("high_bar_count_verify_spacing")
         return triggers
 
 

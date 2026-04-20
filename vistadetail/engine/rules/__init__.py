@@ -130,6 +130,8 @@ from vistadetail.engine.rules.equipment_pad_rules import (
     rule_pad_bottom_short,
     rule_pad_top_long,
     rule_pad_top_short,
+    rule_swbd_top_long,
+    rule_swbd_top_short,
     rule_pad_vertical_dowels,
     rule_validate_equipment_pad,
 )
@@ -305,6 +307,8 @@ RULE_REGISTRY: dict = {
     "rule_pad_bottom_short":         rule_pad_bottom_short,
     "rule_pad_top_long":             rule_pad_top_long,
     "rule_pad_top_short":            rule_pad_top_short,
+    "rule_swbd_top_long":            rule_swbd_top_long,
+    "rule_swbd_top_short":           rule_swbd_top_short,
     "rule_pad_vertical_dowels":      rule_pad_vertical_dowels,
     "rule_validate_equipment_pad":   rule_validate_equipment_pad,
     # Retaining Wall

@@ -19,7 +19,7 @@ class G2ExpandedInletTemplate(BaseTemplate):
     def __init__(self):
         super().__init__()
         self.name = "G2 Expanded Inlet"
-        self.version = "3.0"
+        self.version = "4.0"
         self.description = (
             "Caltrans G2 expanded inlet -- main box + expansion room. "
             "T auto-derives (9\" if interior X<=54\", 11\" otherwise). "
@@ -32,12 +32,6 @@ class G2ExpandedInletTemplate(BaseTemplate):
                 label="Exterior Width (ft)",
                 min=2.5, max=30.0, default=5.667,
                 hint="Exterior face-to-face width in plan",
-            ),
-            InputField(
-                "wall_thick_in", int,
-                label="Wall Thickness (in)",
-                min=0, max=24, default=0,
-                hint="0 = auto (9\" if interior X<=54\", 11\" otherwise)",
             ),
             InputField(
                 "y_dim_ft", float,
