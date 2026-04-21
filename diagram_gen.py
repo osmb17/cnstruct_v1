@@ -531,12 +531,19 @@ def _diag_expanded_inlet_top() -> bytes:
 
 
 def _diag_headwall() -> bytes:
-    """Combined front elevation + typical section for a D89A straight headwall."""
-    # Default preview dimensions (5'-11" × 8'-0")
+    """Combined front elevation + typical section for a D89A straight headwall.
+
+    Both views are drawn to H1 (= H + 1'-0") — the full physical wall height.
+    Front elevation: H1 dimension on right side only (per D89A standard plan).
+    Typical section: Design H on left, H1 on right.
+    Dashed line at H marks the design height boundary in both views.
+    """
+    # Default preview dimensions
     L    = 8.0
     H    = 5.917
     H_in = H * 12.0
-    H1   = H + 1.0
+    H1   = H + 1.0          # actual wall top = design H + 12"
+    H1_in = H1 * 12.0
 
     # D89A table lookup
     try:
@@ -560,7 +567,8 @@ def _diag_headwall() -> bytes:
     cov  = 2.0 / 12.0
     fcov = 3.0 / 12.0
 
-    s = min(4.5 / max(L, 1.0), 3.0 / max(H + F, 1.0))
+    # Scale to H1 so the 1'-0" extension fits
+    s = min(4.5 / max(L, 1.0), 3.0 / max(H1 + F, 1.0))
     s = max(s, 0.30)
 
     fig, ax = _fig(w=13.0, h=6.5)
@@ -571,14 +579,18 @@ def _diag_headwall() -> bytes:
 
     # Footing strip
     _rect(ax, ex, ey - F*s, L*s, F*s, fc="#b0b8c0", ec=_OUTLINE, lw=1.0)
-    # Wall body
-    _rect(ax, ex, ey, L*s, H*s)
+    # Wall body drawn to full H1 height
+    _rect(ax, ex, ey, L*s, H1*s)
 
-    # LW horizontal bars at 12" oc
+    # Dashed line at design H (marks boundary between H and the 1'-0" extension)
+    ax.plot([ex, ex + L*s], [ey + H*s, ey + H*s],
+            color=_OUTLINE, lw=0.9, ls="--", zorder=5)
+
+    # LW horizontal bars at 12" oc — full H1 height
     n_lw = int(H1) + 1
     for i in range(n_lw + 1):
         yy = ey + i * s
-        if yy > ey + H*s: break
+        if yy > ey + H1*s: break
         ax.plot([ex + cov*s, ex + L*s - cov*s], [yy, yy],
                 color=_REBAR, lw=0.7, zorder=4)
 
@@ -587,12 +599,12 @@ def _diag_headwall() -> bytes:
     for i in range(n_vw + 1):
         xx = ex + cov*s + i * s
         if xx > ex + L*s - cov*s: break
-        ax.plot([xx, xx], [ey + cov*s, ey + H*s - cov*s],
+        ax.plot([xx, xx], [ey + cov*s, ey + H1*s - cov*s],
                 color=_REBAR, lw=0.7, zorder=4)
 
-    # TW dots — 3 at top
+    # TW dots — 3 at top of wall (H1)
     for frac in [0.25, 0.5, 0.75]:
-        ax.plot(ex + L*s * frac, ey + H*s - cov*s, "o",
+        ax.plot(ex + L*s * frac, ey + H1*s - cov*s, "o",
                 color=_REBAR, ms=5, zorder=5)
 
     # D1 transverse dots at footing junction
@@ -602,15 +614,15 @@ def _diag_headwall() -> bytes:
         if xx > ex + L*s: break
         ax.plot(xx, ey, "o", color=_REBAR, ms=4, zorder=5)
 
-    # Dimensions
+    # Dimensions — front elevation shows H1 on right only (per D89A convention)
     _ext_dim_h(ax, ex, ex + L*s, ey - F*s, ey - F*s - 0.32, "W")
-    _ext_dim_v(ax, ey, ey + H*s, ex, ex - 0.55, "H")
+    _ext_dim_v(ax, ey, ey + H1*s, ex + L*s, ex + L*s + 0.55, "H1")
 
     # Callouts
-    ax.text(ex + L*s * 0.5, ey + H*s + 0.22, "FRONT ELEVATION",
+    ax.text(ex + L*s * 0.5, ey + H1*s + 0.22, "FRONT ELEVATION",
             ha="center", va="bottom", fontsize=8, color=_LABEL,
             fontweight="bold", zorder=6)
-    ax.text(ex + L*s * 0.5, ey + H*s + 0.08,
+    ax.text(ex + L*s * 0.5, ey + H1*s + 0.08,
             f"LW/VW #{c_sz[1]}@12\"  |  TW {d_sz} Tot 3  |  D1 {d_sz}@{d_sp}\"",
             ha="center", va="top", fontsize=6.5, color=_REBAR, zorder=6)
 
@@ -623,25 +635,29 @@ def _diag_headwall() -> bytes:
     # Footing
     _rect(ax, tx, ty - F*s, W*s, F*s, fc="#b0b8c0", ec=_OUTLINE, lw=1.0)
 
-    # Earth hatching (heel side)
+    # Earth hatching (heel side) — runs full H1 height
     earth_x = wx + T*s
     for i in range(9):
-        ye = ty - F*s * 0.4 + i * (H*s + F*s * 0.4) / 8
+        ye = ty - F*s * 0.4 + i * (H1*s + F*s * 0.4) / 8
         ax.plot([earth_x + 0.04, earth_x + 0.22], [ye, ye - 0.15],
                 color=_SOIL, lw=0.8, alpha=0.7, zorder=1)
 
-    # Wall stem
-    _rect(ax, wx, ty, T*s, H*s)
+    # Wall stem drawn to full H1 height
+    _rect(ax, wx, ty, T*s, H1*s)
 
-    # Bar dots both faces
+    # Dashed line at design H in section
+    ax.plot([wx, wx + T*s], [ty + H*s, ty + H*s],
+            color=_OUTLINE, lw=0.9, ls="--", zorder=5)
+
+    # Bar dots both faces — full H1 height
     for i in range(n_lw + 1):
         yy = ty + i * s
-        if yy > ty + H*s: break
+        if yy > ty + H1*s: break
         ax.plot(wx + cov*s,         yy, "o", color=_REBAR, ms=4, zorder=5)
         ax.plot(wx + T*s - cov*s,   yy, "o", color=_REBAR, ms=4, zorder=5)
 
-    # TW top center dot
-    ax.plot(wx + T*s / 2, ty + H*s - cov*s, "o", color=_REBAR, ms=6, zorder=5)
+    # TW top center dot at H1
+    ax.plot(wx + T*s / 2, ty + H1*s - cov*s, "o", color=_REBAR, ms=6, zorder=5)
 
     # TF dots across footing
     n_tf = math.floor(W) + 1
@@ -650,23 +666,23 @@ def _diag_headwall() -> bytes:
         if xx > tx + W*s - fcov*s: break
         ax.plot(xx, ty - F*s / 2, "o", color=_REBAR, ms=3.5, zorder=5)
 
-    # CB c-bar — U-shape
+    # CB c-bar — U-shape, extends to H1 top
     cb_leg  = 14.0 / 12.0 * s
     cb_lx   = wx - cb_leg
     cb_rx   = wx + T*s + cb_leg
-    cb_top  = ty + H*s + 0.12
+    cb_top  = ty + H1*s + 0.12
     cb_base = ty + cov*s
     ax.plot([cb_lx, cb_lx], [cb_top, cb_base], color=_REBAR, lw=1.5, zorder=4)
     ax.plot([cb_lx, cb_rx], [cb_base, cb_base], color=_REBAR, lw=1.5, zorder=4)
     ax.plot([cb_rx, cb_rx], [cb_base, cb_top], color=_REBAR, lw=1.5, zorder=4)
-    ax.text(cb_lx - 0.08, ty + H*s * 0.75, f'"{c_sz}" C-BAR',
+    ax.text(cb_lx - 0.08, ty + H1*s * 0.75, f'"{c_sz}" C-BAR',
             ha="right", va="center", fontsize=6.5, color=_REBAR, zorder=6,
             bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.85))
     ax.text(cb_rx + 0.08, cb_base + 0.04, "R=9\"",
             ha="left", va="center", fontsize=6, color=_REBAR, zorder=6)
 
-    # WS spreader — small U
-    ws_cy  = ty + H*s * 0.52
+    # WS spreader — small U at mid-height
+    ws_cy  = ty + H1*s * 0.50
     ws_b   = 5.0  / 12.0 * s
     ws_leg = 4.5  / 12.0 * s
     wsL    = wx + T*s / 2 - ws_b / 2
@@ -676,12 +692,13 @@ def _diag_headwall() -> bytes:
                 ([wsR+ws_leg, wsR+ws_leg], [ws_cy-ws_leg, ws_cy])]:
         ax.plot(seg[0], seg[1], color=_REBAR, lw=1.0, zorder=4)
 
-    # Section dimensions
-    _ext_dim_v(ax, ty, ty + H*s, wx, wx - 0.58, "H")
+    # Section dimensions — H (design) on left, H1 on right
+    _ext_dim_v(ax, ty, ty + H*s,  wx,          wx - 0.55, "H")
+    _ext_dim_v(ax, ty, ty + H1*s, tx + W*s,    tx + W*s + 0.55, "H1")
     _dim_v(ax, ty - F*s, ty, tx - 0.1, f"F={F_in:.0f}\"", gap=0.22, fontsize=7)
     _ext_dim_h(ax, tx, tx + W*s, ty - F*s, ty - F*s - 0.32, "W")
-    ax.annotate(f"T={T_in:.0f}\"", xy=(wx + T*s/2, ty + H*s*0.35),
-                xytext=(wx + T*s + 0.75, ty + H*s*0.5),
+    ax.annotate(f"T={T_in:.0f}\"", xy=(wx + T*s/2, ty + H1*s*0.35),
+                xytext=(wx + T*s + 0.75, ty + H1*s*0.5),
                 fontsize=7.5, color=_LABEL, fontweight="bold",
                 arrowprops=dict(arrowstyle="->", color=_DIM, lw=0.7),
                 bbox=dict(boxstyle="round,pad=0.2", fc="white", ec=_DIM, lw=0.5))
@@ -690,13 +707,13 @@ def _diag_headwall() -> bytes:
     ax.text(wx + T*s + B*s/2, ty - F*s - 0.15, f"B={B_in:.0f}\"",
             ha="center", va="top", fontsize=7, color=_LABEL, fontweight="bold")
 
-    ax.text(wx + T*s / 2, ty + H*s + 0.22, "TYPICAL SECTION",
+    ax.text(wx + T*s / 2, ty + H1*s + 0.22, "TYPICAL SECTION",
             ha="center", va="bottom", fontsize=8, color=_LABEL,
             fontweight="bold", zorder=6)
 
     # ── Bounds ───────────────────────────────────────────────────────────
-    ax.set_xlim(ex - 1.4, tx + W*s + 1.2)
-    ax.set_ylim(ty - F*s - 0.75, ty + H*s + 0.9)
+    ax.set_xlim(ex - 1.6, tx + W*s + 1.7)
+    ax.set_ylim(ty - F*s - 0.75, ty + H1*s + 1.0)
     _title(ax, "STRAIGHT HEADWALL  (D89A)")
 
     return _to_png(fig)
