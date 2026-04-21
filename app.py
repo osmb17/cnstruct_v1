@@ -503,7 +503,7 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
         Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
     )
     from reportlab.graphics.shapes import (
-        Drawing, Line, Rect, Circle, String as GStr, Path as RLPath,
+        Drawing, Line, Rect, Circle, String as GStr,
     )
     from collections import defaultdict as _dd
     from vistadetail.engine.hooks import BAR_WEIGHT_LB_FT as _WLBFT
@@ -591,13 +591,8 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
             d.add(Line(xr, yb, xr, yt, strokeWidth=lw, strokeColor=_BLACK))
             # Top bar overshooting past right side
             d.add(Line(xl, yt, x_ext, yt, strokeWidth=lw, strokeColor=_BLACK))
-            # Curving hook from overshoot end, looping down
-            hook = RLPath(strokeWidth=lw, strokeColor=_BLACK, fillColor=None)
-            hook.moveTo(x_ext, yt)
-            hook.curveTo(x_ext + 6, yt - 5,
-                         x_ext + 5, yt - 16,
-                         x_ext - 1, yt - 22)
-            d.add(hook)
+            # Straight vertical drop from overshoot end (matches SVG thumbnail style)
+            d.add(Line(x_ext, yt, x_ext, yt - 14, strokeWidth=lw, strokeColor=_BLACK))
 
             # Key dimension labels only (B = side height, C = bottom span)
             rect_cx = (xl + xr) / 2
@@ -1355,7 +1350,10 @@ if generate_btn:
                     st.session_state._pdf_bytes = _make_pdf(
                         b, template_name, _pdf_ji,
                         params_raw=params_raw, template=template)
-                except Exception:
+                except BaseException:
+                    # BaseException (not just Exception) ensures StopIteration
+                    # and other non-Exception subclasses don't crash the app
+                    # on Python 3.12+ where exception handling semantics differ.
                     st.session_state._pdf_bytes = None
             except Exception as exc:
                 st.session_state.error     = str(exc)
