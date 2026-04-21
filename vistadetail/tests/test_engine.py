@@ -1326,3 +1326,179 @@ class TestHeadwallD89A:
         p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
         bars = rule_hw_d_bars(p, log)
         assert bars[0].length_in == pytest.approx(60.0)
+
+
+# ---------------------------------------------------------------------------
+# 16. Headwall D89A — full table coverage (all 13 rows)
+# ---------------------------------------------------------------------------
+
+class TestHeadwallTableCoverage:
+    """
+    Verifies D1 length (= W-4), VW length (= H1-4 = H+8), and
+    CB body/inner across every D89A table row at exact matching heights.
+    """
+
+    # (wall_height_in, expected_W, expected_T, expected_F)
+    _TABLE_ROWS = [
+        (47,  58, 10, 12),   # 3'-11"
+        (50,  58, 10, 12),   # 4'-2"
+        (53,  60, 10, 12),   # 4'-5"
+        (56,  64, 10, 12),   # 4'-8"
+        (59,  64, 10, 12),   # 4'-11"
+        (62,  64, 10, 12),   # 5'-2"
+        (65,  64, 10, 12),   # 5'-5"
+        (68,  64, 10, 12),   # 5'-8"
+        (71,  64, 10, 12),   # 5'-11"  ← gold reference
+        (74,  64, 12, 14),   # 6'-2"   T and F change
+        (77,  66, 12, 14),   # 6'-5"   W widens
+        (80,  69, 12, 14),   # 6'-8"
+        (83,  72, 12, 14),   # 6'-11"  max row
+    ]
+
+    @pytest.mark.parametrize("H_in,W,T,F", _TABLE_ROWS)
+    def test_d1_length_all_rows(self, log, H_in, W, T, F):
+        """D1 length = W-4 across every table row."""
+        p = _hw_params(wall_width_ft=8.0, wall_height_ft=H_in / 12.0)
+        bars = rule_hw_d_bars(p, log)
+        assert bars[0].length_in == pytest.approx(W - 4.0), \
+            f"H={H_in}\" → expected W={W}\" D1={W-4}\""
+
+    @pytest.mark.parametrize("H_in,W,T,F", _TABLE_ROWS)
+    def test_vw_length_all_rows(self, log, H_in, W, T, F):
+        """VW length = H1 - 4 = H + 8 across every table row."""
+        p = _hw_params(wall_width_ft=8.0, wall_height_ft=H_in / 12.0)
+        bars = rule_hw_vert_wall(p, log)
+        assert bars[0].length_in == pytest.approx(H_in + 8.0), \
+            f"H={H_in}\" → VW expected {H_in+8}\""
+
+    @pytest.mark.parametrize("H_in,W,T,F", _TABLE_ROWS)
+    def test_cb_body_inner_all_rows(self, log, H_in, W, T, F):
+        """CB body = H1-4 = H+8; CB inner = H across every table row."""
+        p = _hw_params(wall_width_ft=8.0, wall_height_ft=H_in / 12.0)
+        bars = rule_hw_c_bars(p, log)
+        assert bars[0].leg_a_in == pytest.approx(H_in + 8.0), \
+            f"H={H_in}\" → CB body expected {H_in+8}\""
+        assert bars[0].leg_d_in == pytest.approx(float(H_in)), \
+            f"H={H_in}\" → CB inner expected {H_in}\""
+
+
+# ---------------------------------------------------------------------------
+# 17. Headwall D89A — height rounding (inputs between rows)
+# ---------------------------------------------------------------------------
+
+class TestHeadwallHeightRounding:
+    """
+    Inputs between table rows should round UP to the next row.
+    Tests that the lookup selects the correct row W and H+8 VW length.
+    """
+
+    @pytest.mark.parametrize("h_ft,expected_W,expected_VW", [
+        (3 + 10/12,  58, 46 + 8),   # 3'-10" → row H=47"
+        (4 + 0/12,   58, 48 + 8),   # 4'-0"  → row H=50"  (48<50)
+        (4 + 3/12,   60, 51 + 8),   # 4'-3"  → row H=53"  (51<53)
+        (4 + 6/12,   64, 54 + 8),   # 4'-6"  → row H=56"  (54<56)
+        (5 + 0/12,   64, 60 + 8),   # 5'-0"  → row H=62"  (60<62)
+        (5 + 6/12,   64, 66 + 8),   # 5'-6"  → row H=68"  (66<68)
+        (6 + 0/12,   64, 72 + 8),   # 6'-0"  → row H=74"  (72<74)
+        (6 + 4/12,   66, 76 + 8),   # 6'-4"  → row H=77"  (76<77)
+    ])
+    def test_rounding_d1_and_vw(self, log, h_ft, expected_W, expected_VW):
+        p = _hw_params(wall_width_ft=8.0, wall_height_ft=h_ft)
+        d1  = rule_hw_d_bars(p, log)
+        vw  = rule_hw_vert_wall(p, log)
+        assert d1[0].length_in == pytest.approx(expected_W - 4.0), \
+            f"h_ft={h_ft:.3f} → D1 expected W-4={expected_W-4}\""
+        assert vw[0].length_in == pytest.approx(float(expected_VW)), \
+            f"h_ft={h_ft:.3f} → VW expected {expected_VW}\""
+
+
+# ---------------------------------------------------------------------------
+# 18. Headwall D89A — wall width variation
+# ---------------------------------------------------------------------------
+
+class TestHeadwallWidthVariants:
+    """
+    Holds H fixed at 5'-11\" (71\", row W=64\") and varies wall_width_ft.
+    Tests bar counts and lengths that depend on L.
+    """
+
+    # (wall_width_ft, L_in,  D1_qty, TF_qty, LI_qty, LW_len, VW_qty, WS_qty, ST_qty)
+    _WIDTHS = [
+        (4.0,   48, 7,  5,  16, 44,  5,  2,  4),
+        (8.0,   96, 13, 9,  16, 92,  9,  4,  8),
+        (12.0, 144, 19, 13, 16, 140, 13, 6, 12),
+        (16.0, 192, 25, 17, 16, 188, 17, 8, 16),
+        (20.0, 240, 31, 21, 16, 236, 21, 10, 20),
+    ]
+
+    @pytest.mark.parametrize(
+        "w_ft,L,D1q,TFq,LIq,LWlen,VWq,WSq,STq", _WIDTHS
+    )
+    def test_all_qty_and_length(self, log, w_ft, L, D1q, TFq, LIq, LWlen, VWq, WSq, STq):
+        """Verify every mark's qty/length for a range of wall widths."""
+        H_ft = 5 + 11/12   # fixed at 5'-11"
+        p    = _hw_params(wall_width_ft=w_ft, wall_height_ft=H_ft)
+
+        d1 = rule_hw_d_bars(p, log)
+        tf = rule_hw_trans_footing(p, log)
+        li = rule_hw_long_invert(p, log)
+        lw = rule_hw_long_wall(p, log)
+        vw = rule_hw_vert_wall(p, log)
+        ws = rule_hw_spreaders(p, log)
+        st = rule_hw_standees(p, log)
+
+        assert d1[0].qty    == D1q,   f"D1 qty w={w_ft}'"
+        assert tf[0].qty    == TFq,   f"TF qty w={w_ft}'"
+        assert li[0].qty    == LIq,   f"LI qty w={w_ft}'"
+        assert lw[0].length_in == pytest.approx(LWlen), f"LW len w={w_ft}'"
+        assert vw[0].qty    == VWq,   f"VW qty w={w_ft}'"
+        assert ws[0].qty    == WSq,   f"WS qty w={w_ft}'"
+        assert st[0].qty    == STq,   f"ST qty w={w_ft}'"
+
+    @pytest.mark.parametrize("w_ft", [4.0, 8.0, 12.0, 16.0, 20.0])
+    def test_vw_length_independent_of_width(self, log, w_ft):
+        """VW length depends only on H, not on wall width."""
+        p  = _hw_params(wall_width_ft=w_ft, wall_height_ft=5 + 11/12)
+        vw = rule_hw_vert_wall(p, log)
+        assert vw[0].length_in == pytest.approx(79.0), \
+            f"VW length should be 79\" regardless of width (got {vw[0].length_in})"
+
+
+# ---------------------------------------------------------------------------
+# 19. Headwall D89A — end-to-end full barlist generation
+# ---------------------------------------------------------------------------
+
+class TestHeadwallEndToEnd:
+    """Full generate_barlist() calls to catch any integration issues."""
+
+    @pytest.mark.parametrize("h_ft,w_ft", [
+        (3 + 11/12, 4.0),    # min height, min width
+        (5 + 2/12,  8.0),    # common 5'-2" case
+        (5 + 11/12, 8.0),    # gold reference
+        (6 + 2/12, 12.0),    # T/F change row, wider wall
+        (6 + 11/12, 16.0),   # max table row
+    ])
+    def test_full_barlist_generates_9_marks(self, log, h_ft, w_ft):
+        """All 9 marks (D1 TF LI LW TW VW CB WS ST) present in every barlist."""
+        from vistadetail.engine.calculator import generate_barlist
+        params = {"wall_width_ft": w_ft, "wall_height_ft": h_ft,
+                  "pipe_qty": 0, "pipe_dia_in": "24\""}
+        from vistadetail.engine.templates.headwall import TEMPLATE as HW
+        bars = generate_barlist(HW, params, log, call_ai=False)
+        marks = {b.mark for b in bars}
+        for mark in ("D1", "TF", "LI", "LW", "TW", "VW", "CB", "WS", "ST"):
+            assert mark in marks, \
+                f"Mark {mark} missing from barlist h={h_ft:.2f} w={w_ft}"
+
+    def test_no_zero_qty_bars(self, log):
+        """No bar row should have qty <= 0 for any valid input."""
+        from vistadetail.engine.calculator import generate_barlist
+        from vistadetail.engine.templates.headwall import TEMPLATE as HW
+        for h_ft in [3 + 11/12, 5 + 2/12, 5 + 11/12, 6 + 2/12, 6 + 11/12]:
+            for w_ft in [4.0, 8.0, 16.0]:
+                params = {"wall_width_ft": w_ft, "wall_height_ft": h_ft,
+                          "pipe_qty": 0, "pipe_dia_in": "24\""}
+                bars = generate_barlist(HW, params, log, call_ai=False)
+                for b in bars:
+                    assert b.qty > 0, \
+                        f"Zero qty on {b.mark} h={h_ft:.2f} w={w_ft}"
