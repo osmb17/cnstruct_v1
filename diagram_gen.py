@@ -369,31 +369,163 @@ def _diag_expanded_inlet() -> bytes:
 
 
 def _diag_inlet_top() -> bytes:
-    """Plan view of inlet top slab -- X, Y, T."""
-    X, Y = 6.0, 5.0
-    T = 0.45
+    """Plan view of G2 inlet top slab -- matches G2 Inlet layout with H dimension."""
+    OX, OY = 6.0, 5.0
+    T = 0.50
+    IX, IY = OX - 2 * T, OY - 2 * T
+    H_rep = 4.5          # representative fill height (ft)
 
-    fig, ax = _fig(7.5, 6.5)
-    ax.set_xlim(-1.8, X + 2.0)
-    ax.set_ylim(-1.5, Y + 1.5)
+    l1_w = IX * 0.45
+    grate_w = IX - l1_w
 
-    # Slab
-    _rect(ax, 0, 0, X, Y, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
-    _rebar_grid(ax, 0, 0, X, Y, nx=6, ny=5, margin=0.25)
+    fig, ax = _fig(9.5, 7.5)
+    ax.set_xlim(-2.5, OX + 4.0)
+    ax.set_ylim(-3.0, OY + 2.2)
 
-    # Opening/grate in center
-    gw, gh = X * 0.35, Y * 0.30
-    gx, gy = (X - gw) / 2, (Y - gh) / 2
-    _rect(ax, gx, gy, gw, gh, fc="white", ec=_OUTLINE, lw=1.2, zorder=3)
-    ax.text(X / 2, Y / 2, "grate\nopening", ha="center", va="center",
-            fontsize=7, color="#666", zorder=4)
+    # Concrete walls
+    _rect(ax, 0, 0, OX, OY, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
+    _rect(ax, T, T, IX, IY, fc="white", ec=_OUTLINE, lw=1.5)
 
-    _ext_dim_h(ax, 0, X, Y, Y + 0.7, "X")
-    _ext_dim_v(ax, 0, Y, 0, -0.8, "Y")
-    _callout(ax, X * 0.9, Y * 0.1, "T", "slab thick", angle=30, dist=0.7, fontsize=7)
+    # L1 shaded area (left interior)
+    _rect(ax, T, T, l1_w, IY, fc="#c8c8c8", ec=_OUTLINE, lw=0.5)
+    for yy in [T, T + IY]:
+        ax.plot([T, T + l1_w], [yy, yy], color=_OUTLINE, lw=0.8, ls="--", zorder=3)
 
-    _axes_compass(ax, -1.3, -1.2)
+    # Grate area (right interior -- vertical bar hatching)
+    gx = T + l1_w
+    _rect(ax, gx, T, grate_w, IY, fc="white", ec=_OUTLINE, lw=1.2)
+    n_grate = 12
+    for i in range(n_grate):
+        bx = gx + grate_w * (i + 1) / (n_grate + 1)
+        ax.plot([bx, bx], [T + 0.08, T + IY - 0.08], color=_OUTLINE, lw=0.7, zorder=3)
+
+    # L1 dimension (inside shaded area)
+    _dim_h(ax, T, T + l1_w, T + IY * 0.5, "L1", gap=0.15, fontsize=9)
+
+    # X dimension (outer, top)
+    _ext_dim_h(ax, 0, OX, OY, OY + 0.8, "X")
+
+    # Y dimension (outer, left)
+    _ext_dim_v(ax, 0, OY, 0, -0.9, "Y")
+
+    # Inside Y dimension (right)
+    _ext_dim_v(ax, T, T + IY, OX, OX + 1.1, "Inside Y\nDimension")
+    ax.text(OX + 1.35, T + IY * 0.30, "3'-0\" (2'-11 3/8\" min)",
+            ha="left", va="center", fontsize=6.5, color=_DIM)
+
+    # Inside X dimension (bottom)
+    _ext_dim_h(ax, T, T + IX, 0, -1.3, "Inside X Dimension", fontsize=8)
+    ax.text(T + IX / 2, -1.7, "3'-0\" (2'-11 3/8\" min)  OR\nPipe penetration dia + 3\" min (90\" max)",
+            ha="center", va="top", fontsize=6.5, color=_DIM)
+
+    # T labels (bottom)
+    _ext_dim_h(ax, 0, T, 0, -0.45, "T", fontsize=8)
+    _ext_dim_h(ax, OX - T, OX, 0, -0.45, "T", fontsize=8)
+
+    # T labels (vertical, right side)
+    tr_x = OX + 0.25
+    ax.annotate("", xy=(tr_x, OY), xytext=(tr_x, OY - T),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.8, mutation_scale=7))
+    ax.text(tr_x + 0.12, OY - T / 2, "T", ha="left", va="center", fontsize=8,
+            color=_LABEL, fontweight="bold")
+    ax.annotate("", xy=(tr_x, T), xytext=(tr_x, 0),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.8, mutation_scale=7))
+    ax.text(tr_x + 0.12, T / 2, "T", ha="left", va="center", fontsize=8,
+            color=_LABEL, fontweight="bold")
+
+    # H dimension (far right) — height from top of existing box to top of grade
+    hx = OX + 2.8
+    ax.annotate("", xy=(hx, 0), xytext=(hx, H_rep),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0, mutation_scale=9))
+    ax.text(hx + 0.15, H_rep / 2,
+            "H\n(from top of existing\nbox to top of grade)",
+            ha="left", va="center", fontsize=7.5, color=_LABEL, fontweight="bold",
+            linespacing=1.35)
+    ax.plot([0, hx], [0, 0], color=_DIM, lw=0.6, ls=":", zorder=2)
+    ax.plot([0, hx], [H_rep, H_rep], color=_DIM, lw=0.6, ls=":", zorder=2)
+
+    _axes_compass(ax, -2.0, -2.5)
     _title(ax, "G2 INLET TOP -- PLAN VIEW")
+
+    return _to_png(fig)
+
+
+def _diag_expanded_inlet_top() -> bytes:
+    """Plan view of G2 expanded inlet top -- identical layout to G2 Inlet,
+    with H = Height (from top of existing box to top of grade)."""
+    OX, OY = 7.0, 5.0      # slightly wider to match expanded footprint
+    T = 0.55
+    IX, IY = OX - 2 * T, OY - 2 * T
+    H_rep = 4.5
+
+    l1_w = IX * 0.40
+    grate_w = IX - l1_w
+
+    fig, ax = _fig(9.5, 7.5)
+    ax.set_xlim(-2.5, OX + 4.0)
+    ax.set_ylim(-3.0, OY + 2.2)
+
+    # Concrete walls
+    _rect(ax, 0, 0, OX, OY, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
+    _rect(ax, T, T, IX, IY, fc="white", ec=_OUTLINE, lw=1.5)
+
+    # L1 shaded area (left interior)
+    _rect(ax, T, T, l1_w, IY, fc="#c8c8c8", ec=_OUTLINE, lw=0.5)
+    for yy in [T, T + IY]:
+        ax.plot([T, T + l1_w], [yy, yy], color=_OUTLINE, lw=0.8, ls="--", zorder=3)
+
+    # Grate area (right interior -- vertical bar hatching)
+    gx = T + l1_w
+    _rect(ax, gx, T, grate_w, IY, fc="white", ec=_OUTLINE, lw=1.2)
+    n_grate = 12
+    for i in range(n_grate):
+        bx = gx + grate_w * (i + 1) / (n_grate + 1)
+        ax.plot([bx, bx], [T + 0.08, T + IY - 0.08], color=_OUTLINE, lw=0.7, zorder=3)
+
+    # L1 dimension
+    _dim_h(ax, T, T + l1_w, T + IY * 0.5, "L1", gap=0.15, fontsize=9)
+
+    # X dimension (top)
+    _ext_dim_h(ax, 0, OX, OY, OY + 0.8, "X")
+
+    # Y dimension (left)
+    _ext_dim_v(ax, 0, OY, 0, -0.9, "Y")
+
+    # Inside Y (right)
+    _ext_dim_v(ax, T, T + IY, OX, OX + 1.1, "Inside Y\nDimension")
+    ax.text(OX + 1.35, T + IY * 0.30, "3'-0\" (2'-11 3/8\" min)",
+            ha="left", va="center", fontsize=6.5, color=_DIM)
+
+    # Inside X (bottom)
+    _ext_dim_h(ax, T, T + IX, 0, -1.3, "Inside X Dimension", fontsize=8)
+    ax.text(T + IX / 2, -1.7, "3'-0\" (2'-11 3/8\" min)  OR\nPipe penetration dia + 3\" min (90\" max)",
+            ha="center", va="top", fontsize=6.5, color=_DIM)
+
+    # T labels (bottom)
+    _ext_dim_h(ax, 0, T, 0, -0.45, "T", fontsize=8)
+    _ext_dim_h(ax, OX - T, OX, 0, -0.45, "T", fontsize=8)
+
+    # T labels (vertical, right)
+    tr_x = OX + 0.25
+    for y0, y1 in [(OY - T, OY), (0, T)]:
+        ax.annotate("", xy=(tr_x, y1), xytext=(tr_x, y0),
+                    arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.8, mutation_scale=7))
+        ax.text(tr_x + 0.12, (y0 + y1) / 2, "T", ha="left", va="center",
+                fontsize=8, color=_LABEL, fontweight="bold")
+
+    # H dimension (far right) — height from top of existing box to top of grade
+    hx = OX + 2.8
+    ax.annotate("", xy=(hx, 0), xytext=(hx, H_rep),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0, mutation_scale=9))
+    ax.text(hx + 0.15, H_rep / 2,
+            "H\n(from top of existing\nbox to top of grade)",
+            ha="left", va="center", fontsize=7.5, color=_LABEL, fontweight="bold",
+            linespacing=1.35)
+    ax.plot([0, hx], [0, 0], color=_DIM, lw=0.6, ls=":", zorder=2)
+    ax.plot([0, hx], [H_rep, H_rep], color=_DIM, lw=0.6, ls=":", zorder=2)
+
+    _axes_compass(ax, -2.0, -2.5)
+    _title(ax, "G2 EXPANDED INLET TOP -- PLAN VIEW")
 
     return _to_png(fig)
 
@@ -1415,7 +1547,7 @@ _DIAGRAM_FN: dict[str, callable] = {
     "G6 Inlet":                _diag_g6_inlet,
     "G2 Expanded Inlet":       _diag_expanded_inlet,
     "G2 Inlet Top":            _diag_inlet_top,
-    "G2 Expanded Inlet Top":   lambda: _diag_rect_plan("G2 EXPANDED INLET TOP -- PLAN VIEW"),
+    "G2 Expanded Inlet Top":   _diag_expanded_inlet_top,
     "Straight Headwall":       _diag_headwall,
     "Wing Wall":               _diag_wing_wall,
     "Spread Footing":          _diag_footing,
@@ -1459,8 +1591,10 @@ _FIELD_LABELS: dict[str, dict[str, str]] = {
     "G2 Expanded Inlet":     {"x_dim_ft": "X", "y_dim_ft": "Y",
                               "y_expanded_ft": "Y exp", "wall_thick_in": "T",
                               "_inside_x_ft": "Inside X", "_inside_y_ft": "Inside Y"},
-    "G2 Inlet Top":          {"x_dim_ft": "X", "y_dim_ft": "Y"},
-    "G2 Expanded Inlet Top": {"slab_length_ft": "L", "slab_width_ft": "W"},
+    "G2 Inlet Top":          {"x_dim_ft": "X", "y_dim_ft": "Y",
+                              "wall_height_ft": "H"},
+    "G2 Expanded Inlet Top": {"slab_length_ft": "X", "slab_width_ft": "Y",
+                              "wall_height_ft": "H"},
     "Straight Headwall":     {"wall_width_ft": "W", "wall_height_ft": "H"},
     "Wing Wall":             {"wing_length_ft": "L",
                               "hw_height_ft": "H\u2081",
