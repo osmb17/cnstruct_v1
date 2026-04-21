@@ -362,11 +362,16 @@ def _draw_headwall(ax, p: dict, title: str):
     """
     Combined front-elevation (left) + typical section (right) for a Caltrans
     D89A straight headwall.  Geometry is pulled live from the D89A table by H.
+
+    Both views are drawn to H1 (= H + 1'-0") height — the full physical wall.
+    Front elevation: H1 dimension on right side only (per D89A standard plan).
+    Typical section: Design H on left, H1 on right.
     """
     L    = _p(p, "wall_width_ft",  8.0)
     H    = _p(p, "wall_height_ft", 5.917)
     H_in = H * 12.0
-    H1   = H + 1.0          # H + 12" extension
+    H1   = H + 1.0          # H + 12" extension (actual wall height)
+    H1_in = H1 * 12.0
 
     # ── D89A table lookup ────────────────────────────────────────────────
     try:
@@ -390,9 +395,9 @@ def _draw_headwall(ax, p: dict, title: str):
     cov  = 2.0 / 12.0    # 2" stem cover
     fcov = 3.0 / 12.0    # 3" footing cover
 
-    # ── Shared scale (both views same vertical scale) ────────────────────
-    s = min(4.8 / max(L, 1.0), 3.2 / max(H + F, 1.0))
-    s = max(s, 0.30)
+    # ── Shared scale — sized to H1 so the 1'-0" extension fits ──────────
+    s = min(4.8 / max(L, 1.0), 3.0 / max(H1 + F, 1.0))
+    s = max(s, 0.28)
 
     # ── FRONT ELEVATION ─────────────────────────────────────────────────
     ex = 0.6
@@ -401,14 +406,18 @@ def _draw_headwall(ax, p: dict, title: str):
     # Footing strip (hint)
     _rect(ax, ex, ey - F*s, L*s, F*s, fc="#BBBBBB", ec=_CD)
 
-    # Wall body
-    _rect(ax, ex, ey, L*s, H*s)
+    # Wall body — drawn to full H1 height
+    _rect(ax, ex, ey, L*s, H1*s)
 
-    # LW horizontal bars at 12" oc (shown as lines, both faces merged)
+    # Dashed line at H (design height) — separates design zone from 1'-0" extension
+    ax.plot([ex, ex + L*s], [ey + H*s, ey + H*s],
+            color=_CD, lw=0.7, ls="--", zorder=3, alpha=0.7)
+
+    # LW horizontal bars at 12" oc — run full H1 height
     n_lw = int(H1) + 1
     for i in range(n_lw + 1):
         yy = ey + i * s
-        if yy > ey + H*s: break
+        if yy > ey + H1*s: break
         _bar(ax, ex + cov*s, yy, ex + L*s - cov*s, yy, lw=0.65)
 
     # VW vertical bars at 12" oc
@@ -416,11 +425,11 @@ def _draw_headwall(ax, p: dict, title: str):
     for i in range(n_vw + 1):
         xx = ex + cov*s + i * s
         if xx > ex + L*s - cov*s: break
-        _bar(ax, xx, ey + cov*s, xx, ey + H*s - cov*s, lw=0.65)
+        _bar(ax, xx, ey + cov*s, xx, ey + H1*s - cov*s, lw=0.65)
 
-    # TW bars — 3 prominent dots at top
+    # TW bars — 3 prominent dots at top of wall (H1)
     for frac in [0.25, 0.5, 0.75]:
-        _dot(ax, ex + L*s * frac, ey + H*s - cov*s, s=24)
+        _dot(ax, ex + L*s * frac, ey + H1*s - cov*s, s=24)
 
     # D1 transverse dots along footing junction (top of invert)
     n_d1 = math.floor(L / (d_sp / 12.0)) + 1
@@ -429,21 +438,22 @@ def _draw_headwall(ax, p: dict, title: str):
         if xx > ex + L*s: break
         _dot(ax, xx, ey, s=11)
 
-    # Dimension labels
+    # Dimension labels:
+    #   Front elevation shows H1 only (per D89A standard plan convention)
     _dim_h(ax, ex, ex + L*s, ey - F*s, f"L = {_fmt_in(L*12)}", y_off=-0.28)
-    _dim_v(ax, ey, ey + H*s, ex, f"H = {_fmt_in(H_in)}", x_off=-0.45)
+    _dim_v(ax, ey, ey + H1*s, ex + L*s, f"H1 = {_fmt_in(H1_in)}", x_off=+0.45)
 
     # Callouts
-    _callout(ax, (ex + cov*s + 0.05, ey + H*s * 0.6),
-             f"LW #{c_sz[1]}@12\"", (ex - 1.2, ey + H*s * 0.75))
+    _callout(ax, (ex + cov*s + 0.05, ey + H1*s * 0.6),
+             f"LW #{c_sz[1]}@12\"", (ex - 1.2, ey + H1*s * 0.75))
     _callout(ax, (ex + s * 0.5, ey + cov*s + 0.05),
-             f"VW #{c_sz[1]}@12\"", (ex - 1.2, ey + H*s * 0.25))
-    _callout(ax, (ex + L*s * 0.5, ey + H*s - cov*s),
-             f"TW {d_sz} Tot 3", (ex + L*s * 0.5, ey + H*s + 0.6))
+             f"VW #{c_sz[1]}@12\"", (ex - 1.2, ey + H1*s * 0.25))
+    _callout(ax, (ex + L*s * 0.5, ey + H1*s - cov*s),
+             f"TW {d_sz} Tot 3", (ex + L*s * 0.5, ey + H1*s + 0.55))
     _callout(ax, (ex + (d_sp/12.0) * s, ey),
              f"D1 {d_sz}@{d_sp}\"", (ex + L*s * 0.3, ey - F*s - 0.5))
 
-    _label(ax, ex + L*s / 2, ey + H*s + 0.26,
+    _label(ax, ex + L*s / 2, ey + H1*s + 0.26,
            "FRONT ELEVATION", fs=6.5, bold=True, color=_H)
 
     # ── TYPICAL SECTION ──────────────────────────────────────────────────
@@ -456,25 +466,29 @@ def _draw_headwall(ax, p: dict, title: str):
     # Footing
     _rect(ax, tx, ty - F*s, W*s, F*s, fc="#BBBBBB", ec=_CD)
 
-    # Earth hatching on heel (back) side
+    # Earth hatching on heel (back) side — runs full H1 height
     earth_x = wx + T*s
     for i in range(9):
-        ye = ty - F*s * 0.5 + i * (H*s + F*s * 0.5) / 8
+        ye = ty - F*s * 0.5 + i * (H1*s + F*s * 0.5) / 8
         ax.plot([earth_x + 0.04, earth_x + 0.25],
                 [ye, ye - 0.17], color=_E, lw=0.6, alpha=0.5, zorder=1)
 
-    # Wall stem
-    _rect(ax, wx, ty, T*s, H*s)
+    # Wall stem — drawn to full H1 height
+    _rect(ax, wx, ty, T*s, H1*s)
 
-    # Bar dots both faces at 12" oc
+    # Dashed line at H (design height) on the section wall
+    ax.plot([wx, wx + T*s], [ty + H*s, ty + H*s],
+            color=_CD, lw=0.7, ls="--", zorder=3, alpha=0.7)
+
+    # Bar dots both faces at 12" oc — full H1 height
     for i in range(n_lw + 1):
         yy = ty + i * s
-        if yy > ty + H*s: break
+        if yy > ty + H1*s: break
         _dot(ax, wx + cov*s,           yy, s=12)
         _dot(ax, wx + T*s - cov*s,     yy, s=12)
 
-    # TW — one dot at top center
-    _dot(ax, wx + T*s / 2, ty + H*s - cov*s, s=24)
+    # TW — one dot at top center (H1)
+    _dot(ax, wx + T*s / 2, ty + H1*s - cov*s, s=24)
 
     # TF dots across footing width
     n_tf = math.floor(W) + 1
@@ -487,18 +501,18 @@ def _draw_headwall(ax, p: dict, title: str):
     cb_leg  = 14.0 / 12.0 * s
     cb_lx   = wx - cb_leg
     cb_rx   = wx + T*s + cb_leg
-    cb_top  = ty + H*s + 0.14
+    cb_top  = ty + H1*s + 0.12
     cb_base = ty + cov*s
     _bar(ax, cb_lx, cb_top,  cb_lx, cb_base)
     _bar(ax, cb_lx, cb_base, cb_rx, cb_base)
     _bar(ax, cb_rx, cb_base, cb_rx, cb_top)
-    _label(ax, cb_lx - 0.10, ty + H*s * 0.75,
+    _label(ax, cb_lx - 0.10, ty + H1*s * 0.72,
            f'"{c_sz}" C-BAR', fs=5.5, color=_R, ha="right")
     _label(ax, cb_rx + 0.10, cb_base + 0.06,
            "R=9\"", fs=5.5, color=_R, ha="left")
 
     # WS spreader — small U inside wall at mid-height
-    ws_cy  = ty + H*s * 0.52
+    ws_cy  = ty + H1*s * 0.50
     ws_b   = 5.0  / 12.0 * s    # 5" body
     ws_leg = 4.5  / 12.0 * s    # 4.5" legs
     wsL    = wx + T*s / 2 - ws_b / 2
@@ -508,23 +522,26 @@ def _draw_headwall(ax, p: dict, title: str):
     _bar(ax, wsR + ws_leg, ws_cy - ws_leg,     wsR + ws_leg, ws_cy)
     _label(ax, wx + T*s / 2, ws_cy + 0.06, "WS", fs=5.0, color=_R)
 
-    # Dimension callouts for section
-    _dim_v(ax, ty, ty + H*s, wx, f"H = {_fmt_in(H_in)}", x_off=-0.52)
+    # Dimension callouts for section:
+    #   Left  — Design H (from D89A table, used for all bar sizing)
+    #   Right — H1 = H + 1'-0" (actual top of wall)
+    _dim_v(ax, ty, ty + H*s,  wx,         f"H = {_fmt_in(H_in)}",    x_off=-0.52)
+    _dim_v(ax, ty, ty + H1*s, tx + W*s,   f"H1 = {_fmt_in(H1_in)}", x_off=+0.42)
     _dim_v(ax, ty - F*s, ty, tx - 0.08, f"F={_fmt_in(F_in)}", x_off=-0.26)
     _dim_h(ax, tx, tx + W*s, ty - F*s, f"W = {_fmt_in(W_in)}", y_off=-0.28)
-    _callout(ax, (wx + T*s / 2, ty + H*s * 0.3),
-             f"T = {T_in:.0f}\"", (wx + T*s + 0.9, ty + H*s * 0.45))
+    _callout(ax, (wx + T*s / 2, ty + H1*s * 0.30),
+             f"T = {T_in:.0f}\"", (wx + T*s + 0.9, ty + H1*s * 0.42))
     _callout(ax, (tx + C*s / 2, ty - F*s * 0.55),
              f"C={_fmt_in(C_in)}", (tx - 0.05, ty - F*s - 0.45))
     _callout(ax, (wx + T*s + B*s / 2, ty - F*s * 0.55),
              f"B={_fmt_in(B_in)}", (wx + T*s + B*s + 0.2, ty - F*s - 0.45))
 
-    _label(ax, wx + T*s / 2, ty + H*s + 0.26,
+    _label(ax, wx + T*s / 2, ty + H1*s + 0.26,
            "TYPICAL SECTION", fs=6.5, bold=True, color=_H)
 
-    # ── Bounds ───────────────────────────────────────────────────────────
-    ax.set_xlim(ex - 1.6, tx + W*s + 1.3)
-    ax.set_ylim(ty - F*s - 0.8, ty + H*s + 1.0)
+    # ── Bounds — extra right margin for H1 dim on section ───────────────
+    ax.set_xlim(ex - 1.6, tx + W*s + 1.7)
+    ax.set_ylim(ty - F*s - 0.8, ty + H1*s + 1.0)
     ax.set_title(title, fontsize=_FS_TITLE, fontweight="bold", color=_H, pad=6)
 
 
