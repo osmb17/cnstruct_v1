@@ -627,84 +627,62 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
                            fontSize=fs, textAnchor="middle", fillColor=_BLACK))
 
         elif shape == "C":
-            # C-bar hairpin: top span, two vertical legs, chamfered bottom corners,
-            # short OUTWARD feet at the bottom (away from center).
-            xl = m + 14; xr = SW - m - 14
-            yt = SH - 4
-            R_pts  = 5.0   # corner chamfer size (approximates radius in sketch)
-            foot   = 9.0   # horizontal foot length in pts
-            yb_leg = fs + 4 + R_pts   # legs stop here, then chamfer
-            yb_ft  = fs + 4            # foot level (ReportLab y-up: lower value = lower on page)
-            # top span (body "0")
-            d.add(Line(xl, yt, xr, yt, strokeWidth=lw, strokeColor=_BLACK))
-            # left leg going down to chamfer start
-            d.add(Line(xl, yt, xl, yb_leg, strokeWidth=lw, strokeColor=_BLACK))
-            # right leg going down to chamfer start
-            d.add(Line(xr, yt, xr, yb_leg, strokeWidth=lw, strokeColor=_BLACK))
-            # bottom-left chamfer (diagonal, going LEFT and DOWN — outward)
-            d.add(Line(xl, yb_leg, xl - R_pts, yb_ft, strokeWidth=lw, strokeColor=_BLACK))
-            # bottom-right chamfer (diagonal, going RIGHT and DOWN — outward)
-            d.add(Line(xr, yb_leg, xr + R_pts, yb_ft, strokeWidth=lw, strokeColor=_BLACK))
-            # left foot going outward (leftward)
-            d.add(Line(xl - R_pts, yb_ft, xl - R_pts - foot, yb_ft,
-                       strokeWidth=lw, strokeColor=_BLACK))
-            # right foot going outward (rightward)
-            d.add(Line(xr + R_pts, yb_ft, xr + R_pts + foot, yb_ft,
-                       strokeWidth=lw, strokeColor=_BLACK))
-            # label "0" on body (top span)
-            if a:
-                d.add(GStr((xl + xr) / 2, yt + 2, f"0={a}",
-                           fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
-            # label "d" on inner span
-            if dd:
-                d.add(GStr((xl + xr) / 2, (yt + yb_ft) / 2 + 2, f"d={dd}",
-                           fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
-            # label "c" on left foot, "B" on right foot (centered on each foot)
+            # C-bar: horizontal bar with large chamfered corner (approximating
+            # the radius bend), then vertical leg going down. L-shape.
+            xl    = m + 4
+            xr    = SW - m - 10
+            yt    = SH - 4      # top of bar
+            yb    = fs + 2      # bottom of vertical leg
+            R_pts = 7.0         # chamfer size (approximates the large radius)
+            # horizontal bar
+            d.add(Line(xl, yt, xr - R_pts, yt, strokeWidth=lw, strokeColor=_BLACK))
+            # chamfer (diagonal approximating the large-radius curve)
+            d.add(Line(xr - R_pts, yt, xr, yt - R_pts, strokeWidth=lw, strokeColor=_BLACK))
+            # vertical leg
+            d.add(Line(xr, yt - R_pts, xr, yb, strokeWidth=lw, strokeColor=_BLACK))
+            # label horizontal bar
             if b:
-                d.add(GStr(xl - R_pts - foot / 2, yb_ft + 1, f"c={b}",
+                d.add(GStr((xl + xr) / 2, yt + 2, b,
                            fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
-                d.add(GStr(xr + R_pts + foot / 2, yb_ft + 1, f"B={b}",
-                           fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
-            # R label at bottom center
+            # label vertical leg
+            if a:
+                d.add(GStr(xr + 2, (yt + yb) / 2, a,
+                           fontSize=fs, textAnchor="start", fillColor=_BLACK))
+            # label radius
             if g:
-                d.add(GStr((xl + xr) / 2, yb_ft - fs + 1, f"R={g}",
-                           fontSize=fs - 1.0, textAnchor="middle", fillColor=_BLACK))
+                d.add(GStr(xr - R_pts - 1, yt - R_pts - 1, f"R={g}",
+                           fontSize=fs - 1.5, textAnchor="end", fillColor=_BLACK))
 
         elif shape == "S":
-            # Standee: top bar A hook + B center + C hook (all horizontal),
-            # then two diagonal legs spreading DOWN-OUTWARD from B bar ends.
-            cx     = SW / 2
-            top_hw = 7     # half-width of B center bar
-            hook   = 9     # A and C hook extension (each side)
-            ldx    = 12    # diagonal leg horizontal spread (pts)
-            ldy    = 14    # diagonal leg drop (ReportLab y-up: subtract to go down)
-            ytop   = SH - 5
-            ybot   = ytop - ldy    # lower in drawing
-            # top center bar (B)
-            d.add(Line(cx - top_hw, ytop, cx + top_hw, ytop,
-                       strokeWidth=lw, strokeColor=_BLACK))
-            # left hook (A) extending left from B
-            d.add(Line(cx - top_hw, ytop, cx - top_hw - hook, ytop,
-                       strokeWidth=lw, strokeColor=_BLACK))
-            # right hook (C) extending right from B
-            d.add(Line(cx + top_hw, ytop, cx + top_hw + hook, ytop,
-                       strokeWidth=lw, strokeColor=_BLACK))
-            # left diagonal leg: from B left end, going LEFT and DOWN (outward)
-            d.add(Line(cx - top_hw, ytop, cx - top_hw - ldx, ybot,
-                       strokeWidth=lw, strokeColor=_BLACK))
-            # right diagonal leg: from B right end, going RIGHT and DOWN (outward)
-            d.add(Line(cx + top_hw, ytop, cx + top_hw + ldx, ybot,
-                       strokeWidth=lw, strokeColor=_BLACK))
+            # Standee: top horizontal bar spanning full width, two straight vertical
+            # legs going down, then a sharp kink with diagonal extensions spreading
+            # outward-downward. Matches user-drawn SVG reference.
+            xl_s  = m + 14; xr_s = SW - m - 14
+            ytop  = SH - 5
+            yk    = ytop - 14    # kink point (ReportLab y-up: subtract = going down)
+            yb    = yk - 10      # bottom of diagonals
+            lx    = xl_s - 10    # left diagonal end x
+            rx    = xr_s + 10    # right diagonal end x
+            # top span
+            d.add(Line(xl_s, ytop, xr_s, ytop, strokeWidth=lw, strokeColor=_BLACK))
+            # right leg (straight down to kink)
+            d.add(Line(xr_s, ytop, xr_s, yk, strokeWidth=lw, strokeColor=_BLACK))
+            # right diagonal (outward-downward)
+            d.add(Line(xr_s, yk, rx, yb, strokeWidth=lw, strokeColor=_BLACK))
+            # left leg (straight down to kink)
+            d.add(Line(xl_s, ytop, xl_s, yk, strokeWidth=lw, strokeColor=_BLACK))
+            # left diagonal (outward-downward)
+            d.add(Line(xl_s, yk, lx, yb, strokeWidth=lw, strokeColor=_BLACK))
             # Labels
-            if b:   # B = center span
-                d.add(GStr(cx, ytop + 2, b,
+            if b:
+                d.add(GStr((xl_s + xr_s) / 2, ytop + 2, b,
                            fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
-            if a:   # A = left hook
-                d.add(GStr(cx - top_hw - hook / 2, ytop + 2, a,
-                           fontSize=fs - 0.5, textAnchor="middle", fillColor=_BLACK))
-            if dd:  # D = diagonal leg length
-                d.add(GStr(cx - top_hw - ldx / 2 - 2, (ytop + ybot) / 2, dd,
-                           fontSize=fs - 1.0, textAnchor="end", fillColor=_BLACK))
+            if a:
+                d.add(GStr(xl_s - 2, (ytop + yk) / 2, a,
+                           fontSize=fs - 0.5, textAnchor="end", fillColor=_BLACK))
+            if dd:
+                d.add(GStr(xr_s + 2, (yk + yb) / 2, dd,
+                           fontSize=fs - 1.0, textAnchor="start", fillColor=_BLACK))
 
         else:
             y = SH * 0.65
@@ -1015,49 +993,41 @@ def _bar_shape_svg(shape: str) -> str:
         lines.append(ln(xr, yt, xr, yb))     # right leg down
 
     elif shape == "C":
-        # C-bar hairpin: straight top bar, straight legs, CURVED BOTTOM corners,
-        # then short OUTWARD feet (away from center). Arcs curve outward.
-        R       = 5.0
-        foot    = 9
-        xl      = m + 14            # wider margin so outward foot stays in canvas
-        xr      = W - m - 14
-        yt      = m + 5
-        yb_leg  = H - m - 8 - R    # legs end here, arc begins
-        yb_ft   = H - m - 8        # foot level (= yb_leg + R)
-        # straight top bar
-        lines.append(ln(xl, yt, xr, yt))
-        # left leg going down (straight to arc start)
-        lines.append(ln(xl, yt, xl, yb_leg))
-        # bottom-left arc: center=(xl-R, yb_leg), 0°→90° CW → exits LEFT (outward)
-        lines.append(arc(xl - R, yb_leg, R, 0, 90))
-        # left foot going outward (leftward)
-        lines.append(ln(xl - R, yb_ft, xl - R - foot, yb_ft))
-        # right leg going down
-        lines.append(ln(xr, yt, xr, yb_leg))
-        # bottom-right arc: center=(xr+R, yb_leg), 180°→90° CW → exits RIGHT (outward)
-        lines.append(arc(xr + R, yb_leg, R, 180, 90))
-        # right foot going outward (rightward)
-        lines.append(ln(xr + R, yb_ft, xr + R + foot, yb_ft))
+        # C-bar: horizontal bar going right with a large smooth-radius curve
+        # at the right end, then straight vertical leg going down. L-shape.
+        R   = 16.0
+        xl  = m + 3
+        xr  = W - m - 4
+        yt  = m + 2
+        yb  = H - m - 3
+        # horizontal bar (left end to curve start)
+        lines.append(ln(xl, yt, xr - R, yt))
+        # large-radius curve: center=(xr-R, yt+R), 270°→360° CW
+        lines.append(arc(xr - R, yt + R, R, 270, 360))
+        # vertical leg (curve end down to open bottom)
+        lines.append(ln(xr, yt + R, xr, yb))
 
     elif shape == "S":
-        # Standee: top bar A hook + B center + C hook (all horizontal),
-        # then two diagonal legs spreading DOWN-OUTWARD from B bar ends.
-        cx  = W / 2
-        tw  = 10    # half-width of center B bar
-        hw  = 15    # A and C hook extension (each side)
-        ldx = 18    # diagonal leg horizontal spread
-        ldy = 22    # diagonal leg vertical drop (SVG y increases downward)
-        yt  = m + 4
-        # top center bar (B)
-        lines.append(ln(cx - tw, yt, cx + tw, yt))
-        # left hook (A) extending left
-        lines.append(ln(cx - tw, yt, cx - tw - hw, yt))
-        # right hook (C) extending right
-        lines.append(ln(cx + tw, yt, cx + tw + hw, yt))
-        # left diagonal leg: from B left end, down-left (outward)
-        lines.append(ln(cx - tw, yt, cx - tw - ldx, yt + ldy))
-        # right diagonal leg: from B right end, down-right (outward)
-        lines.append(ln(cx + tw, yt, cx + tw + ldx, yt + ldy))
+        # Standee: top horizontal bar, two straight vertical legs going down,
+        # then a sharp kink at the bottom of each leg with diagonal extensions
+        # spreading outward-downward. No curves, no horizontal feet.
+        xl  = m + 19
+        xr  = W - m - 19
+        yt  = m + 5
+        yk  = yt + 19     # kink y (where vertical leg transitions to diagonal)
+        lx  = xl - 12     # left diagonal end x (outward)
+        rx  = xr + 12     # right diagonal end x (outward)
+        yb  = yk + 12     # bottom of diagonals
+        # top span
+        lines.append(ln(xl, yt, xr, yt))
+        # right leg (straight down to kink)
+        lines.append(ln(xr, yt, xr, yk))
+        # right diagonal (outward-downward)
+        lines.append(ln(xr, yk, rx, yb))
+        # left leg (straight down to kink)
+        lines.append(ln(xl, yt, xl, yk))
+        # left diagonal (outward-downward)
+        lines.append(ln(xl, yk, lx, yb))
 
     elif shape == "Hoop":
         # Rectangle body with top bar overhanging right side and curling down
