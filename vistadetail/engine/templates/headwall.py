@@ -1,4 +1,4 @@
-"""Template: Straight Headwall (v2.0) — Caltrans D89A."""
+"""Template: Straight Headwall (v3.0) — Caltrans D89A."""
 
 from __future__ import annotations
 
@@ -11,10 +11,11 @@ class HeadwallTemplate(BaseTemplate):
     def __init__(self):
         super().__init__()
         self.name = "Straight Headwall"
-        self.version = "2.0"
+        self.version = "3.0"
         self.description = (
             "Caltrans D89A straight headwall. "
-            "Bar sizes and footing dimensions looked up from the D89A table by wall height."
+            "Pipe diameter drives the D89A table lookup (H = pipe + 11\") "
+            "for all bar sizes and lengths. Wall height controls bar counts."
         )
 
         self.inputs = [
@@ -25,27 +26,27 @@ class HeadwallTemplate(BaseTemplate):
                 hint="Total wall length (parallel to pipe axis)",
             ),
             InputField(
-                "wall_height_ft", float, label="Wall Height H (ft)",
-                min=2.0, max=12.0, default=5.917,
-                hint=(
-                    "Wall height H above footing top — "
-                    "footing width W, thickness T, and all bar sizes "
-                    "are looked up from the D89A table by this value. "
-                    "H1 = H + 1'-0\" is shown automatically."
-                ),
+                "wall_height_ft", float, label="Wall Height (ft)",
+                min=2.0, max=12.0, default=5.0,
+                hint="Actual wall height H above footing top — used for bar counts",
             ),
             InputField(
                 "pipe_qty", int, label="Number of Pipes",
-                min=0, max=4, default=0,
+                min=0, max=4, default=1,
                 group="Pipe",
-                hint="Number of existing pipes through the headwall (0 = none)",
+                hint="Number of pipes through the headwall",
             ),
             InputField(
                 "pipe_dia_in", str, label="Pipe Diameter",
                 choices=["12\"", "15\"", "18\"", "21\"", "24\"", "27\"",
-                         "30\"", "33\"", "36\"", "42\"", "48\"", "54\""],
-                default="24\"",
-                hint="Nominal RCP pipe diameter",
+                         "30\"", "33\"", "36\"", "42\"", "48\"", "54\"",
+                         "60\"", "66\"", "72\""],
+                default="60\"",
+                hint=(
+                    "Nominal RCP pipe diameter. Drives D89A table lookup — "
+                    "bar sizes, footing dimensions, and bar lengths. "
+                    "H = pipe + 11\".  60\" pipe → VW = 6'-7\"."
+                ),
             ),
         ]
 
@@ -64,7 +65,8 @@ class HeadwallTemplate(BaseTemplate):
 
     def evaluate_triggers(self, params: Params) -> list[str]:
         triggers: list[str] = []
-        if params.wall_height_ft * 12 > 89:
+        H = float(params.pipe_dia_in.replace('"', '')) + 11.0
+        if H > 89:
             triggers.append("height_exceeds_d89_table")
         return triggers
 
