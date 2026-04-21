@@ -1052,7 +1052,7 @@ def _bar_shape_svg(shape: str) -> str:
         lines.append(ln(xl, yb, xr, yb))               # bottom (full)
         lines.append(ln(xr, yb, xr, yt + gap))         # right side (stops short of top)
         # small hook curl from overshoot end downward
-        lines.append(ln(x_ext, yt, x_ext + 2, yt + 12))
+        lines.append(ln(x_ext, yt, x_ext, yt + 12))
 
     elif shape == "Rect":
         xl, xr = m + 4, W - m - 4
