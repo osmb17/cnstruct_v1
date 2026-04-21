@@ -1046,10 +1046,11 @@ def _bar_shape_svg(shape: str) -> str:
         yt    = m + 5
         yb    = H - m - 5
         x_ext = xr + 16
-        lines.append(ln(xl, yt, x_ext, yt))       # top overshoot
-        lines.append(ln(xl, yt, xl, yb))           # left side
-        lines.append(ln(xl, yb, xr, yb))           # bottom
-        lines.append(ln(xr, yb, xr, yt))           # right side
+        gap   = 7   # open gap: right side stops short of top bar (T-junction illusion)
+        lines.append(ln(xl, yt, x_ext, yt))            # top bar (full overshoot)
+        lines.append(ln(xl, yt, xl, yb))               # left side
+        lines.append(ln(xl, yb, xr, yb))               # bottom (full)
+        lines.append(ln(xr, yb, xr, yt + gap))         # right side (stops short of top)
         # small hook curl from overshoot end downward
         lines.append(ln(x_ext, yt, x_ext + 2, yt + 12))
 
