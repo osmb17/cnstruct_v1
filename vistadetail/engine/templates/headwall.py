@@ -33,15 +33,6 @@ class HeadwallTemplate(BaseTemplate):
                 ),
             ),
             InputField(
-                "h1_extra_in", int, label="H1 Extension Above H (in)",
-                min=12, max=36, default=12,
-                hint=(
-                    "H1 = H + this extension. "
-                    "Caltrans D89A minimum is 1'-0\" (12\"). "
-                    "Standard = 1'-0\". Contractor may specify more."
-                ),
-            ),
-            InputField(
                 "pipe_qty", int, label="Number of Pipes",
                 min=0, max=4, default=0,
                 group="Pipe",

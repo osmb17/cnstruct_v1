@@ -1512,15 +1512,48 @@ with inp_col:
             name, val = _widget(_hw_h_field, key_prefix=f"primary_{_tname}", container=st)
             params_raw[name] = val
         with c2:
-            # H1 = H + 1'-0" — always computed, never editable
+            # H1 — editable, minimum = H + 1'-0" per Caltrans D89A
+            _h1_key     = f"primary_{_tname}__h1_ft"
+            _h_prev_key = f"_hw_h1_prev__{_tname}"
             try:
-                _h_raw = st.session_state.get(_hw_h_key, str(_hw_h_field.default or "5'-11\""))
+                _h_raw = st.session_state.get(_hw_h_key, str(_hw_h_field.default or "5'-0\""))
                 _h_ft  = _parse_ft_in(str(_h_raw)) if isinstance(_h_raw, str) else float(_h_raw or 0)
-                _h1_str = _format_ft_in(_h_ft + 1.0)
             except Exception:
-                _h1_str = "—"
-            st.text_input("H1 = H + 1'-0\"", value=_h1_str, disabled=True,
-                          help="H1 is always wall height + 1 foot. Used for C-bar body, LW, and VW lengths.")
+                _h_ft = float(_hw_h_field.default or 5.0)
+            _h1_floor     = _h_ft + 1.0
+            _h1_floor_str = _format_ft_in(_h1_floor)
+
+            # When H changes, bump H1 up to the new floor if it would go below
+            if st.session_state.get(_h_prev_key) != _h_ft:
+                _cur = st.session_state.get(_h1_key)
+                _cur_ft = None
+                if _cur is not None:
+                    try:
+                        _cur_ft = _parse_ft_in(str(_cur))
+                    except Exception:
+                        pass
+                if _cur_ft is None or _cur_ft < _h1_floor:
+                    st.session_state[_h1_key] = _h1_floor_str
+                st.session_state[_h_prev_key] = _h_ft
+
+            _h1_raw = st.text_input(
+                "H1 (min = H + 1'-0\")",
+                key=_h1_key,
+                help=(
+                    "Physical wall height used for bar lengths. "
+                    "Caltrans D89A minimum is H + 1'-0\". "
+                    "Contractor may specify more."
+                ),
+                placeholder=_h1_floor_str,
+            )
+            try:
+                _h1_ft_val = _parse_ft_in(str(_h1_raw)) if _h1_raw else _h1_floor
+            except Exception:
+                _h1_ft_val = _h1_floor
+            if _h1_ft_val < _h1_floor:
+                st.caption(f"Minimum H1 = {_h1_floor_str} — clamped.")
+                _h1_ft_val = _h1_floor
+            params_raw["h1_ft"] = _h1_ft_val
 
         # Pipe info
         st.markdown("**Pipe**")

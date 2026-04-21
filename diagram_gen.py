@@ -571,8 +571,7 @@ def _diag_headwall() -> bytes:
     L    = float(_LIVE_PARAMS.get("wall_width_ft", 8.0))
     H    = float(_LIVE_PARAMS.get("wall_height_ft", 5.917))
     H_in = H * 12.0
-    h1_extra_in = float(_LIVE_PARAMS.get("h1_extra_in", 12))
-    H1    = H + h1_extra_in / 12.0   # design H + user-specified extension
+    H1   = float(_LIVE_PARAMS.get("h1_ft", H + 1.0))   # total physical height; default H + 1'-0"
     H1_in = H1 * 12.0
 
     # D89A table lookup
@@ -1642,7 +1641,7 @@ _FIELD_LABELS: dict[str, dict[str, str]] = {
                               "wall_height_ft": "H"},
     "G2 Expanded Inlet Top": {"slab_length_ft": "X", "slab_width_ft": "Y",
                               "wall_height_ft": "H"},
-    "Straight Headwall":     {"wall_width_ft": "W", "wall_height_ft": "H"},
+    "Straight Headwall":     {"wall_width_ft": "W", "wall_height_ft": "H", "h1_ft": "H1"},
     "Wing Wall":             {"wing_length_ft": "L",
                               "hw_height_ft": "H\u2081",
                               "tip_height_ft": "H\u2082"},
@@ -1701,17 +1700,6 @@ def get_diagram_live(template_name: str, params_dict: dict | None) -> bytes | No
             except (ValueError, TypeError):
                 pass
 
-    # Computed derived labels ---------------------------------------------------
-    if template_name == "Straight Headwall":
-        h_ft    = params_dict.get("wall_height_ft")
-        h1_ext  = params_dict.get("h1_extra_in")
-        if h_ft is not None and h1_ext is not None:
-            try:
-                h1_ft = float(h_ft) + float(h1_ext) / 12.0
-                dim_vals["H1"] = _fmt_dim_value("wall_height_ft", h1_ft)
-            except (ValueError, TypeError):
-                pass
-    # --------------------------------------------------------------------------
 
     _DIM_VALUES  = dim_vals
     _LIVE_PARAMS = dict(params_dict)
