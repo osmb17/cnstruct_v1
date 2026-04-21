@@ -661,8 +661,8 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
             ytop  = SH - 5
             yk    = ytop - 14    # kink point (ReportLab y-up: subtract = going down)
             yb    = yk - 10      # bottom of diagonals
-            lx    = xl_s - 10    # left diagonal end x
-            rx    = xr_s + 10    # right diagonal end x
+            lx    = xl_s + 10    # left diagonal end x (inward, toward center)
+            rx    = xr_s + 10    # right diagonal end x (outward)
             # top span
             d.add(Line(xl_s, ytop, xr_s, ytop, strokeWidth=lw, strokeColor=_BLACK))
             # right leg (straight down to kink)
@@ -1015,7 +1015,7 @@ def _bar_shape_svg(shape: str) -> str:
         xr  = W - m - 19
         yt  = m + 5
         yk  = yt + 19     # kink y (where vertical leg transitions to diagonal)
-        lx  = xl - 12     # left diagonal end x (outward)
+        lx  = xl + 12     # left diagonal end x (inward, toward center)
         rx  = xr + 12     # right diagonal end x (outward)
         yb  = yk + 12     # bottom of diagonals
         # top span
