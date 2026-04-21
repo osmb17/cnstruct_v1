@@ -38,6 +38,10 @@ _TITLE_CLR = "#1a1d23"
 # Maps dimension label string → formatted value string.
 _DIM_VALUES: dict[str, str] = {}
 
+# Raw param values from the current live call (field_name → raw float).
+# Used by diagram functions that need to compute derived quantities (e.g. H1).
+_LIVE_PARAMS: dict = {}
+
 
 def _aug_label(label: str) -> str:
     """Return label augmented with its current value if one is set."""
@@ -557,16 +561,18 @@ def _diag_expanded_inlet_top() -> bytes:
 def _diag_headwall() -> bytes:
     """Combined front elevation + typical section for a D89A straight headwall.
 
-    Both views are drawn to H1 (= H + 1'-0") — the full physical wall height.
+    Both views are drawn to H1 (= H + H1 extension) — the full physical wall height.
     Front elevation: H1 dimension on right side only (per D89A standard plan).
     Typical section: Design H on left, H1 on right.
     Dashed line at H marks the design height boundary in both views.
+    H1 extension defaults to 1'-0\" (12\"); reads live value from _LIVE_PARAMS.
     """
-    # Default preview dimensions
-    L    = 8.0
-    H    = 5.917
+    # Default preview dimensions (overridden when called live)
+    L    = float(_LIVE_PARAMS.get("wall_width_ft", 8.0))
+    H    = float(_LIVE_PARAMS.get("wall_height_ft", 5.917))
     H_in = H * 12.0
-    H1   = H + 1.0          # actual wall top = design H + 12"
+    h1_extra_in = float(_LIVE_PARAMS.get("h1_extra_in", 12))
+    H1    = H + h1_extra_in / 12.0   # design H + user-specified extension
     H1_in = H1 * 12.0
 
     # D89A table lookup
@@ -1681,7 +1687,7 @@ def get_diagram_live(template_name: str, params_dict: dict | None) -> bytes | No
     calls inside the diagram function automatically pick up the values.
     Thread safety: acceptable for a single-user local Streamlit app.
     """
-    global _DIM_VALUES
+    global _DIM_VALUES, _LIVE_PARAMS
     if not params_dict:
         return get_diagram(template_name)
 
@@ -1695,9 +1701,23 @@ def get_diagram_live(template_name: str, params_dict: dict | None) -> bytes | No
             except (ValueError, TypeError):
                 pass
 
-    _DIM_VALUES = dim_vals
+    # Computed derived labels ---------------------------------------------------
+    if template_name == "Straight Headwall":
+        h_ft    = params_dict.get("wall_height_ft")
+        h1_ext  = params_dict.get("h1_extra_in")
+        if h_ft is not None and h1_ext is not None:
+            try:
+                h1_ft = float(h_ft) + float(h1_ext) / 12.0
+                dim_vals["H1"] = _fmt_dim_value("wall_height_ft", h1_ft)
+            except (ValueError, TypeError):
+                pass
+    # --------------------------------------------------------------------------
+
+    _DIM_VALUES  = dim_vals
+    _LIVE_PARAMS = dict(params_dict)
     try:
         fn = _DIAGRAM_FN.get(template_name)
         return fn() if fn else None
     finally:
-        _DIM_VALUES = {}
+        _DIM_VALUES  = {}
+        _LIVE_PARAMS = {}

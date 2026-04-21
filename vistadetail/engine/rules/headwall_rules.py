@@ -136,7 +136,7 @@ def rule_hw_long_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """LW — Longitudinal wall bars, 2 faces (#4 @ 12" oc)."""
     L  = p.wall_width_ft * 12
     H  = p.wall_height_ft * 12
-    H1 = H + 12.0
+    H1 = H + float(p.h1_extra_in)
     qty    = 2 * (math.floor(H1 / 12) + 1)
     length = L - 4.0
 
@@ -171,7 +171,7 @@ def rule_hw_vert_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """VW — Vertical wall bars (#4 @ 12" oc)."""
     L  = p.wall_width_ft * 12
     H  = p.wall_height_ft * 12
-    H1 = H + 12.0
+    H1 = H + float(p.h1_extra_in)
     qty    = math.floor(L / 12) + 1
     length = H1 - 2 * _COVER_STEM
 
@@ -197,7 +197,7 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     L      = p.wall_width_ft * 12
     H      = p.wall_height_ft * 12
-    H1     = H + 12.0
+    H1     = H + float(p.h1_extra_in)
     c_cov  = 2.0          # 2" clear cover at each leg tip (standard)
     body   = H1 - 2 * c_cov   # outer span = "0" dimension in barlist sketch
     inner  = H            # inner dimension = wall height = "d" in barlist sketch

@@ -1,4 +1,4 @@
-"""Template: Straight Headwall (v2.0) — Caltrans D89A."""
+"""Template: Straight Headwall (v3.0) — Caltrans D89A."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ class HeadwallTemplate(BaseTemplate):
     def __init__(self):
         super().__init__()
         self.name = "Straight Headwall"
-        self.version = "2.0"
+        self.version = "3.0"
         self.description = (
             "Caltrans D89A straight headwall. "
             "Bar sizes and footing dimensions looked up from the D89A table by wall height."
@@ -29,8 +29,16 @@ class HeadwallTemplate(BaseTemplate):
                 min=2.0, max=12.0, default=5.0,
                 hint=(
                     "Wall height H above footing top. "
-                    "Caltrans D89A table rounds up to the nearest standard row. "
-                    "H1 = H + 1'-0\" is shown automatically."
+                    "Caltrans D89A table rounds up to the nearest standard row."
+                ),
+            ),
+            InputField(
+                "h1_extra_in", int, label="H1 Extension Above H (in)",
+                min=12, max=36, default=12,
+                hint=(
+                    "H1 = H + this extension. "
+                    "Caltrans D89A minimum is 1'-0\" (12\"). "
+                    "Standard = 1'-0\". Contractor may specify more."
                 ),
             ),
             InputField(
