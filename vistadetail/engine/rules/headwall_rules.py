@@ -75,21 +75,23 @@ def _d89_by_height(h_in: float) -> dict:
 # ---------------------------------------------------------------------------
 
 def rule_hw_d_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """D1 — Top invert D-bars, transverse (#5 @ 8" oc)."""
-    L   = p.wall_width_ft * 12
-    H   = p.wall_height_ft * 12
-    row = _d89_by_height(H)
-    W   = row["W"]
-    qty    = math.floor(L / 8) + 1
+    """D1 — Top invert D-bars, transverse (size and spacing from D89A table)."""
+    L      = p.wall_width_ft * 12
+    H      = p.wall_height_ft * 12
+    row    = _d89_by_height(H)
+    W      = row["W"]
+    d_size = row["d_s"]          # "#5" or "#6" per D89A table
+    d_sp   = int(row["d_p"])     # spacing in inches per D89A table
+    qty    = math.floor(L / d_sp) + 1
     length = W - 4.0
 
-    log.step(f"D89A H={H:.0f}\" → W={W}\"  |  D1: ⌊{L}/8⌋+1={qty} @ {fmt_inches(length)}",
+    log.step(f"D89A H={H:.0f}\" → W={W}\"  |  D1: {d_size}@{d_sp}\"  ⌊{L}/{d_sp}⌋+1={qty} @ {fmt_inches(length)}",
              source="HeadwallRules")
-    log.result("D1", f"#5 × {qty} @ {fmt_inches(length)}", source="HeadwallRules")
+    log.result("D1", f"{d_size} × {qty} @ {fmt_inches(length)}", source="HeadwallRules")
 
     return [BarRow(
-        mark="D1", size="#5", qty=qty, length_in=length, shape="Str",
-        notes=f"Top invert trans @8\" oc  W={fmt_inches(W)}-4\"",
+        mark="D1", size=d_size, qty=qty, length_in=length, shape="Str",
+        notes=f"D bars @{d_sp}\" oc  W={fmt_inches(W)}-4\"",
         source_rule="rule_hw_d_bars",
     )]
 
@@ -217,7 +219,7 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="CB", size="#4", qty=qty, length_in=stock, shape="C",
-        leg_a_in=body, leg_b_in=leg, leg_c_in=leg, leg_d_in=inner,
+        leg_a_in=body, leg_b_in=leg, leg_c_in=leg, leg_d_in=inner, leg_g_in=R,
         notes=f"C-bar @12\" oc  body={fmt_inches(body)}  inner={fmt_inches(inner)}  legs=1'-2\"×2  R=9\"",
         source_rule="rule_hw_c_bars",
     )]
