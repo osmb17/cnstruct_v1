@@ -1,8 +1,8 @@
 """
-Template: G2 Expanded Inlet  (v3.0)
+Template: G2 Expanded Inlet  (v5.0)
 
-Caltrans G2 expanded inlet box.  Has an expansion room on one side,
-giving two Y dimensions: main box Y and expanded Y.
+Caltrans G2 expanded inlet box.  Has an expansion room on one side.
+Y dimensions are fixed standard values (5'-0" main, 8'-0" expanded).
 
 Bar sizes/spacings per Vista Steel spreadsheet
 ("expanded G2 inlet 9in walls.xlsx").
@@ -19,38 +19,31 @@ class G2ExpandedInletTemplate(BaseTemplate):
     def __init__(self):
         super().__init__()
         self.name = "G2 Expanded Inlet"
-        self.version = "4.0"
+        self.version = "5.0"
         self.description = (
             "Caltrans G2 expanded inlet -- main box + expansion room. "
-            "T auto-derives (9\" if interior X<=54\", 11\" otherwise). "
+            "Y dimensions are fixed standard values (5'-0\" main, 8'-0\" expanded). "
             "Bar sizes/spacings per Vista Steel spreadsheet."
         )
 
         self.inputs = [
             InputField(
                 "x_dim_ft", float,
-                label="Exterior Width (ft)",
+                label="X -- Exterior Width (ft)",
                 min=2.5, max=30.0, default=5.667,
-                hint="Exterior face-to-face width in plan",
-            ),
-            InputField(
-                "y_dim_ft", float,
-                label="Standard Box Depth (ft)",
-                min=2.5, max=12.0, default=5.0,
-                hint="Exterior depth of the standard (non-expanded) inlet section",
-            ),
-            InputField(
-                "y_expanded_ft", float,
-                label="Full Expanded Depth (ft)",
-                min=2.5, max=20.0, default=7.0,
-                hint="Full exterior depth including expansion room; "
-                     "must be greater than Standard Box Depth",
+                hint="Exterior face-to-face width in plan. Interior X = X − 2×T.",
             ),
             InputField(
                 "wall_height_ft", float,
                 label="Wall Height (ft)",
                 min=2.0, max=20.0, default=5.0,
                 hint="Bottom of footing to top of wall",
+            ),
+            InputField(
+                "wall_thick_in", int,
+                label="Wall Thickness (in)",
+                min=9, max=12, default=9,
+                hint="9\" standard; 11\" for larger spans.",
             ),
             InputField(
                 "grate_type", str,

@@ -632,25 +632,22 @@ def rule_g2_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
 def rule_g2exp_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """Derive expanded G2 inlet geometry.
 
-    Same as standard G2 but adds an expanded Y dimension used for notched
-    A&B bars and notched hoops.
-
-    Additional input on p:
-      y_expanded_ft  — expanded-section exterior depth (ft)
+    Y dimensions are fixed standard values (5'-0" main, 8'-0" expanded).
+    Wall thickness T comes from explicit user input wall_thick_in.
     """
     x_ext = p.x_dim_ft * 12.0
-    y_ext = p.y_dim_ft * 12.0
-    y_exp_ext = p.y_expanded_ft * 12.0
 
-    # ── Wall thickness auto-derive ──────────────────────────────────────
-    t = float(getattr(p, "wall_thick_in", 0))
-    if t <= 0:
-        trial_inside = x_ext - 2 * 9.0
-        t = 9.0 if trial_inside <= 54.0 else 11.0
-        setattr(p, "wall_thick_in", t)
-        log.step(f"Auto T: trial interior X = {fmt_inches(trial_inside)} -> T = {t:.0f}\"")
-    else:
-        log.step(f"User T = {t:.0f}\"")
+    # Wall thickness — explicit user input
+    t = float(p.wall_thick_in)
+    log.step(f"T = {t:.0f}\"")
+
+    # Y dimensions — fixed standard values for expanded inlet
+    y_ext     = 5.0 * 12.0   # 60" — standard box exterior Y
+    y_exp_ext = 8.0 * 12.0   # 96" — expanded section exterior Y
+
+    # Store y dims back on p for any rules that read them
+    setattr(p, "y_dim_ft",      y_ext / 12.0)
+    setattr(p, "y_expanded_ft", y_exp_ext / 12.0)
 
     x_inside = x_ext - 2 * t
     y_inside = y_ext - 2 * t

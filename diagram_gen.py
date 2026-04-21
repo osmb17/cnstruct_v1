@@ -284,85 +284,109 @@ def _diag_g2_inlet() -> bytes:
 
 
 def _diag_expanded_inlet() -> bytes:
-    """Plan view of G2 expanded inlet -- matches Caltrans D73A Expanded G2/G4 plan.
+    """Plan view of G2 expanded inlet -- per Caltrans D73A Expanded G2/G4 plan.
 
-    One large clear interior (no interior dividing wall).  A dashed line marks
-    the standard-box boundary.  The grate opening (X-diagonal) sits within the
-    standard zone (upper portion).  Expansion room occupies the lower portion.
+    Layout matches the standard plan: outer concrete box, dashed standard-box
+    boundary inside, grate (Type 24) centered within the standard zone with
+    equal L2 clearance on all four sides.  L1 = notch (extra space left of
+    grate in X).  T labels at corners.
     """
-    T   = 0.55   # representative wall thickness (ft)
+    T   = 0.75   # representative wall thickness (ft) ≈ 9"
     OX  = 7.0    # representative exterior X width
-    OY  = 8.0    # representative full expanded exterior depth
+    OY  = 5.0    # representative exterior Y (same standard depth as G2 inlet)
 
-    IX  = OX - 2 * T   # interior clear X = 5.9
+    IX = OX - 2 * T   # interior clear X
+    IY = OY - 2 * T   # interior clear Y
 
-    # Standard-zone boundary (from top, downward -- 58 % of OY)
-    y_dim_disp   = OY * 0.58        # = 4.64  representative y_dim exterior
-    std_zone_bot = OY - y_dim_disp  # = 3.36  where expansion room ends / std zone begins
+    # Grate fixed clear: 2'-11 3/8" (35.375")
+    grate_clear = 35.375 / 12.0   # ≈ 2.948 ft
+    grate_w     = grate_clear     # grate span in X direction
+    grate_h     = grate_clear     # grate span in Y direction (same opening)
 
-    # Interior extents
-    inner_top = OY - T              # = 7.45
-    inner_bot = T                   # = 0.55
+    # Center grate within the interior void
+    grate_cx = T + IX / 2
+    grate_cy = T + IY / 2
+    grate_x  = grate_cx - grate_w / 2
+    grate_y  = grate_cy - grate_h / 2
 
-    # Grate opening (solid rectangle with X-diagonals, within std zone, centred)
-    std_inner_h = inner_top - std_zone_bot   # = 4.09
-    grate_w = IX * 0.52                      # = 3.07
-    grate_h = 2.948                          # ≈ 2'-11 3/8" fixed standard clear
-    grate_x = T + (IX - grate_w) / 2
-    grate_y = std_zone_bot + (std_inner_h - grate_h) / 2
+    # Standard-box boundary — dashed rectangle showing min clear zone
+    # (same as interior for the standard section, shown as dashed boundary)
+    std_x = grate_x - 0.25   # small margin left of grate
+    std_y = grate_y - 0.25
+    std_w = grate_w + 0.50
+    std_h = grate_h + 0.50
 
-    # Expansion room inner clear height
-    exp_inner_h = std_zone_bot - inner_bot   # = 2.81
+    # L1 = extra space in X between left interior wall and left edge of standard zone
+    L1 = std_x - T
+    # L2 = clear space above / below grate (symmetric, same as standard Y clear)
+    L2 = grate_y - T   # = IY/2 - grate_h/2
 
-    fig, ax = _fig(9.5, 10.0)
-    ax.set_xlim(-2.5, OX + 4.0)
-    ax.set_ylim(-2.2, OY + 2.2)
+    fig, ax = _fig(9.5, 8.5)
+    ax.set_xlim(-2.8, OX + 3.5)
+    ax.set_ylim(-2.5, OY + 2.2)
 
-    # ---- Geometry ----
-    # 1. Outer concrete body
+    # ── Outer concrete body ───────────────────────────────────────────────
     _rect(ax, 0, 0, OX, OY, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
-    # 2. Single full interior clear (one void, no interior wall)
-    _rect(ax, T, T, IX, OY - 2 * T, fc="white", ec=_OUTLINE, lw=1.5, zorder=3)
-    # 3. Dashed boundary line: standard box zone bottom
-    ax.plot([T, T + IX], [std_zone_bot, std_zone_bot],
-            color=_OUTLINE, lw=1.2, ls="--", zorder=4)
-    # 4. Grate opening (solid rectangle + X diagonals, within standard zone)
+
+    # ── Interior void ─────────────────────────────────────────────────────
+    _rect(ax, T, T, IX, IY, fc="white", ec=_OUTLINE, lw=1.5, zorder=3)
+
+    # ── Dashed standard-box boundary ──────────────────────────────────────
+    ax.add_patch(mpatches.Rectangle(
+        (std_x, std_y), std_w, std_h,
+        linewidth=1.1, edgecolor=_OUTLINE, facecolor="none",
+        linestyle="--", zorder=4))
+
+    # ── Grate opening (Type 24) with X diagonals ──────────────────────────
     ax.add_patch(mpatches.Rectangle(
         (grate_x, grate_y), grate_w, grate_h,
-        linewidth=1.3, edgecolor=_OUTLINE, facecolor="none", zorder=5))
+        linewidth=1.4, edgecolor=_OUTLINE, facecolor="#e8e8e8", zorder=5))
     ax.plot([grate_x, grate_x + grate_w], [grate_y, grate_y + grate_h],
             color=_DIM, lw=0.9, zorder=6)
     ax.plot([grate_x, grate_x + grate_w], [grate_y + grate_h, grate_y],
             color=_DIM, lw=0.9, zorder=6)
-    ax.text(grate_x + grate_w / 2, grate_y + grate_h / 2,
+    ax.text(grate_cx, grate_cy,
             "GRATE\nTYPE 24", ha="center", va="center",
             fontsize=7.5, color="#333", zorder=7,
             bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="none", alpha=0.88))
 
-    # ---- Labels ----
-    ax.text(T + IX / 2, inner_bot + exp_inner_h / 2, "EXPANSION\nROOM",
-            ha="center", va="center", fontsize=9.5, color="#555",
-            fontweight="bold", zorder=4)
+    # ── Dimension lines ───────────────────────────────────────────────────
+    # X exterior (top)
+    _ext_dim_h(ax, 0, OX, OY, OY + 0.85, "X")
 
-    # ---- Dimension lines ----
-    # X: exterior width (top, live)
-    _ext_dim_h(ax, 0, OX, OY, OY + 0.9, "X")
-    # Y exp: full exterior depth (left, live)
-    _ext_dim_v(ax, 0, OY, 0, -1.3, "Y exp")
-    # Y: standard-section exterior depth (right -- from std_zone_bot to OY, live)
-    _ext_dim_v(ax, std_zone_bot, OY, OX, OX + 1.4, "Y")
-    # T: wall thickness (bottom, live)
-    _ext_dim_h(ax, 0, T, 0, -0.65, "T", fontsize=8)
-    _ext_dim_h(ax, OX - T, OX, 0, -0.65, "T", fontsize=8)
+    # T labels at top-right and bottom corners (vertical)
+    tr_x = OX + 0.3
+    for y0, y1 in [(OY - T, OY), (0.0, T)]:
+        ax.annotate("", xy=(tr_x, y1), xytext=(tr_x, y0),
+                    arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.8, mutation_scale=7))
+        ax.text(tr_x + 0.12, (y0 + y1) / 2, "T", ha="left", va="center",
+                fontsize=8, color=_LABEL, fontweight="bold")
+    # T labels at bottom (horizontal, left and right)
+    _ext_dim_h(ax, 0, T, 0, -0.5, "T", fontsize=8)
+    _ext_dim_h(ax, OX - T, OX, 0, -0.5, "T", fontsize=8)
 
-    # Inside X: interior clear width (in expansion room, live)
-    _dim_h(ax, T, T + IX, inner_bot + exp_inner_h * 0.18, "Inside X",
-           gap=0.16, fontsize=8)
-    # Inside Y: grate-box clear (within grate rectangle, live)
-    _dim_v(ax, grate_y, grate_y + grate_h, grate_x + grate_w * 0.88,
-           "Inside Y", gap=0.16, fontsize=8)
+    # L1 — extra space left of grate (notch, in X direction)
+    if L1 > 0.05:
+        _dim_h(ax, T, T + L1, grate_cy, "L\u2081", gap=0.14, fontsize=8)
 
-    _axes_compass(ax, -2.0, -1.8)
+    # L2 — symmetric clearance above and below grate
+    if L2 > 0.05:
+        _dim_v(ax, T, T + L2, grate_x - 0.15, "L\u2082", gap=0.12, fontsize=7.5)
+        _dim_v(ax, grate_y + grate_h, OY - T, grate_x - 0.15, "L\u2082",
+               gap=0.12, fontsize=7.5)
+
+    # 2'-11 3/8" min label on left side
+    _ext_dim_v(ax, T, OY - T, 0, -1.5, "Inside Y")
+    ax.text(-1.6, OY / 2, "2\u2019-11\u215b\u201d Min OR\nPipe Penetration Dia\n+ 3\u201d Min (90\u201d Max)",
+            ha="center", va="center", fontsize=6.5, color=_DIM,
+            linespacing=1.3)
+
+    # 2'-11 3/8" min label on bottom
+    _ext_dim_h(ax, T, OX - T, 0, -1.4, "Inside X")
+    ax.text(OX / 2, -2.0, "2\u2019-11\u215b\u201d Min OR\nPipe Penetration Dia + 3\u201d Min (90\u201d Max)",
+            ha="center", va="top", fontsize=6.5, color=_DIM)
+
+    _axes_compass(ax, -2.4, -2.2)
     _title(ax, "G2 EXPANDED INLET -- PLAN VIEW")
 
     return _to_png(fig)
