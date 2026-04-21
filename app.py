@@ -942,6 +942,151 @@ SHAPE_SYMBOLS: dict[str, str] = {
     "Hook": "└",       # single 90-deg hook
 }
 
+
+def _bar_shape_svg(shape: str) -> str:
+    """
+    Return a base64 SVG data URI thumbnail for the given rebar bend shape.
+    Displayed in the barlist table Type column as a small engineering sketch.
+    """
+    import base64
+    import math
+
+    W, H = 92, 54
+    lw   = 2.2
+    m    = 9   # margin
+
+    def ln(x1, y1, x2, y2):
+        return (
+            f'<line x1="{x1:.1f}" y1="{y1:.1f}" '
+            f'x2="{x2:.1f}" y2="{y2:.1f}"/>'
+        )
+
+    def arc(cx, cy, r, a0_deg, a1_deg):
+        """SVG arc from angle a0 to a1 (degrees, 0=right, clockwise in SVG)."""
+        a0 = math.radians(a0_deg)
+        a1 = math.radians(a1_deg)
+        sx = cx + r * math.cos(a0)
+        sy = cy + r * math.sin(a0)
+        ex = cx + r * math.cos(a1)
+        ey = cy + r * math.sin(a1)
+        # large-arc-flag: 0 for arcs <= 180
+        laf = 1 if abs(a1_deg - a0_deg) > 180 else 0
+        # sweep: 1 = clockwise
+        return f'<path d="M {sx:.1f},{sy:.1f} A {r},{r} 0 {laf},1 {ex:.1f},{ey:.1f}"/>'
+
+    lines: list[str] = []
+
+    if shape == "Str":
+        y = H * 0.44
+        lines.append(ln(m, y, W - m, y))
+
+    elif shape in ("L", "Hook"):
+        yt = H * 0.35
+        lines.append(ln(m, yt, W - m, yt))   # horizontal
+        lines.append(ln(m, yt, m, H - m))    # vertical drop left
+
+    elif shape == "U":
+        xl, xr = m + 6, W - m - 6
+        yt = m + 4
+        yb = H - m
+        lines.append(ln(xl, yt, xr, yt))     # top bar
+        lines.append(ln(xl, yt, xl, yb))     # left leg down
+        lines.append(ln(xr, yt, xr, yb))     # right leg down
+
+    elif shape == "C":
+        # C-bar / hairpin: outer span at top, two legs going DOWN,
+        # small horizontal feet at the bottom (open end)
+        # Matches user diagram: O=outer top span, c/B = leg lengths going down,
+        # d = inner height, R = radius at bottom
+        R  = 5.0
+        xl = m + 10
+        xr = W - m - 10
+        yt = m + 5
+        yb = H - m - 4
+        # top bar (outer span O)
+        lines.append(ln(xl + R, yt, xr - R, yt))
+        # top-left corner arc (270° → 180°: top → left side)
+        lines.append(arc(xl + R, yt + R, R, 270, 180))
+        # left leg going down
+        lines.append(ln(xl, yt + R, xl, yb))
+        # small horizontal foot at bottom-left (open end, like the letter C)
+        lines.append(ln(xl, yb, xl + 8, yb))
+        # top-right corner arc (270° → 360°: top → right side)
+        lines.append(arc(xr - R, yt + R, R, 270, 360))
+        # right leg going down
+        lines.append(ln(xr, yt + R, xr, yb))
+        # small horizontal foot at bottom-right
+        lines.append(ln(xr, yb, xr - 8, yb))
+
+    elif shape == "S":
+        # Standee — symmetric chair shape matching user's diagram:
+        #   short top bar (6in), two equal vertical drops (0-5.5),
+        #   two feet extending OUTWARD at the bottom (1ft-6in each)
+        cx  = W / 2
+        tw  = 14    # top bar half-width
+        sh  = 20    # side drop height
+        fw  = 24    # foot width (extending outward from each drop)
+        yt  = m + 4
+        yb  = yt + sh
+        # short top bar
+        lines.append(ln(cx - tw, yt, cx + tw, yt))
+        # left vertical drop
+        lines.append(ln(cx - tw, yt, cx - tw, yb))
+        # right vertical drop
+        lines.append(ln(cx + tw, yt, cx + tw, yb))
+        # left foot extending LEFT
+        lines.append(ln(cx - tw, yb, cx - tw - fw, yb))
+        # right foot extending RIGHT
+        lines.append(ln(cx + tw, yb, cx + tw + fw, yb))
+
+    elif shape == "Hoop":
+        # Rectangle body with top bar overhanging right side and curling down
+        xl    = m + 6
+        xr    = W * 0.60
+        yt    = m + 5
+        yb    = H - m - 5
+        x_ext = xr + 16
+        lines.append(ln(xl, yt, x_ext, yt))       # top overshoot
+        lines.append(ln(xl, yt, xl, yb))           # left side
+        lines.append(ln(xl, yb, xr, yb))           # bottom
+        lines.append(ln(xr, yb, xr, yt))           # right side
+        # small hook curl from overshoot end downward
+        lines.append(ln(x_ext, yt, x_ext + 2, yt + 12))
+
+    elif shape == "Rect":
+        xl, xr = m + 4, W - m - 4
+        yt, yb = m + 6, H - m - 6
+        lines.append(ln(xl, yt, xr, yt))
+        lines.append(ln(xr, yt, xr, yb))
+        lines.append(ln(xr, yb, xl, yb))
+        lines.append(ln(xl, yb, xl, yt))
+
+    elif shape == "Rng":
+        cx = W / 2
+        cy = H / 2
+        r  = min(W, H) / 2 - m
+        lines.append(
+            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"/>'
+        )
+
+    else:
+        # Unknown — draw as straight
+        y = H * 0.44
+        lines.append(ln(m, y, W - m, y))
+
+    inner = "".join(lines)
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" '
+        f'width="{W}" height="{H}" viewBox="0 0 {W} {H}">'
+        f'<rect width="{W}" height="{H}" fill="white" rx="3"/>'
+        f'<g stroke="#1a1d23" stroke-width="{lw}" fill="none" '
+        f'stroke-linecap="round" stroke-linejoin="round">'
+        f'{inner}'
+        f'</g></svg>'
+    )
+    b64 = base64.b64encode(svg.encode()).decode()
+    return f"data:image/svg+xml;base64,{b64}"
+
 # ── Smart field predictions ───────────────────────────────────────────────────
 # Maps template → [(trigger_field, target_field, fn(trigger_val) → suggested_val)]
 # When the trigger field changes, the target is auto-suggested.
@@ -1588,7 +1733,7 @@ if bars is not None:
     df = pd.DataFrame([{
         "Mark":   b.mark,  "Size":   b.size,   "Qty":    b.qty,
         "Length": b.length_ft_in,
-        "Type":   SHAPE_SYMBOLS.get(b.shape, b.shape),
+        "Type":   _bar_shape_svg(b.shape),
         "A":  b.leg_a_ft_in, "B":  b.leg_b_ft_in, "C":  b.leg_c_ft_in,
         "D":  b.leg_d_ft_in, "G":  b.leg_g_ft_in,
         "Notes":  b.notes, "Ref":    b.ref,    "Review": b.review_flag,
@@ -1597,8 +1742,18 @@ if bars is not None:
     def _hl(row):
         return ["background-color:#fff3cd"]*len(row) if row["Review"] else [""]*len(row)
 
-    st.dataframe(df.style.apply(_hl, axis=1),
-                 use_container_width=True, hide_index=True, height=360)
+    st.dataframe(
+        df.style.apply(_hl, axis=1),
+        use_container_width=True,
+        hide_index=True,
+        height=360,
+        column_config={
+            "Type": st.column_config.ImageColumn(
+                "Type", width="small",
+                help="Rebar bend shape sketch",
+            ),
+        },
+    )
 
     # ── Export buttons (below barlist) ───────────────────────────────────────
     ex1, ex2, ex3, _pad = st.columns([1, 1, 1, 3])
