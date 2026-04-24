@@ -45,7 +45,7 @@ _D89A_ROWS: list[dict] = [
     # H   T    W   C   B   F  c_s   c_p  d_s   d_p    label
     {"H": 47, "T": 10, "W": 58, "C": 12, "B": 46, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p": 12},  # 3'-11"
     {"H": 50, "T": 10, "W": 58, "C": 12, "B": 46, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p": 12},  # 4'-2"
-    {"H": 53, "T": 10, "W": 60, "C": 12, "B": 48, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p":  8},  # 4'-5"
+    {"H": 53, "T": 10, "W": 60, "C": 12, "B": 48, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p": 12},  # 4'-5"
     {"H": 56, "T": 10, "W": 64, "C": 16, "B": 48, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p":  8},  # 4'-8"
     {"H": 59, "T": 10, "W": 64, "C": 16, "B": 48, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p":  8},  # 4'-11"
     {"H": 62, "T": 10, "W": 64, "C": 16, "B": 48, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p":  8},  # 5'-2"
@@ -53,7 +53,7 @@ _D89A_ROWS: list[dict] = [
     {"H": 68, "T": 10, "W": 64, "C": 16, "B": 48, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#6", "d_p":  8},  # 5'-8"
     {"H": 71, "T": 10, "W": 64, "C": 16, "B": 48, "F": 12, "c_s": "#5", "c_p": 12, "d_s": "#6", "d_p":  8},  # 5'-11"
     {"H": 74, "T": 12, "W": 64, "C": 16, "B": 48, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#6", "d_p":  8},  # 6'-2"
-    {"H": 77, "T": 12, "W": 66, "C": 18, "B": 48, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#6", "d_p":  8},  # 6'-5"
+    {"H": 77, "T": 12, "W": 66, "C": 18, "B": 48, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#6", "d_p":  6},  # 6'-5"
     {"H": 80, "T": 12, "W": 69, "C": 18, "B": 51, "F": 14, "c_s": "#5", "c_p":  9, "d_s": "#6", "d_p":  6},  # 6'-8"
     {"H": 83, "T": 12, "W": 72, "C": 18, "B": 54, "F": 14, "c_s": "#5", "c_p":  9, "d_s": "#6", "d_p":  6},  # 6'-11"
 ]
@@ -190,37 +190,41 @@ def rule_hw_vert_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    CB — C-bar hairpin (#4 @ 12" oc).
+    CB — C-bar hairpin (size and spacing from D89A c_s/c_p columns).
 
     U/C hairpin spanning wall height H1 with two 14" horizontal legs.
     Body ("0") = H1 − 2 × 2" cover = H1 − 4".
     Inner ("d") = H (actual wall height input, between bend tangent points).
-    Stock = body + 2 × leg − bend_reduce("shape_2", "#4").
+    Stock = body + 2 × leg − bend_reduce("shape_2", c_size).
     """
     L      = p.wall_width_ft * 12
     H      = p.wall_height_ft * 12
     H1     = float(getattr(p, "h1_ft", p.wall_height_ft + 1.0)) * 12.0
-    c_cov  = 2.0          # 2" clear cover at each leg tip (standard)
-    body   = H1 - 2 * c_cov   # outer span = "0" dimension in barlist sketch
-    inner  = H            # inner dimension = wall height = "d" in barlist sketch
+    row    = _d89_by_height(H)
+    c_size = row["c_s"]          # "#4" or "#5" per D89A table
+    c_sp   = int(row["c_p"])     # spacing in inches per D89A table
+    c_cov  = 2.0                 # 2" clear cover at each leg tip
+    body   = H1 - 2 * c_cov     # outer span = "0" dimension in barlist sketch
+    inner  = H                   # inner dimension = wall height = "d"
     leg    = 14.0
     R      = 9.0
-    deduct = bend_reduce("shape_2", "#4")
+    deduct = bend_reduce("shape_2", c_size)
     stock  = body + 2 * leg - deduct
-    qty    = math.floor(L / 12) + 1
+    qty    = math.floor(L / c_sp) + 1
 
     log.step(
+        f"D89A H={H:.0f}\" → c_size={c_size} @{c_sp}\"  "
         f"CB: H1={H1:.0f}\"  body={fmt_inches(body)}  inner={fmt_inches(inner)}  "
         f"legs=1'-2\"×2  R=9\"  stock={fmt_inches(stock)}",
         source="HeadwallRules",
     )
-    log.step(f"qty=⌊{L}/12⌋+1={qty}", source="HeadwallRules")
-    log.result("CB", f"#4 × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
+    log.step(f"qty=⌊{L}/{c_sp}⌋+1={qty}", source="HeadwallRules")
+    log.result("CB", f"{c_size} × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
 
     return [BarRow(
-        mark="CB", size="#4", qty=qty, length_in=stock, shape="C",
+        mark="CB", size=c_size, qty=qty, length_in=stock, shape="C",
         leg_a_in=body, leg_b_in=leg, leg_c_in=leg, leg_d_in=inner, leg_g_in=R,
-        notes=f"C-bar @12\" oc  body={fmt_inches(body)}  inner={fmt_inches(inner)}  legs=1'-2\"×2  R=9\"",
+        notes=f"C-bar @{c_sp}\" oc  body={fmt_inches(body)}  inner={fmt_inches(inner)}  legs=1'-2\"×2  R=9\"",
         source_rule="rule_hw_c_bars",
     )]
 
