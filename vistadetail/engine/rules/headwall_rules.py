@@ -59,7 +59,7 @@ _D89A_ROWS: list[dict] = [
 ]
 
 _COVER_STEM = 2.0   # wall face cover (in)
-_COVER_FTG  = 3.0   # footing bottom cover (in)
+_COVER_FTG  = 2.0   # footing bottom/top cover (in) — "2" Clr" per D89A typical section
 
 
 def _d89_by_height(h_in: float) -> dict:

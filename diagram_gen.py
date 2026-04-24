@@ -288,110 +288,115 @@ def _diag_g2_inlet() -> bytes:
 
 
 def _diag_expanded_inlet() -> bytes:
-    """Plan view of G2 expanded inlet -- per Caltrans D73A Expanded G2/G4 plan.
+    """Plan view of G2 expanded inlet -- per Caltrans Expanded G2/G4 standard plan.
 
-    Layout matches the standard plan: outer concrete box, dashed standard-box
-    boundary inside, grate (Type 24) centered within the standard zone with
-    equal L2 clearance on all four sides.  L1 = notch (extra space left of
-    grate in X).  T labels at corners.
+    Outer concrete box, dashed min-clear boundary, Grate Type 24 with horizontal
+    stripes, bar-mark circles (F, H, G, C per Caltrans legend), T labels at
+    corners, and L1 / L2 dimension callouts.
     """
-    T   = 0.75   # representative wall thickness (ft) ≈ 9"
-    OX  = 7.0    # representative exterior X width
-    OY  = 5.0    # representative exterior Y (same standard depth as G2 inlet)
+    T   = 0.75   # wall thickness (ft) ≈ 9"
+    OX  = 7.5    # exterior X width (ft)
+    OY  = 6.5    # exterior Y depth (ft)
+    IX  = OX - 2 * T
+    IY  = OY - 2 * T
 
-    IX = OX - 2 * T   # interior clear X
-    IY = OY - 2 * T   # interior clear Y
+    # Grate Type 24 opening (plan dimensions)
+    grate_w = 2.5
+    grate_h = 3.5
 
-    # Grate fixed clear: 2'-11 3/8" (35.375")
-    grate_clear = 35.375 / 12.0   # ≈ 2.948 ft
-    grate_w     = grate_clear     # grate span in X direction
-    grate_h     = grate_clear     # grate span in Y direction (same opening)
+    # L2 = symmetric clearance top/bottom of grate inside interior
+    L2      = (IY - grate_h) / 2
+    L1      = 0.5               # extra notch space left of grate
+    grate_x = T + L1
+    grate_y = T + L2
+    grate_cx = grate_x + grate_w / 2
+    grate_cy = grate_y + grate_h / 2
 
-    # Center grate within the interior void
-    grate_cx = T + IX / 2
-    grate_cy = T + IY / 2
-    grate_x  = grate_cx - grate_w / 2
-    grate_y  = grate_cy - grate_h / 2
+    # Dashed standard-box boundary: 2'-11 3/8" square, centered on grate
+    min_clear = 35.375 / 12.0   # 2'-11 3/8"
+    std_x = grate_cx - min_clear / 2
+    std_y = grate_cy - min_clear / 2
 
-    # Standard-box boundary — dashed rectangle showing min clear zone
-    # (same as interior for the standard section, shown as dashed boundary)
-    std_x = grate_x - 0.25   # small margin left of grate
-    std_y = grate_y - 0.25
-    std_w = grate_w + 0.50
-    std_h = grate_h + 0.50
+    fig, ax = _fig(10.5, 9.5)
+    ax.set_xlim(-3.5, OX + 4.0)
+    ax.set_ylim(-3.2, OY + 2.8)
 
-    # L1 = extra space in X between left interior wall and left edge of standard zone
-    L1 = std_x - T
-    # L2 = clear space above / below grate (symmetric, same as standard Y clear)
-    L2 = grate_y - T   # = IY/2 - grate_h/2
-
-    fig, ax = _fig(9.5, 8.5)
-    ax.set_xlim(-2.8, OX + 3.5)
-    ax.set_ylim(-2.5, OY + 2.2)
-
-    # ── Outer concrete body ───────────────────────────────────────────────
+    # ── Outer concrete box ────────────────────────────────────────────────
     _rect(ax, 0, 0, OX, OY, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
 
     # ── Interior void ─────────────────────────────────────────────────────
     _rect(ax, T, T, IX, IY, fc="white", ec=_OUTLINE, lw=1.5, zorder=3)
 
-    # ── Dashed standard-box boundary ──────────────────────────────────────
+    # ── Dashed min-clear boundary ─────────────────────────────────────────
     ax.add_patch(mpatches.Rectangle(
-        (std_x, std_y), std_w, std_h,
+        (std_x, std_y), min_clear, min_clear,
         linewidth=1.1, edgecolor=_OUTLINE, facecolor="none",
         linestyle="--", zorder=4))
 
-    # ── Grate opening (Type 24) with X diagonals ──────────────────────────
+    # ── Grate opening (Type 24) with horizontal stripes ───────────────────
     ax.add_patch(mpatches.Rectangle(
         (grate_x, grate_y), grate_w, grate_h,
-        linewidth=1.4, edgecolor=_OUTLINE, facecolor="#e8e8e8", zorder=5))
-    ax.plot([grate_x, grate_x + grate_w], [grate_y, grate_y + grate_h],
-            color=_DIM, lw=0.9, zorder=6)
-    ax.plot([grate_x, grate_x + grate_w], [grate_y + grate_h, grate_y],
-            color=_DIM, lw=0.9, zorder=6)
-    ax.text(grate_cx, grate_cy,
-            "GRATE\nTYPE 24", ha="center", va="center",
-            fontsize=7.5, color="#333", zorder=7,
-            bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="none", alpha=0.88))
+        linewidth=1.4, edgecolor=_OUTLINE, facecolor="#e0e0e0", zorder=5))
+    for i in range(1, 11):
+        yy = grate_y + i * grate_h / 11
+        ax.plot([grate_x, grate_x + grate_w], [yy, yy],
+                color="#999", lw=0.55, zorder=6)
+    ax.text(grate_cx, grate_cy, "GRATE\nTYPE 24",
+            ha="center", va="center", fontsize=7, color="#333", zorder=7,
+            bbox=dict(boxstyle="round,pad=0.22", fc="white", ec="none", alpha=0.9))
 
-    # ── Dimension lines ───────────────────────────────────────────────────
-    # X exterior (top)
-    _ext_dim_h(ax, 0, OX, OY, OY + 0.85, "X")
+    # ── Bar-mark circles (F, H, G, C per Caltrans legend) ─────────────────
+    def _mark(x, y, letter, fs=8):
+        ax.plot(x, y, "o", color="white", ms=16, mec=_OUTLINE, mew=1.0, zorder=8)
+        ax.text(x, y, letter, ha="center", va="center",
+                fontsize=fs, color=_LABEL, fontweight="bold", zorder=9)
 
-    # T labels at top-right and bottom corners (vertical)
-    tr_x = OX + 0.3
+    _mark(OX / 2, OY + 0.5, "G")                        # G — top center (curb ref)
+    _mark(grate_cx, grate_cy + 0.55, "G", fs=7)          # G — near grate
+    _mark(-0.38, OY / 2, "F")                            # F — left outer face
+    _mark(OX + 0.38, OY / 2, "F")                        # F — right outer face
+    _mark(T + 0.38, OY / 2, "H")                         # H — left interior
+    _mark(grate_x - 0.38, grate_cy, "H", fs=7)           # H — near grate left
+    _mark(std_x, std_y - 0.35, "C")                      # C — bottom-left dashed corner
+    _mark(std_x + min_clear, std_y - 0.35, "C")          # C — bottom-right dashed corner
+
+    # ── T labels — vertical at right corners ──────────────────────────────
+    tr_x = OX + 0.38
     for y0, y1 in [(OY - T, OY), (0.0, T)]:
         ax.annotate("", xy=(tr_x, y1), xytext=(tr_x, y0),
-                    arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.8, mutation_scale=7))
-        ax.text(tr_x + 0.12, (y0 + y1) / 2, "T", ha="left", va="center",
-                fontsize=8, color=_LABEL, fontweight="bold")
-    # T labels at bottom (horizontal, left and right)
-    _ext_dim_h(ax, 0, T, 0, -0.5, "T", fontsize=8)
-    _ext_dim_h(ax, OX - T, OX, 0, -0.5, "T", fontsize=8)
+                    arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.8,
+                                   mutation_scale=7))
+        ax.text(tr_x + 0.14, (y0 + y1) / 2, "T",
+                ha="left", va="center", fontsize=8, color=_LABEL, fontweight="bold")
+    # T labels — horizontal at bottom corners
+    _ext_dim_h(ax, 0, T, 0, -0.55, "T", fontsize=8)
+    _ext_dim_h(ax, OX - T, OX, 0, -0.55, "T", fontsize=8)
 
-    # L1 — extra space left of grate (notch, in X direction)
+    # ── L1 — notch left of grate ──────────────────────────────────────────
     if L1 > 0.05:
-        _dim_h(ax, T, T + L1, grate_cy, "L\u2081", gap=0.14, fontsize=8)
+        _dim_h(ax, T, grate_x, grate_cy, "L\u2081", gap=0.14, fontsize=8)
 
-    # L2 — symmetric clearance above and below grate
+    # ── L2 — symmetric top/bottom clearance (right of grate) ─────────────
+    rl_x = grate_x + grate_w + 0.25
     if L2 > 0.05:
-        _dim_v(ax, T, T + L2, grate_x - 0.15, "L\u2082", gap=0.12, fontsize=7.5)
-        _dim_v(ax, grate_y + grate_h, OY - T, grate_x - 0.15, "L\u2082",
+        _dim_v(ax, T, grate_y, rl_x, "L\u2082", gap=0.12, fontsize=7.5)
+        _dim_v(ax, grate_y + grate_h, OY - T, rl_x, "L\u2082",
                gap=0.12, fontsize=7.5)
 
-    # 2'-11 3/8" min label on left side
-    _ext_dim_v(ax, T, OY - T, 0, -1.5, "Inside Y")
-    ax.text(-1.6, OY / 2, "2\u2019-11\u215b\u201d Min OR\nPipe Penetration Dia\n+ 3\u201d Min (90\u201d Max)",
-            ha="center", va="center", fontsize=6.5, color=_DIM,
-            linespacing=1.3)
+    # ── Annotation: 2'-11 3/8" left side (vertical) ───────────────────────
+    _ext_dim_v(ax, T, OY - T, 0, -2.1, "")
+    ax.text(-2.7, OY / 2,
+            "2\u2019-11\u215b\u201d Min OR\nPipe Penetration\nDiameter + 3\u201d Min\n(90\u201d Max)",
+            ha="center", va="center", fontsize=6.5, color=_DIM, linespacing=1.3)
 
-    # 2'-11 3/8" min label on bottom
-    _ext_dim_h(ax, T, OX - T, 0, -1.4, "Inside X")
-    ax.text(OX / 2, -2.0, "2\u2019-11\u215b\u201d Min OR\nPipe Penetration Dia + 3\u201d Min (90\u201d Max)",
+    # ── Annotation: 2'-11 3/8" bottom (horizontal) ────────────────────────
+    _ext_dim_h(ax, T, OX - T, 0, -1.85, "")
+    ax.text(OX / 2, -2.7,
+            "2\u2019-11\u215b\u201d Min OR Pipe Penetration Diameter + 3\u201d Min (90\u201d Max)",
             ha="center", va="top", fontsize=6.5, color=_DIM)
 
-    _axes_compass(ax, -2.4, -2.2)
-    _title(ax, "G2 EXPANDED INLET -- PLAN VIEW")
+    _axes_compass(ax, -3.0, -2.9)
+    _title(ax, "G2 EXPANDED INLET \u2014 PLAN VIEW")
 
     return _to_png(fig)
 
@@ -643,9 +648,9 @@ def _diag_headwall() -> bytes:
         if xx > ex + L*s: break
         ax.plot(xx, ey, "o", color=_REBAR, ms=4, zorder=5)
 
-    # Dimensions — front elevation shows H1 on right only (per D89A convention)
+    # Dimensions — front elevation: W below, H1 on left (avoids crowding the section gap)
     _ext_dim_h(ax, ex, ex + L*s, ey - F*s, ey - F*s - 0.32, "W")
-    _ext_dim_v(ax, ey, ey + H1*s, ex + L*s, ex + L*s + 0.55, "H1")
+    _ext_dim_v(ax, ey, ey + H1*s, ex, ex - 0.55, "H1")
 
     # Callouts
     ax.text(ex + L*s * 0.5, ey + H1*s + 0.22, "FRONT ELEVATION",
@@ -709,17 +714,6 @@ def _diag_headwall() -> bytes:
             bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.85))
     ax.text(cb_rx + 0.08, cb_base + 0.04, "R=9\"",
             ha="left", va="center", fontsize=6, color=_REBAR, zorder=6)
-
-    # WS spreader — small U at mid-height
-    ws_cy  = ty + H1*s * 0.50
-    ws_b   = 5.0  / 12.0 * s
-    ws_leg = 4.5  / 12.0 * s
-    wsL    = wx + T*s / 2 - ws_b / 2
-    wsR    = wx + T*s / 2 + ws_b / 2
-    for seg in [([wsL-ws_leg, wsL-ws_leg], [ws_cy, ws_cy-ws_leg]),
-                ([wsL-ws_leg, wsR+ws_leg], [ws_cy-ws_leg, ws_cy-ws_leg]),
-                ([wsR+ws_leg, wsR+ws_leg], [ws_cy-ws_leg, ws_cy])]:
-        ax.plot(seg[0], seg[1], color=_REBAR, lw=1.0, zorder=4)
 
     # Section dimensions — H (design) on left, H1 on right
     _ext_dim_v(ax, ty, ty + H*s,  wx,          wx - 0.55, "H")
