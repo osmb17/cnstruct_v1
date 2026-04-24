@@ -304,18 +304,15 @@ def _diag_expanded_inlet() -> bytes:
     grate_w = 2.5
     grate_h = 3.5
 
-    # L2 = symmetric clearance top/bottom of grate inside interior
-    L2      = (IY - grate_h) / 2
-    L1      = 0.5               # extra notch space left of grate
-    grate_x = T + L1
+    # Grate flush with left interior wall — no cavity on left
+    grate_x = T
+    L2      = (IY - grate_h) / 2          # symmetric top/bottom clearance
     grate_y = T + L2
     grate_cx = grate_x + grate_w / 2
     grate_cy = grate_y + grate_h / 2
 
-    # Dashed standard-box boundary: 2'-11 3/8" square, centered on grate
-    min_clear = 35.375 / 12.0   # 2'-11 3/8"
-    std_x = grate_cx - min_clear / 2
-    std_y = grate_cy - min_clear / 2
+    # L1 = open space to the RIGHT of the grate (inside, grate right edge → right interior wall)
+    L1 = IX - grate_w
 
     fig, ax = _fig(10.5, 9.5)
     ax.set_xlim(-3.5, OX + 4.0)
@@ -326,12 +323,6 @@ def _diag_expanded_inlet() -> bytes:
 
     # ── Interior void ─────────────────────────────────────────────────────
     _rect(ax, T, T, IX, IY, fc="white", ec=_OUTLINE, lw=1.5, zorder=3)
-
-    # ── Dashed min-clear boundary ─────────────────────────────────────────
-    ax.add_patch(mpatches.Rectangle(
-        (std_x, std_y), min_clear, min_clear,
-        linewidth=1.1, edgecolor=_OUTLINE, facecolor="none",
-        linestyle="--", zorder=4))
 
     # ── Grate opening (Type 24) with horizontal stripes ───────────────────
     ax.add_patch(mpatches.Rectangle(
@@ -351,14 +342,13 @@ def _diag_expanded_inlet() -> bytes:
         ax.text(x, y, letter, ha="center", va="center",
                 fontsize=fs, color=_LABEL, fontweight="bold", zorder=9)
 
-    _mark(OX / 2, OY + 0.5, "G")                        # G — top center (curb ref)
-    _mark(grate_cx, grate_cy + 0.55, "G", fs=7)          # G — near grate
-    _mark(-0.38, OY / 2, "F")                            # F — left outer face
-    _mark(OX + 0.38, OY / 2, "F")                        # F — right outer face
-    _mark(T + 0.38, OY / 2, "H")                         # H — left interior
-    _mark(grate_x - 0.38, grate_cy, "H", fs=7)           # H — near grate left
-    _mark(std_x, std_y - 0.35, "C")                      # C — bottom-left dashed corner
-    _mark(std_x + min_clear, std_y - 0.35, "C")          # C — bottom-right dashed corner
+    _mark(OX / 2, OY + 0.5, "G")                              # G — top center (curb ref)
+    _mark(grate_cx, grate_cy + 0.55, "G", fs=7)               # G — inside grate
+    _mark(-0.38, OY / 2, "F")                                  # F — left outer face
+    _mark(OX + 0.38, OY / 2, "F")                             # F — right outer face
+    _mark(grate_x + grate_w + 0.38, OY / 2, "H")              # H — right open zone
+    _mark(grate_x + grate_w / 2, grate_y - 0.38, "C")         # C — bottom of grate
+    _mark(grate_x + grate_w / 2, grate_y + grate_h + 0.38, "C")  # C — top of grate
 
     # ── T labels — vertical at right corners ──────────────────────────────
     tr_x = OX + 0.38
@@ -372,16 +362,17 @@ def _diag_expanded_inlet() -> bytes:
     _ext_dim_h(ax, 0, T, 0, -0.55, "T", fontsize=8)
     _ext_dim_h(ax, OX - T, OX, 0, -0.55, "T", fontsize=8)
 
-    # ── L1 — notch left of grate ──────────────────────────────────────────
+    # ── L1 — open space RIGHT of grate ───────────────────────────────────
     if L1 > 0.05:
-        _dim_h(ax, T, grate_x, grate_cy, "L\u2081", gap=0.14, fontsize=8)
+        _dim_h(ax, grate_x + grate_w, OX - T, grate_cy, "L\u2081", gap=0.14, fontsize=8)
 
-    # ── L2 — symmetric top/bottom clearance (right of grate) ─────────────
+    # ── L2 — symmetric top/bottom clearance (right side of grate) ────────
     rl_x = grate_x + grate_w + 0.25
     if L2 > 0.05:
         _dim_v(ax, T, grate_y, rl_x, "L\u2082", gap=0.12, fontsize=7.5)
         _dim_v(ax, grate_y + grate_h, OY - T, rl_x, "L\u2082",
                gap=0.12, fontsize=7.5)
+
 
     # ── Annotation: 2'-11 3/8" left side (vertical) ───────────────────────
     _ext_dim_v(ax, T, OY - T, 0, -2.1, "")
