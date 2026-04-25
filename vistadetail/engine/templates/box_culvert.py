@@ -57,8 +57,7 @@ class BoxCulvertTemplate(BaseTemplate):
     def evaluate_triggers(self, params: Params) -> list[str]:
         triggers: list[str] = []
         span = int(params.span_ft)
-        if span in (7, 8):
-            triggers.append("span_data_pending_interpolated")
+        # All D80 standard spans (4-14) now have table data — no interpolation triggers
         if params.height_ft > 14.0:
             triggers.append("height_exceeds_d80_table")
         if span > 14:

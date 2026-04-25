@@ -75,11 +75,29 @@ _D80: dict[tuple[int, int, int], dict] = {
     (6, 6, 10): dict(T1=8.0,  T2=8.5,  T3=8.5,  a_s="#5", a_sp=5.0, b_s="#5", b_sp=4.5, e_s="#4", e_sp=7.0,  B=35, lblf=362),
     (6, 6, 20): dict(T1=11.5, T2=11.0, T3=12.5, a_s="#4", a_sp=5.0, b_s="#5", b_sp=5.0, e_s="#4", e_sp=6.5,  B=34, lblf=297),
 
-    # --- SPAN 7' — data pending; interpolation used as placeholder ---
-    # TODO: fill from D80 standard plan table when span-7 data is obtained
+    # --- SPAN 7' ---
+    (7, 3, 10): dict(T1=9.0,  T2=6.5,  T3=9.5,  a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=13.5, B=40, lblf=327),
+    (7, 3, 20): dict(T1=13.5, T2=7.5,  T3=14.0, a_s="#4", a_sp=6.0, b_s="#4", b_sp=5.0,  e_s="#4", e_sp=11.0, B=41, lblf=264),
+    (7, 4, 10): dict(T1=8.5,  T2=7.5,  T3=9.5,  a_s="#5", a_sp=5.0, b_s="#5", b_sp=6.0,  e_s="#4", e_sp=11.0, B=41, lblf=333),
+    (7, 4, 20): dict(T1=13.5, T2=8.0,  T3=14.0, a_s="#4", a_sp=6.0, b_s="#4", b_sp=5.0,  e_s="#4", e_sp=10.0, B=41, lblf=276),
+    (7, 5, 10): dict(T1=8.5,  T2=7.5,  T3=9.5,  a_s="#5", a_sp=5.0, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=10.5, B=41, lblf=355),
+    (7, 5, 20): dict(T1=13.0, T2=9.5,  T3=14.0, a_s="#5", a_sp=6.0, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=8.0,  B=43, lblf=311),
+    (7, 6, 10): dict(T1=8.5,  T2=8.5,  T3=9.5,  a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=8.0,  B=44, lblf=377),
+    (7, 6, 20): dict(T1=13.0, T2=11.0, T3=14.0, a_s="#5", a_sp=6.0, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=6.5,  B=44, lblf=338),
+    (7, 7, 10): dict(T1=8.5,  T2=9.5,  T3=9.5,  a_s="#5", a_sp=5.5, b_s="#6", b_sp=5.5,  e_s="#4", e_sp=6.0,  B=46, lblf=406),
+    (7, 7, 20): dict(T1=13.0, T2=13.0, T3=14.5, a_s="#5", a_sp=6.0, b_s="#5", b_sp=6.0,  e_s="#4", e_sp=5.5,  B=49, lblf=348),
 
-    # --- SPAN 8' — data pending; interpolation used as placeholder ---
-    # TODO: fill from D80 standard plan table when span-8 data is obtained
+    # --- SPAN 8' ---
+    (8, 4, 10): dict(T1=10.0, T2=6.5,  T3=10.5, a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=13.0, B=44, lblf=373),
+    (8, 4, 20): dict(T1=15.0, T2=8.0,  T3=15.5, a_s="#5", a_sp=5.5, b_s="#5", b_sp=7.0,  e_s="#4", e_sp=10.0, B=44, lblf=339),
+    (8, 5, 10): dict(T1=9.5,  T2=7.5,  T3=10.5, a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=11.0, B=44, lblf=388),
+    (8, 5, 20): dict(T1=15.0, T2=9.5,  T3=15.5, a_s="#5", a_sp=5.5, b_s="#5", b_sp=6.0,  e_s="#4", e_sp=8.0,  B=47, lblf=367),
+    (8, 6, 10): dict(T1=9.5,  T2=8.5,  T3=10.5, a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.5,  e_s="#4", e_sp=9.0,  B=45, lblf=399),
+    (8, 6, 20): dict(T1=14.5, T2=11.5, T3=16.0, a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.5,  e_s="#4", e_sp=6.0,  B=47, lblf=395),
+    (8, 7, 10): dict(T1=9.5,  T2=9.5,  T3=10.5, a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=7.0,  B=48, lblf=429),
+    (8, 7, 20): dict(T1=14.5, T2=13.0, T3=16.0, a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.5,  e_s="#4", e_sp=5.5,  B=49, lblf=414),
+    (8, 8, 10): dict(T1=9.5,  T2=11.0, T3=10.5, a_s="#5", a_sp=5.5, b_s="#6", b_sp=5.0,  e_s="#4", e_sp=5.5,  B=53, lblf=509),
+    (8, 8, 20): dict(T1=14.5, T2=15.0, T3=16.0, a_s="#5", a_sp=6.5, b_s="#5", b_sp=5.5,  e_s="#5", e_sp=7.0,  B=53, lblf=441),
 
     # --- SPAN 10' ---
     (10, 5,  10): dict(T1=10,   T2=8.5,  T3=10,   a_s="#6", a_sp=4.5, b_s="#5", b_sp=4.5, e_s="#4", e_sp=9.5, B=46, lblf=251),
@@ -213,9 +231,9 @@ def _bc_lookup(span_ft: int, height_ft: int, cover_ft: int,
         interp[field_name] = row_lo[field_name]   # conservative: use lower span bar size
 
     logger.warn(
-        f"D80: span={span_ft}' has no table data (spans 7/8 pending). "
+        f"D80: span={span_ft}' has no table entry. "
         f"Values interpolated between span={s_lo}' and span={s_hi}' "
-        f"(t={t:.2f}). Verify with D80 standard plan when data is available.",
+        f"(t={t:.2f}). Verify with D80 standard plan.",
         source="BoxCulvertRules",
     )
     log.warning(
@@ -468,8 +486,8 @@ def rule_bc_validate(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     else:
         if span not in _KNOWN_SPANS:
             logger.warn(
-                f"span={span}' is not in the D80 table (spans 7/8 are pending). "
-                "Interpolated values are used — verify with D80 standard plan.",
+                f"span={span}' is not a standard D80 span — interpolated values used. "
+                "Verify with D80 standard plan.",
                 source="BoxCulvertRules",
             )
         else:
