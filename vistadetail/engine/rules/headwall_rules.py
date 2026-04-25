@@ -13,7 +13,7 @@ Marks produced:
   VW  — vertical wall bars           (#4 @ 12" oc)
   CB  — C-bar hairpin                (#4 @ 12" oc, shape_2, legs=14")
   WS  — wall spreaders               (#4, U-shape @ 24" oc)
-  ST  — mat standees                 (#5, S-shape @ 12" oc)
+  ST  — mat standees                 (#5, S-shape @ 4'-0" oc + 1)
 """
 
 from __future__ import annotations
@@ -62,12 +62,25 @@ _COVER_STEM = 2.0   # wall face cover (in)
 _COVER_FTG  = 2.0   # footing bottom/top cover (in) — "2" Clr" per D89A typical section
 
 
+_D89A_MAX_H = _D89A_ROWS[-1]["H"]   # 83" — table ceiling
+
+
 def _d89_by_height(h_in: float) -> dict:
     """Return first D89A row whose H >= h_in (round up for safety)."""
     for row in _D89A_ROWS:
         if row["H"] >= h_in:
             return row
     return _D89A_ROWS[-1]
+
+
+def _h1(p: Params) -> float:
+    """
+    Total height from bottom of footing to top of wall (inches).
+    H1 = wall_height_in + F, where F is the footing depth from the D89A row.
+    """
+    H_in = p.wall_height_ft * 12
+    row  = _d89_by_height(H_in)
+    return H_in + row["F"]
 
 
 # ---------------------------------------------------------------------------
@@ -138,7 +151,7 @@ def rule_hw_long_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """LW — Longitudinal wall bars, 2 faces (#4 @ 12" oc)."""
     L  = p.wall_width_ft * 12
     H  = p.wall_height_ft * 12
-    H1 = float(getattr(p, "h1_ft", p.wall_height_ft + 1.0)) * 12.0
+    H1 = _h1(p)
     qty    = 2 * (math.floor(H1 / 12) + 1)
     length = L - 4.0
 
@@ -173,7 +186,7 @@ def rule_hw_vert_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """VW — Vertical wall bars (#4 @ 12" oc)."""
     L  = p.wall_width_ft * 12
     H  = p.wall_height_ft * 12
-    H1 = float(getattr(p, "h1_ft", p.wall_height_ft + 1.0)) * 12.0
+    H1 = _h1(p)
     qty    = math.floor(L / 12) + 1
     length = H1 - 2 * _COVER_STEM
 
@@ -260,10 +273,11 @@ def rule_hw_spreaders(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_hw_standees(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    ST — Mat standees (#5, S-shape, @ 12" oc).
+    ST — Mat standees (#5, S-shape, @ 4'-0" oc + 1 extra).
 
     Four segments: top=5.5", riser=6", seat=5.5", base=18".
     Stock = 5.5+6+5.5+18 − bend_reduce("shape_3", "#5").
+    Qty = floor(L / 48) + 1 (one per 4 ft, plus one additional).
     """
     L      = p.wall_width_ft * 12
     seg_a  = 5.5    # top hook
@@ -272,11 +286,11 @@ def rule_hw_standees(p: Params, log: ReasoningLogger) -> list[BarRow]:
     seg_d  = 18.0   # base
     deduct = bend_reduce("shape_3", "#5")
     stock  = seg_a + seg_b + seg_c + seg_d - deduct
-    qty    = math.floor(L / 12)
+    qty    = math.floor(L / 48) + 1
 
     log.step(
         f"ST: 5.5+6+5.5+18={seg_a+seg_b+seg_c+seg_d}\" − {deduct}={stock}\"  "
-        f"qty=⌊{L}/12⌋={qty}",
+        f"qty=⌊{L}/48⌋+1={qty}",
         source="HeadwallRules",
     )
     log.result("ST", f"#5 × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
@@ -291,10 +305,10 @@ def rule_hw_standees(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_validate_headwall(p: Params, log: ReasoningLogger) -> list[BarRow]:
     H = p.wall_height_ft * 12
-    if H > 89:
+    if H > _D89A_MAX_H:
         log.warn(
-            f"Wall height {fmt_inches(H)} exceeds D89A table max 7'-5\" — "
-            "using largest table row (54\" pipe)",
+            f"Wall height {fmt_inches(H)} exceeds D89A table max {fmt_inches(_D89A_MAX_H)} — "
+            "clamped to last table row; verify with project engineer for taller walls.",
             source="HeadwallRules",
         )
     return []
