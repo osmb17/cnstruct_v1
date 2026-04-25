@@ -1,11 +1,4 @@
-"""
-Template: Box Culvert  (v1.0)
-
-Cast-in-place or precast rectangular box culvert.
-Generates reinforcement for top slab, bottom slab, exterior walls, and haunches.
-
-Reference: Caltrans Standard Plans B3-1 through B3-6 / AASHTO LRFD §12.
-"""
+"""Template: Box Culvert (D80) v3.0 — Caltrans D80 CIP single box culvert."""
 
 from __future__ import annotations
 
@@ -18,39 +11,58 @@ class BoxCulvertTemplate(BaseTemplate):
     def __init__(self):
         super().__init__()
         self.name = "Box Culvert"
-        self.version = "2.0"
+        self.version = "3.0"
         self.description = (
-            "CIP box culvert. #5@12oc slab/wall, #5@9oc bot slab, 12\" haunch, 2\" cover."
+            "Caltrans D80 CIP single box culvert. "
+            "Bar sizes and concrete thicknesses looked up from the D80 table "
+            "by (span, height, max earth cover)."
         )
 
         self.inputs = [
-            InputField("clear_span_ft",      float, label="Clear Span (ft)",
-                       min=2.0, max=30.0, default=6.0,
-                       hint="Inside horizontal dimension"),
-            InputField("clear_rise_ft",       float, label="Clear Rise (ft)",
-                       min=2.0, max=20.0, default=4.0,
-                       hint="Inside vertical dimension"),
-            InputField("barrel_length_ft",    float, label="Barrel Length (ft)",
-                       min=4.0, max=200.0, default=20.0,
-                       hint="Total length along the culvert axis"),
+            InputField(
+                "span_ft", int, label="Span (ft)",
+                choices=["4", "5", "6", "7", "8", "10", "12", "14"],
+                default="8",
+                group="Geometry",
+                hint="Inside horizontal span dimension — D80 standard sizes",
+            ),
+            InputField(
+                "height_ft", float, label="Height (ft)",
+                min=2.0, max=14.0, default=6.0,
+                hint="Inside vertical height dimension",
+            ),
+            InputField(
+                "barrel_length_ft", float, label="Barrel Length (ft)",
+                min=4.0, max=200.0, default=20.0,
+                hint="Total length along the culvert axis",
+            ),
+            InputField(
+                "max_earth_cover_ft", int, label="Max Earth Cover (ft)",
+                choices=["10", "20"],
+                default="10",
+                group="Loading",
+                hint="Maximum earth cover over the roof slab — governs D80 table row selection",
+            ),
         ]
 
         self.rules = [
-            "rule_top_slab_top",
-            "rule_top_slab_bottom",
-            "rule_wall_vertical",
-            "rule_bottom_slab_top",
-            "rule_bottom_slab_bottom",
-            "rule_haunch_bars",
-            "rule_validate_box_culvert",
+            "rule_bc_a_bars",
+            "rule_bc_b_bars",
+            "rule_bc_e_bars",
+            "rule_bc_i_bars",
+            "rule_bc_hoops",
+            "rule_bc_validate",
         ]
 
     def evaluate_triggers(self, params: Params) -> list[str]:
         triggers: list[str] = []
-        if params.clear_span_ft > 16.0:
-            triggers.append("wall_height_exceeds_table")
-        if params.clear_rise_ft / max(params.clear_span_ft, 0.1) > 1.5:
-            triggers.append("aspect_ratio_high")
+        span = int(params.span_ft)
+        if span in (7, 8):
+            triggers.append("span_data_pending_interpolated")
+        if params.height_ft > 14.0:
+            triggers.append("height_exceeds_d80_table")
+        if span > 14:
+            triggers.append("span_exceeds_d80_table")
         return triggers
 
 
