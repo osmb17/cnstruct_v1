@@ -36,16 +36,23 @@ class G2InletTopTemplate(BaseTemplate):
                 group="Geometry",
             ),
             InputField(
-                "wall_height_ft", float,
-                label="Height",
-                min=2.0, max=20.0, default=7.0,
-                hint="Height from top of existing box to top of grade",
+                "wall_thick_in", int,
+                label="Wall Thickness (in)",
+                min=9, max=12, default=9,
+                hint="9\" standard; 11\" for larger spans. "
+                     "Interior X = X − 2×T, Interior Y = Y − 2×T.",
             ),
             InputField(
                 "y_dim_ft", float,
                 label="Y -- Exterior Depth (ft)",
                 min=2.5, max=10.0, default=5.0,
                 hint="Same exterior depth as the inlet below",
+            ),
+            InputField(
+                "wall_height_ft", float,
+                label="Height",
+                min=2.0, max=20.0, default=7.0,
+                hint="Height from top of existing box to top of grade",
             ),
             InputField(
                 "grate_type", str,
