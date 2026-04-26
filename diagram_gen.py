@@ -406,7 +406,7 @@ def _diag_inlet_top() -> bytes:
     grate_w = IX - l1_w
 
     fig, ax = _fig(9.5, 7.5)
-    ax.set_xlim(-2.5, OX + 4.0)
+    ax.set_xlim(-2.5, OX + 4.8)
     ax.set_ylim(-3.0, OY + 2.2)
 
     # Concrete walls
@@ -460,8 +460,8 @@ def _diag_inlet_top() -> bytes:
     ax.text(tr_x + 0.12, T / 2, "T", ha="left", va="center", fontsize=8,
             color=_LABEL, fontweight="bold")
 
-    # H dimension (far right) — height from top of existing box to top of grade
-    hx = OX + 2.8
+    # H dimension — moved further right to clear Inside Y annotation
+    hx = OX + 3.5
     ax.annotate("", xy=(hx, 0), xytext=(hx, H_rep),
                 arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0, mutation_scale=9))
     h_label = _fmt_dim_value("wall_height_ft", H)
@@ -469,8 +469,7 @@ def _diag_inlet_top() -> bytes:
             f"H = {h_label}\n(from top of existing\nbox to top of grade)",
             ha="left", va="center", fontsize=7.5, color=_LABEL, fontweight="bold",
             linespacing=1.35)
-    # Short tick marks only — avoids crossing the Inside Y Dimension annotation
-    ax.plot([hx - 0.35, hx], [0, 0],      color=_DIM, lw=0.6, ls=":", zorder=2)
+    ax.plot([hx - 0.35, hx], [0, 0],         color=_DIM, lw=0.6, ls=":", zorder=2)
     ax.plot([hx - 0.35, hx], [H_rep, H_rep], color=_DIM, lw=0.6, ls=":", zorder=2)
 
     _axes_compass(ax, -2.0, -2.5)
@@ -494,7 +493,7 @@ def _diag_expanded_inlet_top() -> bytes:
     grate_w = IX - l1_w
 
     fig, ax = _fig(9.5, 7.5)
-    ax.set_xlim(-2.5, OX + 4.0)
+    ax.set_xlim(-2.5, OX + 4.8)
     ax.set_ylim(-3.0, OY + 2.2)
 
     # Concrete walls
@@ -545,8 +544,8 @@ def _diag_expanded_inlet_top() -> bytes:
         ax.text(tr_x + 0.12, (y0 + y1) / 2, "T", ha="left", va="center",
                 fontsize=8, color=_LABEL, fontweight="bold")
 
-    # H dimension (far right) — height from top of existing box to top of grade
-    hx = OX + 2.8
+    # H dimension — moved further right to clear Inside Y annotation
+    hx = OX + 3.5
     ax.annotate("", xy=(hx, 0), xytext=(hx, H_rep),
                 arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0, mutation_scale=9))
     h_label = _fmt_dim_value("wall_height_ft", H)
@@ -554,7 +553,6 @@ def _diag_expanded_inlet_top() -> bytes:
             f"H = {h_label}\n(from top of existing\nbox to top of grade)",
             ha="left", va="center", fontsize=7.5, color=_LABEL, fontweight="bold",
             linespacing=1.35)
-    # Short tick marks only — avoids crossing the Inside Y Dimension annotation
     ax.plot([hx - 0.35, hx], [0, 0],         color=_DIM, lw=0.6, ls=":", zorder=2)
     ax.plot([hx - 0.35, hx], [H_rep, H_rep], color=_DIM, lw=0.6, ls=":", zorder=2)
 
