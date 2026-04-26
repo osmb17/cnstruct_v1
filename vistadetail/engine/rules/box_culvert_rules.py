@@ -155,7 +155,10 @@ _D80: dict[tuple[int, int, int], dict] = {
 # ---------------------------------------------------------------------------
 
 _I_BAR_COUNT: dict[int, int] = {
-    4: 5, 5: 6, 6: 8, 7: 10, 8: 13, 10: 14, 12: 16, 14: 19,
+    # Confirmed from D80 sheet "I BARS, FOR EARTH COVERS UP TO AND INCLUDING 10'-0"
+    # 4→7, 5→8, 6→9, 7→10 read directly from table.
+    # 8, 10, 12, 14 are best-available estimates — update when full table is legible.
+    4: 7, 5: 8, 6: 9, 7: 10, 8: 13, 10: 14, 12: 16, 14: 19,
 }
 
 # Known spans present in the D80 table
@@ -171,9 +174,8 @@ def _bc_lookup(span_ft: int, height_ft: int, cover_ft: int,
     """
     Return the D80 row for (span_ft, height_ft, cover_ft).
 
-    For spans 6, 7, and 8 (data pending), the row is linearly interpolated
-    between the nearest bracketing spans.  A warning is logged in all
-    interpolated cases.
+    All D80 standard spans (4, 5, 6, 7, 8, 10, 12, 14) are in the dict.
+    The interpolation branch below handles non-standard spans only.
 
     For exact keys not in the table (height outside the populated range for a
     given span), the nearest available height for that span/cover is used and
@@ -364,7 +366,8 @@ def rule_bc_i_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
     I1 — Longitudinal i-bars along the barrel (from D80 i-bar count table).
 
-    For earth cover <= 10': count from {4:5, 5:6, 6:8, 7:10, 8:13, 10:14, 12:16, 14:19}.
+    For earth cover <= 10': count from {4:7, 5:8, 6:9, 7:10, 8:13, 10:14, 12:16, 14:19}
+    (4–7 confirmed from D80 sheet; 8–14 are estimates pending legible scan).
     For earth cover >  10': qty = floor((S_in - 4) / 12) + 1  (#4 @ 12" max).
 
     Size is always #4.
@@ -538,26 +541,26 @@ def rule_bc_h_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
 
 def rule_bc_haunch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
-    HC1 — #5 L-bars at 12\" max spacing, 4 inside re-entrant corners (D80 'SEE NOTE 6').
+    HC1 — #5 L-bars at the 4 inside re-entrant corners (D80 'SEE NOTE 6').
 
-    D80 typical section shows '#5 ⌐ @ 12' at each inside corner where wall meets
-    slab.  Shape 1 (single 90° bend).  Leg lengths are estimated at 18\" each —
-    verify against D80 Note 6.
+    D82 cross-section shows '#5 TOTAL 2' at each inside barrel corner
+    (wall-to-slab junction), so 2 bars per corner × 4 corners = 8 bars total.
+    These are placed transversely (not repeated along the barrel).
+    Leg lengths are estimated at 18\" each — verify against D82 detail.
 
-    qty = 4 corners × (⌊(barrel_length_in − 2) / 12⌋ + 1)
-    length = 18 + 18 − bend_reduce('shape_1', '#5') = 34.5\"
+    qty    = 4 corners × 2 bars/corner = 8
+    length = 18 + 18 − bend_reduce('shape_1', '#5')
     """
-    L_in = p.barrel_length_ft * 12
+    L_in = p.barrel_length_ft * 12   # kept for potential future use
 
-    leg          = 18.0    # each leg — estimated; verify per D80 Note 6
-    deduct       = bend_reduce("shape_1", "#5")
-    bar_len      = 2 * leg - deduct
-    qty_per_corner = math.floor((L_in - 2) / 12) + 1
-    qty            = 4 * qty_per_corner
+    leg     = 18.0    # each leg — estimated; verify per D82 detail
+    deduct  = bend_reduce("shape_1", "#5")
+    bar_len = 2 * leg - deduct
+    qty     = 8       # 4 corners × 2 bars/corner per D82 cross-section
 
     logger.step(
-        f"HC1 (#5 L@12\"): 4 corners × qty_per_corner={qty_per_corner}={qty}  "
-        f"length=2×{leg}\"-{deduct}\"deduct={bar_len:.1f}\"",
+        f"HC1 (#5 L): 4 corners × 2 bars/corner = {qty}  "
+        f"length=2×{leg}\"-{deduct}\"deduct={bar_len:.1f}\"  (D82 '#5 TOTAL 2' per corner)",
         source="BoxCulvertRules",
     )
     logger.result("HC1", f"#5 × {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
@@ -566,8 +569,8 @@ def rule_bc_haunch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
         mark="HC1", size="#5", qty=qty, length_in=bar_len,
         shape="L",
         leg_a_in=leg, leg_b_in=leg,
-        notes=f"Haunch bars #5@12\" oc  4 corners  each leg≈18\" (est.)",
-        review_flag="Verify leg dims per D80 Note 6",
+        notes="Haunch bars #5  4 corners × 2 bars/corner  each leg≈18\" (est.)",
+        review_flag="Verify leg dims per D82 haunch detail",
         source_rule="rule_bc_haunch_bars",
     )]
 
