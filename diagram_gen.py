@@ -20,6 +20,8 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch
 
+from vistadetail.engine.schema import fmt_inches
+
 # -- Style constants -----------------------------------------------------------
 _CONCRETE  = "#cdd4db"
 _REBAR     = "#8b4513"
