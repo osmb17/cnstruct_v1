@@ -806,46 +806,65 @@ def _diag_footing() -> bytes:
 
 
 def _diag_box_culvert() -> bytes:
-    """Cross-section of box culvert -- clear span S, clear rise R, barrel B."""
-    S, R, T = 5.0, 3.5, 0.45
-    total_w = S + 2 * T
-    total_h = R + 2 * T
+    """Cross-section of box culvert -- live span S, height H, cover, barrel B."""
+    # --- Live inputs -----------------------------------------------------------
+    span_ft   = float(_LIVE_PARAMS.get("span_ft",   8.0))
+    height_ft = float(_LIVE_PARAMS.get("height_ft", 6.0))
+    barrel_ft = float(_LIVE_PARAMS.get("barrel_length_ft", 20.0))
+    cover_ft  = int(_LIVE_PARAMS.get("max_earth_cover_ft", 10))
 
-    fig, ax = _fig(7.5, 6.0)
-    ax.set_xlim(-1.5, total_w + 2.0)
-    ax.set_ylim(-1.5, total_h + 1.5)
+    # Scale to plot coordinates (max inner dim → ~5 plot units)
+    max_dim   = max(span_ft, height_ft, 1.0)
+    sc        = 5.0 / max_dim
+    S   = span_ft   * sc          # inner span (plot units)
+    H   = height_ft * sc          # inner height (plot units)
+    T   = max(0.35, min(0.65, sc * 0.75))   # wall thickness — proportional, clamped
+
+    total_w = S + 2 * T
+    total_h = H + 2 * T
+
+    fig, ax = _fig(7.5, 6.5)
+    ax.set_xlim(-1.5, total_w + 2.2)
+    ax.set_ylim(-1.8, total_h + 1.5)
 
     # Outer section
     _rect(ax, 0, 0, total_w, total_h, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
     # Inner void
-    _rect(ax, T, T, S, R, fc="white", ec=_OUTLINE, lw=1.2)
+    _rect(ax, T, T, S, H, fc="white", ec=_OUTLINE, lw=1.2)
 
-    # Rebar in walls
-    for offset in [0.12, 0.30]:
-        ax.plot([offset, offset], [T + 0.15, T + R - 0.15],
+    # Rebar in walls (inside + outside face lines)
+    for offset in [0.10, 0.25]:
+        ax.plot([offset, offset], [T + 0.12, T + H - 0.12],
                 color=_REBAR, lw=1.0, zorder=4)
-        ax.plot([total_w - offset, total_w - offset], [T + 0.15, T + R - 0.15],
+        ax.plot([total_w - offset, total_w - offset], [T + 0.12, T + H - 0.12],
                 color=_REBAR, lw=1.0, zorder=4)
     # Rebar in top/bottom slabs
-    for offset in [0.12, 0.30]:
-        ax.plot([T + 0.1, T + S - 0.1], [offset, offset],
+    for offset in [0.10, 0.25]:
+        ax.plot([T + 0.08, T + S - 0.08], [offset, offset],
                 color=_REBAR, lw=0.8, zorder=4)
-        ax.plot([T + 0.1, T + S - 0.1], [total_h - offset, total_h - offset],
+        ax.plot([T + 0.08, T + S - 0.08], [total_h - offset, total_h - offset],
                 color=_REBAR, lw=0.8, zorder=4)
 
-    # Clear span / rise inside
-    _dim_h(ax, T, T + S, T + R * 0.5, "S", gap=-0.35, fontsize=10)
-    _dim_v(ax, T, T + R, T + S * 0.82, "R", gap=0.15, fontsize=10)
+    # --- Dimension labels with live values ------------------------------------
+    s_label = _fmt_dim_value("span_ft",   span_ft)
+    h_label = _fmt_dim_value("height_ft", height_ft)
+    b_label = _fmt_dim_value("barrel_length_ft", barrel_ft)
 
-    # Barrel label
-    ax.text(total_w / 2, total_h / 2, "B \u2192\nBarrel Length",
-            ha="center", va="center", fontsize=7, color="#666",
-            bbox=dict(boxstyle="round", fc="white", ec="#ccc", alpha=0.85), zorder=5)
+    _dim_h(ax, T, T + S, T + H * 0.5, f"S = {s_label}", gap=-0.38, fontsize=9)
+    _dim_v(ax, T, T + H, T + S * 0.82, f"H = {h_label}", gap=0.18, fontsize=9)
 
-    # T callout
-    _callout(ax, T / 2, T / 2, "T", "wall thick", angle=225, dist=0.7, fontsize=7)
+    # Barrel label (centre of section)
+    ax.text(total_w / 2, total_h / 2,
+            f"B = {b_label}\n(Barrel Length)",
+            ha="center", va="center", fontsize=7.5, color="#555",
+            bbox=dict(boxstyle="round", fc="white", ec="#ccc", alpha=0.88), zorder=5)
 
-    _axes_compass(ax, -1.2, -1.2)
+    # Max earth cover label (bottom, below section)
+    ax.text(total_w / 2, -1.35,
+            f"Max Earth Cover = {cover_ft}'",
+            ha="center", va="center", fontsize=8.0, color=_LABEL, fontweight="bold")
+
+    _axes_compass(ax, -1.2, -1.4)
     _title(ax, "BOX CULVERT -- CROSS SECTION")
 
     return _to_png(fig)
