@@ -741,16 +741,16 @@ def _diag_headwall() -> bytes:
     # Section dimensions — H (design) on left, H1 on right
     _ext_dim_v(ax, ty, ty + H*s,  wx,          wx - 0.55, "H")
     _ext_dim_v(ax, ty, ty + H1*s, tx + W*s,    tx + W*s + 0.55, "H1")
-    _dim_v(ax, ty - F*s, ty, tx - 0.1, f"F={F_in:.0f}\"", gap=0.22, fontsize=7)
+    _dim_v(ax, ty - F*s, ty, tx - 0.1, f"F={fmt_inches(F_in)}", gap=0.22, fontsize=7)
     _ext_dim_h(ax, tx, tx + W*s, ty - F*s, ty - F*s - 0.32, "W")
     ax.annotate(f"T={T_in:.0f}\"", xy=(wx + T*s/2, ty + H1*s*0.35),
                 xytext=(wx + T*s + 0.75, ty + H1*s*0.5),
                 fontsize=7.5, color=_LABEL, fontweight="bold",
                 arrowprops=dict(arrowstyle="->", color=_DIM, lw=0.7),
                 bbox=dict(boxstyle="round,pad=0.2", fc="white", ec=_DIM, lw=0.5))
-    ax.text(tx + C*s/2, ty - F*s - 0.15, f"C={C_in:.0f}\"",
+    ax.text(tx + C*s/2, ty - F*s - 0.15, f"C={fmt_inches(C_in)}",
             ha="center", va="top", fontsize=7, color=_LABEL, fontweight="bold")
-    ax.text(wx + T*s + B*s/2, ty - F*s - 0.15, f"B={B_in:.0f}\"",
+    ax.text(wx + T*s + B*s/2, ty - F*s - 0.15, f"B={fmt_inches(B_in)}",
             ha="center", va="top", fontsize=7, color=_LABEL, fontweight="bold")
 
     ax.text(wx + T*s / 2, ty + H1*s + 0.22, "TYPICAL SECTION",

@@ -205,30 +205,29 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     CB — C-bar hairpin (size and spacing from D89A c_s/c_p columns).
 
-    U/C hairpin spanning wall height H1 with two 14" horizontal legs.
-    Body ("0") = H1 − 2 × 2" cover = H1 − 4".
-    Inner ("d") = H (actual wall height input, between bend tangent points).
+    Body ("0") = H1 − 2 × 2" cover.
+    Leg ("B")  = D89A C dimension − 2"  (toe projection minus 2" cover).
+    Inner ("d") = H (design wall height).
     Stock = body + 2 × leg − bend_reduce("shape_2", c_size).
     """
     L      = p.wall_width_ft * 12
     H      = p.wall_height_ft * 12
     H1     = float(getattr(p, "h1_ft", p.wall_height_ft + 1.0)) * 12.0
     row    = _d89_by_height(H)
-    c_size = row["c_s"]          # "#4" or "#5" per D89A table
-    c_sp   = int(row["c_p"])     # spacing in inches per D89A table
-    c_cov  = 2.0                 # 2" clear cover at each leg tip
-    body   = H1 - 2 * c_cov     # outer span = "0" dimension in barlist sketch
-    inner  = H                   # inner dimension = wall height = "d"
-    leg    = 14.0
+    c_size = row["c_s"]
+    c_sp   = int(row["c_p"])
+    c_cov  = 2.0
+    body   = H1 - 2 * c_cov          # "0" dimension
+    inner  = H                        # "d" dimension
+    leg    = float(row["C"]) - 2.0    # D89A toe projection − 2" cover
     R      = 9.0
     deduct = bend_reduce("shape_2", c_size)
     stock  = body + 2 * leg - deduct
     qty    = math.floor(L / c_sp) + 1
 
     log.step(
-        f"D89A H={H:.0f}\" → c_size={c_size} @{c_sp}\"  "
-        f"CB: H1={H1:.0f}\"  body={fmt_inches(body)}  inner={fmt_inches(inner)}  "
-        f"legs=1'-2\"×2  R=9\"  stock={fmt_inches(stock)}",
+        f"D89A H={H:.0f}\" → c_size={c_size} @{c_sp}\"  C={fmt_inches(row['C'])}  "
+        f"CB: body={fmt_inches(body)}  leg=C-2\"={fmt_inches(leg)}  stock={fmt_inches(stock)}",
         source="HeadwallRules",
     )
     log.step(f"qty=⌊{L}/{c_sp}⌋+1={qty}", source="HeadwallRules")
@@ -237,7 +236,7 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="CB", size=c_size, qty=qty, length_in=stock, shape="C",
         leg_a_in=body, leg_b_in=leg, leg_c_in=leg, leg_d_in=inner, leg_g_in=R,
-        notes=f"C-bar @{c_sp}\" oc  body={fmt_inches(body)}  inner={fmt_inches(inner)}  legs=1'-2\"×2  R=9\"",
+        notes=f"C-bar @{c_sp}\" oc",
         source_rule="rule_hw_c_bars",
     )]
 
