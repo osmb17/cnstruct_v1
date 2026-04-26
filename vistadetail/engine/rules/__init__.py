@@ -55,13 +55,12 @@ from vistadetail.engine.rules.wing_wall_rules import (
     rule_validate_wing,
 )
 from vistadetail.engine.rules.box_culvert_rules import (
-    rule_top_slab_top,
-    rule_top_slab_bottom,
-    rule_wall_vertical,
-    rule_bottom_slab_top,
-    rule_bottom_slab_bottom,
-    rule_haunch_bars,
-    rule_validate_box_culvert,
+    rule_bc_a_bars,
+    rule_bc_b_bars,
+    rule_bc_e_bars,
+    rule_bc_i_bars,
+    rule_bc_hoops,
+    rule_bc_validate,
 )
 from vistadetail.engine.rules.retaining_wall_rules import (
     rule_stem_horiz,
@@ -250,14 +249,13 @@ RULE_REGISTRY: dict = {
     "rule_wing_vert":                rule_wing_vert,
     "rule_wing_corner":              rule_wing_corner,
     "rule_validate_wing":            rule_validate_wing,
-    # Box Culvert
-    "rule_top_slab_top":             rule_top_slab_top,
-    "rule_top_slab_bottom":          rule_top_slab_bottom,
-    "rule_wall_vertical":            rule_wall_vertical,
-    "rule_bottom_slab_top":          rule_bottom_slab_top,
-    "rule_bottom_slab_bottom":       rule_bottom_slab_bottom,
-    "rule_haunch_bars":              rule_haunch_bars,
-    "rule_validate_box_culvert":     rule_validate_box_culvert,
+    # Box Culvert (D80)
+    "rule_bc_a_bars":                rule_bc_a_bars,
+    "rule_bc_b_bars":                rule_bc_b_bars,
+    "rule_bc_e_bars":                rule_bc_e_bars,
+    "rule_bc_i_bars":                rule_bc_i_bars,
+    "rule_bc_hoops":                 rule_bc_hoops,
+    "rule_bc_validate":              rule_bc_validate,
     # Flat Slab
     "rule_slab_long_bars":           rule_slab_long_bars,
     "rule_slab_short_bars":          rule_slab_short_bars,
