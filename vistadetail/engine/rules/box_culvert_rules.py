@@ -426,7 +426,7 @@ def rule_bc_hoops(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     Hoops encircle the full box cross-section perimeter.
 
     qty        = floor((barrel_length_in - 2) / 12) + 1   [1" end cover]
-    hoop_perimeter = 2*(S_in + 2*T2 + H_in + 2*T1)
+    hoop_perimeter = 2*(S_in + 2*T2 + H_in + T1 + T3)
     hoop_length = hoop_perimeter - bend_reduce("shape_4", "#4")
     """
     S_in = int(p.span_ft) * 12
@@ -436,14 +436,15 @@ def rule_bc_hoops(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     row = _bc_lookup(int(p.span_ft), int(p.height_ft), int(p.max_earth_cover_ft), logger)
     T1  = row["T1"]
     T2  = row["T2"]
+    T3  = row["T3"]
 
-    perimeter  = 2 * (S_in + 2 * T2 + H_in + 2 * T1)
+    perimeter  = 2 * (S_in + 2 * T2 + H_in + T1 + T3)
     deduct     = bend_reduce("shape_4", "#4")
     hoop_len   = perimeter - deduct
     qty        = math.floor((L_in - 2) / 12) + 1
 
     logger.step(
-        f"HP1 (#4@12\"): perimeter=2×(S+2T2+H+2T1)=2×({S_in}+{2*T2}+{H_in}+{2*T1})={perimeter}\"  "
+        f"HP1 (#4@12\"): perimeter=2×(S+2T2+H+T1+T3)=2×({S_in}+{2*T2}+{H_in}+{T1}+{T3})={perimeter}\"  "
         f"deduct={deduct}\"  hoop_len={hoop_len:.1f}\"  "
         f"qty=⌊({L_in}-2)/12⌋+1={qty}",
         source="BoxCulvertRules",
@@ -454,7 +455,7 @@ def rule_bc_hoops(p: Params, logger: ReasoningLogger) -> list[BarRow]:
         mark="HP1", size="#4", qty=qty, length_in=hoop_len,
         shape="Rect",
         leg_a_in=S_in + 2 * T2,
-        leg_b_in=H_in + 2 * T1,
+        leg_b_in=H_in + T1 + T3,
         notes=f"Hoops @12\" oc  perimeter={fmt_inches(perimeter)}-{deduct}\" deduct",
         source_rule="rule_bc_hoops",
     )]
