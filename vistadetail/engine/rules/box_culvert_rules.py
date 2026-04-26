@@ -461,6 +461,117 @@ def rule_bc_hoops(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     )]
 
 
+def rule_bc_f_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
+    """
+    F1 — LONG 'f' bars: outside-face longitudinal distribution on roof and floor slabs.
+
+    D80 typical section shows LONG 'f' BAR at the top and bottom of the section
+    (outside face of roof slab and outside face of invert slab), running the full
+    barrel length.  Size is #4 at 12\" max — the same '#4 @ 12 Max' notation that
+    appears throughout the D80 drawing.
+
+    qty = 2 × (⌊S_in / 12⌋ + 1)   [one row per slab face, top + bottom]
+    length = barrel_length_in − 4   [2\" cover each end]
+
+    NOTE: Placement and qty per D80 drawing interpretation. Verify against D80
+          notes when available.
+    """
+    S_in = int(p.span_ft) * 12
+    L_in = p.barrel_length_ft * 12
+
+    bar_len      = L_in - 4
+    qty_per_slab = math.floor(S_in / 12) + 1
+    qty          = 2 * qty_per_slab          # roof outside face + floor outside face
+
+    logger.step(
+        f"F1 (#4@12\"): roof+floor outside face  "
+        f"qty=2×(⌊{S_in}/12⌋+1)=2×{qty_per_slab}={qty}  length={fmt_inches(bar_len)}",
+        source="BoxCulvertRules",
+    )
+    logger.result("F1", f"#4 × {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+
+    return [BarRow(
+        mark="F1", size="#4", qty=qty, length_in=bar_len,
+        shape="Str",
+        notes="LONG f-bars @12\" oc  outside face roof+floor slabs",
+        review_flag="Verify f-bar qty per D80 notes",
+        source_rule="rule_bc_f_bars",
+    )]
+
+
+def rule_bc_h_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
+    """
+    H1 — 'h' bars: longitudinal #4 distribution bars in both side walls.
+
+    D80 typical section labels 'h' BARS with '#4 @ 12 Max' in the wall area.
+    These run the full barrel length at 12\" vertical spacing on both faces
+    of both side walls.
+
+    bars_per_face = ⌊(H_in − 4) / 12⌋ + 1
+    qty           = 2 walls × 2 faces × bars_per_face
+    length        = barrel_length_in − 4   [2\" cover each end]
+
+    NOTE: Qty formula is estimated. Verify against D80 Note 9.
+    """
+    H_in = p.height_ft * 12
+    L_in = p.barrel_length_ft * 12
+
+    bar_len       = L_in - 4
+    bars_per_face = math.floor((H_in - 4) / 12) + 1
+    qty           = 2 * 2 * bars_per_face    # 2 walls × 2 faces
+
+    logger.step(
+        f"H1 (#4@12\" vert): bars_per_face=⌊({H_in}-4)/12⌋+1={bars_per_face}  "
+        f"qty=2w×2f×{bars_per_face}={qty}  length={fmt_inches(bar_len)}",
+        source="BoxCulvertRules",
+    )
+    logger.result("H1", f"#4 × {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+
+    return [BarRow(
+        mark="H1", size="#4", qty=qty, length_in=bar_len,
+        shape="Str",
+        notes=f"h-bars @12\" vert  2 walls×2 faces×{bars_per_face}/face",
+        review_flag="Verify h-bar count per D80 Note 9",
+        source_rule="rule_bc_h_bars",
+    )]
+
+
+def rule_bc_haunch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
+    """
+    HC1 — #5 L-bars at 12\" max spacing, 4 inside re-entrant corners (D80 'SEE NOTE 6').
+
+    D80 typical section shows '#5 ⌐ @ 12' at each inside corner where wall meets
+    slab.  Shape 1 (single 90° bend).  Leg lengths are estimated at 18\" each —
+    verify against D80 Note 6.
+
+    qty = 4 corners × (⌊(barrel_length_in − 2) / 12⌋ + 1)
+    length = 18 + 18 − bend_reduce('shape_1', '#5') = 34.5\"
+    """
+    L_in = p.barrel_length_ft * 12
+
+    leg          = 18.0    # each leg — estimated; verify per D80 Note 6
+    deduct       = bend_reduce("shape_1", "#5")
+    bar_len      = 2 * leg - deduct
+    qty_per_corner = math.floor((L_in - 2) / 12) + 1
+    qty            = 4 * qty_per_corner
+
+    logger.step(
+        f"HC1 (#5 L@12\"): 4 corners × qty_per_corner={qty_per_corner}={qty}  "
+        f"length=2×{leg}\"-{deduct}\"deduct={bar_len:.1f}\"",
+        source="BoxCulvertRules",
+    )
+    logger.result("HC1", f"#5 × {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+
+    return [BarRow(
+        mark="HC1", size="#5", qty=qty, length_in=bar_len,
+        shape="L",
+        leg_a_in=leg, leg_b_in=leg,
+        notes=f"Haunch bars #5@12\" oc  4 corners  each leg≈18\" (est.)",
+        review_flag="Verify leg dims per D80 Note 6",
+        source_rule="rule_bc_haunch_bars",
+    )]
+
+
 def rule_bc_validate(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
     Validate span/height combo exists (or can be interpolated) in the D80 table,

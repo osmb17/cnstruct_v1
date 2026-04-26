@@ -60,6 +60,9 @@ from vistadetail.engine.rules.box_culvert_rules import (
     rule_bc_e_bars,
     rule_bc_i_bars,
     rule_bc_hoops,
+    rule_bc_f_bars,
+    rule_bc_h_bars,
+    rule_bc_haunch_bars,
     rule_bc_validate,
 )
 from vistadetail.engine.rules.retaining_wall_rules import (
@@ -255,6 +258,9 @@ RULE_REGISTRY: dict = {
     "rule_bc_e_bars":                rule_bc_e_bars,
     "rule_bc_i_bars":                rule_bc_i_bars,
     "rule_bc_hoops":                 rule_bc_hoops,
+    "rule_bc_f_bars":                rule_bc_f_bars,
+    "rule_bc_h_bars":                rule_bc_h_bars,
+    "rule_bc_haunch_bars":           rule_bc_haunch_bars,
     "rule_bc_validate":              rule_bc_validate,
     # Flat Slab
     "rule_slab_long_bars":           rule_slab_long_bars,

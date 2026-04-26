@@ -479,73 +479,97 @@ def _diag_inlet_top() -> bytes:
 
 
 def _diag_expanded_inlet_top() -> bytes:
-    """Plan view of G2 expanded inlet top -- identical layout to G2 Inlet,
-    with H = Height (from top of existing box to top of grade)."""
-    OX, OY = 7.0, 5.0      # slightly wider to match expanded footprint
-    T = 0.55
-    IX, IY = OX - 2 * T, OY - 2 * T
+    """Plan view of G2 expanded inlet top.
+
+    Same layout as G2 Expanded Inlet (bar-mark circles, grate, L1/L2, T labels)
+    with an H dimension arrow added on the far right for the fill height.
+    """
+    T   = 0.75
+    OX  = 7.5
+    OY  = 6.5
+    IX  = OX - 2 * T
+    IY  = OY - 2 * T
+
+    grate_w = 2.5
+    grate_h = 3.5
+    grate_x = T
+    L2      = (IY - grate_h) / 2
+    grate_y = T + L2
+    grate_cx = grate_x + grate_w / 2
+    grate_cy = grate_y + grate_h / 2
+    L1 = IX - grate_w
+
+    # Live H value
     H      = float(_LIVE_PARAMS.get("wall_height_ft", 5.917))
     Y_dim  = float(_LIVE_PARAMS.get("y_dim_ft", OY))
     scale  = OY / max(Y_dim, 0.1)
     H_rep  = max(1.5, min(H * scale, OY + 1.5))
 
-    l1_w = IX * 0.40
-    grate_w = IX - l1_w
+    fig, ax = _fig(10.5, 9.5)
+    ax.set_xlim(-3.5, OX + 5.5)
+    ax.set_ylim(-3.2, OY + 2.8)
 
-    fig, ax = _fig(9.5, 7.5)
-    ax.set_xlim(-2.5, OX + 4.8)
-    ax.set_ylim(-3.0, OY + 2.2)
-
-    # Concrete walls
+    # ── Outer concrete box ────────────────────────────────────────────────
     _rect(ax, 0, 0, OX, OY, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
-    _rect(ax, T, T, IX, IY, fc="white", ec=_OUTLINE, lw=1.5)
+    _rect(ax, T, T, IX, IY, fc="white", ec=_OUTLINE, lw=1.5, zorder=3)
 
-    # L1 shaded area (left interior)
-    _rect(ax, T, T, l1_w, IY, fc="#c8c8c8", ec=_OUTLINE, lw=0.5)
-    for yy in [T, T + IY]:
-        ax.plot([T, T + l1_w], [yy, yy], color=_OUTLINE, lw=0.8, ls="--", zorder=3)
+    # ── Grate opening (Type 24) with horizontal stripes ───────────────────
+    ax.add_patch(mpatches.Rectangle(
+        (grate_x, grate_y), grate_w, grate_h,
+        linewidth=1.4, edgecolor=_OUTLINE, facecolor="#e0e0e0", zorder=5))
+    for i in range(1, 11):
+        yy = grate_y + i * grate_h / 11
+        ax.plot([grate_x, grate_x + grate_w], [yy, yy],
+                color="#999", lw=0.55, zorder=6)
+    ax.text(grate_cx, grate_cy, "GRATE\nTYPE 24",
+            ha="center", va="center", fontsize=7, color="#333", zorder=7,
+            bbox=dict(boxstyle="round,pad=0.22", fc="white", ec="none", alpha=0.9))
 
-    # Grate area (right interior -- vertical bar hatching)
-    gx = T + l1_w
-    _rect(ax, gx, T, grate_w, IY, fc="white", ec=_OUTLINE, lw=1.2)
-    n_grate = 12
-    for i in range(n_grate):
-        bx = gx + grate_w * (i + 1) / (n_grate + 1)
-        ax.plot([bx, bx], [T + 0.08, T + IY - 0.08], color=_OUTLINE, lw=0.7, zorder=3)
+    # ── Bar-mark circles (F, H, G, C per Caltrans legend) ─────────────────
+    def _mark(x, y, letter, fs=8):
+        ax.plot(x, y, "o", color="white", ms=16, mec=_OUTLINE, mew=1.0, zorder=8)
+        ax.text(x, y, letter, ha="center", va="center",
+                fontsize=fs, color=_LABEL, fontweight="bold", zorder=9)
 
-    # L1 dimension
-    _dim_h(ax, T, T + l1_w, T + IY * 0.5, "L1", gap=0.15, fontsize=9)
+    _mark(OX / 2, OY + 0.5, "G")
+    _mark(grate_cx, grate_cy + 0.55, "G", fs=7)
+    _mark(-0.38, OY / 2, "F")
+    _mark(OX + 0.38, OY / 2, "F")
+    _mark(grate_x + grate_w + 0.38, OY / 2, "H")
+    _mark(grate_x + grate_w / 2, grate_y - 0.38, "C")
+    _mark(grate_x + grate_w / 2, grate_y + grate_h + 0.38, "C")
 
-    # X dimension (top)
-    _ext_dim_h(ax, 0, OX, OY, OY + 0.8, "X")
+    # ── T labels ──────────────────────────────────────────────────────────
+    tr_x = OX + 0.38
+    for y0, y1 in [(OY - T, OY), (0.0, T)]:
+        ax.annotate("", xy=(tr_x, y1), xytext=(tr_x, y0),
+                    arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.8,
+                                   mutation_scale=7))
+        ax.text(tr_x + 0.14, (y0 + y1) / 2, "T",
+                ha="left", va="center", fontsize=8, color=_LABEL, fontweight="bold")
+    _ext_dim_h(ax, 0, T, 0, -0.55, "T", fontsize=8)
+    _ext_dim_h(ax, OX - T, OX, 0, -0.55, "T", fontsize=8)
 
-    # Y dimension (left)
-    _ext_dim_v(ax, 0, OY, 0, -0.9, "Y")
+    # ── L1 / L2 dimensions ────────────────────────────────────────────────
+    if L1 > 0.05:
+        _dim_h(ax, grate_x + grate_w, OX - T, grate_cy, "L\u2081", gap=0.14, fontsize=8)
+    rl_x = grate_x + grate_w + 0.25
+    if L2 > 0.05:
+        _dim_v(ax, T, grate_y, rl_x, "L\u2082", gap=0.12, fontsize=7.5)
+        _dim_v(ax, grate_y + grate_h, OY - T, rl_x, "L\u2082", gap=0.12, fontsize=7.5)
 
-    # Inside Y (right)
-    _ext_dim_v(ax, T, T + IY, OX, OX + 1.1, "Inside Y\nDimension")
-    ax.text(OX + 1.35, T + IY * 0.30, "3'-0\" (2'-11 3/8\" min)",
-            ha="left", va="center", fontsize=6.5, color=_DIM)
-
-    # Inside X (bottom)
-    _ext_dim_h(ax, T, T + IX, 0, -1.3, "Inside X Dimension", fontsize=8)
-    ax.text(T + IX / 2, -1.7, "3'-0\" (2'-11 3/8\" min)  OR\nPipe penetration dia + 3\" min (90\" max)",
+    # ── Clearance annotations ─────────────────────────────────────────────
+    _ext_dim_v(ax, T, OY - T, 0, -2.1, "")
+    ax.text(-2.7, OY / 2,
+            "2\u2019-11\u215b\u201d Min OR\nPipe Penetration\nDiameter + 3\u201d Min\n(90\u201d Max)",
+            ha="center", va="center", fontsize=6.5, color=_DIM, linespacing=1.3)
+    _ext_dim_h(ax, T, OX - T, 0, -1.85, "")
+    ax.text(OX / 2, -2.7,
+            "2\u2019-11\u215b\u201d Min OR Pipe Penetration Diameter + 3\u201d Min (90\u201d Max)",
             ha="center", va="top", fontsize=6.5, color=_DIM)
 
-    # T labels (bottom)
-    _ext_dim_h(ax, 0, T, 0, -0.45, "T", fontsize=8)
-    _ext_dim_h(ax, OX - T, OX, 0, -0.45, "T", fontsize=8)
-
-    # T labels (vertical, right)
-    tr_x = OX + 0.25
-    for y0, y1 in [(OY - T, OY), (0, T)]:
-        ax.annotate("", xy=(tr_x, y1), xytext=(tr_x, y0),
-                    arrowprops=dict(arrowstyle="<->", color=_DIM, lw=0.8, mutation_scale=7))
-        ax.text(tr_x + 0.12, (y0 + y1) / 2, "T", ha="left", va="center",
-                fontsize=8, color=_LABEL, fontweight="bold")
-
-    # H dimension — moved further right to clear Inside Y annotation
-    hx = OX + 3.5
+    # ── H arrow (far right, clear of bar-mark F circle) ───────────────────
+    hx = OX + 3.0
     ax.annotate("", xy=(hx, 0), xytext=(hx, H_rep),
                 arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0, mutation_scale=9))
     h_label = _fmt_dim_value("wall_height_ft", H)
@@ -556,8 +580,8 @@ def _diag_expanded_inlet_top() -> bytes:
     ax.plot([hx - 0.35, hx], [0, 0],         color=_DIM, lw=0.6, ls=":", zorder=2)
     ax.plot([hx - 0.35, hx], [H_rep, H_rep], color=_DIM, lw=0.6, ls=":", zorder=2)
 
-    _axes_compass(ax, -2.0, -2.5)
-    _title(ax, "G2 EXPANDED INLET TOP -- PLAN VIEW")
+    _axes_compass(ax, -3.0, -2.9)
+    _title(ax, "G2 EXPANDED INLET TOP \u2014 PLAN VIEW")
 
     return _to_png(fig)
 
@@ -1651,7 +1675,7 @@ _FIELD_LABELS: dict[str, dict[str, str]] = {
                               "_inside_x_ft": "Inside X", "_inside_y_ft": "Inside Y"},
     "G2 Inlet Top":          {"x_dim_ft": "X", "y_dim_ft": "Y",
                               "wall_height_ft": "H"},
-    "G2 Expanded Inlet Top": {"slab_length_ft": "X", "slab_width_ft": "Y",
+    "G2 Expanded Inlet Top": {"x_dim_ft": "X", "y_dim_ft": "Y",
                               "wall_height_ft": "H"},
     "Straight Headwall":     {"wall_width_ft": "W", "wall_height_ft": "H", "h1_ft": "H1"},
     "Wing Wall":             {"wing_length_ft": "L",
