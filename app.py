@@ -1557,6 +1557,55 @@ with inp_col:
             params_raw[name] = val
 
     # ======================================================================
+    # G2 Expanded Inlet Top — same layout as G2 Expanded Inlet + Height row
+    # Y is fixed (5'-0" main / 8'-0" expanded) — no Y user input
+    # ======================================================================
+    elif template_name == "G2 Expanded Inlet Top":
+        _x_field = next(f for f in template.inputs if f.name == "x_dim_ft")
+        _t_field = next(f for f in template.inputs if f.name == "wall_thick_in")
+        _h_field = next(f for f in template.inputs if f.name == "wall_height_ft")
+
+        _t_wk  = f"primary_{_tname}__wall_thick_in"
+        _cur_t = int(st.session_state.get(_t_wk, 9))
+
+        # Row 1: X Exterior | X Interior (interior = exterior - 2T)
+        _ext_wk = f"primary_{_tname}__x_dim_ft"
+        _int_wk = f"_g2exptop_xi_{_tname}"
+        _x_def  = float(_x_field.default) if _x_field.default is not None else 5.667
+
+        _cur_xe = st.session_state.get(_ext_wk)
+        _xef    = _parse_ft_in(str(_cur_xe)) if _cur_xe is not None else _x_def
+        if _xef is None:
+            _xef = _x_def
+        st.session_state[_int_wk] = _format_ft_in(max(0, _xef - 2 * _cur_t / 12.0))
+
+        c1, c2 = st.columns(2)
+        with c1:
+            _ev = st.text_input("X Exterior", key=_ext_wk,
+                                value=_format_ft_in(_x_def),
+                                help="Exterior face-to-face width",
+                                placeholder='e.g. 5\'-8"')
+            params_raw["x_dim_ft"] = _ev
+        with c2:
+            st.text_input("X Interior", key=_int_wk,
+                          help="Interior clear width = Exterior − 2×T")
+
+        # Row 2: Wall Thickness
+        _, _tv = _widget(_t_field, key_prefix=f"primary_{_tname}", container=st)
+        params_raw["wall_thick_in"] = _tv
+
+        # Row 3: Height (wall_height_ft)
+        _hname, _hval = _widget(_h_field, key_prefix=f"primary_{_tname}", container=st)
+        params_raw[_hname] = _hval
+
+        # Remaining (grate_type, num_structures)
+        for f in template.inputs:
+            if f.name in ("x_dim_ft", "wall_thick_in", "wall_height_ft"):
+                continue
+            name, val = _widget(f, key_prefix=f"primary_{_tname}", container=st)
+            params_raw[name] = val
+
+    # ======================================================================
     # G2 Expanded Inlet — custom inputs with computed interior dimensions
     # ======================================================================
     # Straight Headwall — show H1 computed field + pipe inputs
