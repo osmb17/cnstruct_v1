@@ -632,7 +632,7 @@ def rule_g2_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
 def rule_g2exp_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """Derive expanded G2 inlet geometry.
 
-    Y dimensions are fixed standard values (5'-0" main, 8'-0" expanded).
+    Y dimensions are user input (default: 5'-0" main, 8'-0" expanded per Caltrans D73A).
     Wall thickness T comes from explicit user input wall_thick_in.
     """
     x_ext = p.x_dim_ft * 12.0
@@ -641,13 +641,10 @@ def rule_g2exp_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     t = float(p.wall_thick_in)
     log.step(f"T = {t:.0f}\"")
 
-    # Y dimensions — fixed standard values for expanded inlet
-    y_ext     = 5.0 * 12.0   # 60" — standard box exterior Y
-    y_exp_ext = 8.0 * 12.0   # 96" — expanded section exterior Y
-
-    # Store y dims back on p for any rules that read them
-    setattr(p, "y_dim_ft",      y_ext / 12.0)
-    setattr(p, "y_expanded_ft", y_exp_ext / 12.0)
+    # Y dimensions — user input (defaults to standard values)
+    y_ext     = getattr(p, "y_dim_ft", 5.0) * 12.0       # main box exterior Y
+    y_exp_ext = getattr(p, "y_expanded_ft", 8.0) * 12.0  # expanded section exterior Y
+    log.step(f"Y main = {y_ext / 12.0:.2f}' ({y_ext:.0f}\")  Y expanded = {y_exp_ext / 12.0:.2f}' ({y_exp_ext:.0f}\")")
 
     x_inside = x_ext - 2 * t
     y_inside = y_ext - 2 * t
