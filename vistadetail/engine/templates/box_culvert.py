@@ -54,7 +54,7 @@ class BoxCulvertTemplate(BaseTemplate):
                 "notch_depth_in", float, label="Notch Depth (in)",
                 min=2.0, max=8.0, default=3.0,
                 group="End Treatment",
-                hint="Depth of the barrel-end recess (along the barrel axis)",
+                hint="Depth of the barrel-end keyway (along the barrel axis). Per D82: 3\" for span ≤ 8', 4\" for span > 8'",
             ),
         ]
 

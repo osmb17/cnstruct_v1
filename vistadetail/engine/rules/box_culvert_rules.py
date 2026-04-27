@@ -13,7 +13,7 @@ Marks produced:
   H1  — horizontal h-bars          (straight, all 4 faces, longitudinal)
   F1  — roof transverse f-bars     (straight, #4 @ 12\" max)
   I1  — longitudinal i-bars        (straight, invert, from D80 count table)
-  G1  — barrel-end notch bars      (straight, roof+invert per notched end)
+  G1  — barrel-end notch bars      (#4 U-bar, roof+invert per notched end, per D82)
 
 Bar geometry based on Caltrans Standard Plan D80 (bar descriptions and
 typical section).  Quantities verified against user barlist for
@@ -433,7 +433,14 @@ def rule_bc_h_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
       H_total       = T1 + H + T3
       bars_per_face = floor(H_total / 12) + 1
       qty           = 4 * bars_per_face   (2 walls x 2 faces)
-      bar_len       = L - 6              (3\" cover each end)
+      bar_len       = L - 6              (3\" cover each end, no notch)
+
+    Per Caltrans D84 general note: \"EXTEND ALL LONGITUDINAL BARS IN BOX WALLS
+    2'-0\" INTO WINGWALLS, EXCEPT WHERE EXPANSION JOINT OCCURS.\"  At each
+    notched end (wingwall connection), the H1 bar extends 24\" past the barrel
+    end face instead of stopping 3\" short of it:
+
+      bar_len = L_in - 6 + n_notch * 27   (each notched end: replace -3\" with +24\")
     """
     H_in = p.height_ft * 12
     L_in = p.barrel_length_ft * 12
@@ -445,20 +452,31 @@ def rule_bc_h_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     H_total       = T1 + H_in + T3
     bars_per_face = math.floor(H_total / 12) + 1
     qty           = 4 * bars_per_face
-    bar_len       = L_in - 6.0
 
+    # D84: extend 2'-0" into wingwall at each notched end (replaces 3" end cover)
+    n_notch, _notch_d = _notch_info(p)
+    bar_len = L_in - 6.0 + n_notch * 27.0
+
+    ext_note = (
+        f"  D84 ext: +{n_notch}×27\"={n_notch * 27:.0f}\" ({n_notch} wingwall end(s))"
+        if n_notch else ""
+    )
     logger.step(
         f"H1 (#4@12\"): H_total=T1+H+T3={T1}+{H_in:.0f}+{T3}={H_total:.1f}\"  "
         f"bars_per_face=floor({H_total:.1f}/12)+1={bars_per_face}  "
-        f"qty=4x{bars_per_face}={qty}  len={fmt_inches(bar_len)}",
+        f"qty=4x{bars_per_face}={qty}  len={fmt_inches(bar_len)}{ext_note}",
         source="BoxCulvertRules",
     )
     logger.result("H1", f"#4 x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
 
+    notes = f"h-bars #4 @12\" vert  4 faces x {bars_per_face}/face  len={fmt_inches(bar_len)}"
+    if n_notch:
+        notes += f"  (2'-0\" ext. per D84, {n_notch} wingwall end(s))"
+
     return [BarRow(
         mark="H1", size="#4", qty=qty, length_in=bar_len,
         shape="Str",
-        notes=f"h-bars #4 @12\" vert  4 faces x {bars_per_face}/face  len={fmt_inches(bar_len)}",
+        notes=notes,
         source_rule="rule_bc_h_bars",
     )]
 
@@ -638,24 +656,21 @@ def rule_bc_notch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
     G1 — Barrel-end notch bars.
 
-    When notch_ends != "None" a rectangular recess is formed at each
-    specified barrel end in the roof slab and the invert slab.  The
-    adjacent headwall / wingwall concrete keys into this recess.
+    When notch_ends != \"None\" a rectangular keyway recess is formed at each
+    specified barrel end in the roof slab and the invert slab per D82
+    \"CULVERT EXTENSION\" and \"CAST-IN-PLACE END ELEVATION\" details.
 
-    One straight transverse G-bar is placed at each notch location:
-      - one at the roof-slab notch level
-      - one at the invert-slab notch level
-      per notched end.
+    Per D82: one #4 U-bar at each notch face (roof + invert per notched end).
 
-    Bar geometry:
-      bar_len = S + 2*T2 - 6   (3\" cover each outer wall face — same flat
-                                 width as A-bars)
-      size    = a_s (matches A-bar size from D80 table)
-      qty     = 2 * n_ends   (roof + invert per end)
+    Bar geometry (D82 Cast-in-Place End Elevation):
+      size   = #4  (fixed, per D82)
+      shape  = U
+      body   = S + 2*T2 - 6   (3\" cover each outer wall face)
+      legs   = 12\"            (development length, per D82)
+      stock  = body + 2*legs − bend_reduce(\"shape_2\", \"#4\")
+      qty    = 2 * n_ends      (1 roof + 1 invert per notched end)
 
-    NOTE: D80 end-detail sheet may require a different shape (L or U) or
-    additional bars in the notch zone.  review_flag is set; verify against
-    the D80 barrel-end / wing-wall connection detail before issuing.
+    Keyway depth: 3\" for span <= 8', 4\" for span > 8' per D82.
     """
     notch = getattr(p, "notch_ends", "None")
     if notch == "None":
@@ -664,32 +679,35 @@ def rule_bc_notch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     S_in  = int(p.span_ft) * 12
     depth = float(getattr(p, "notch_depth_in", 3.0))
 
-    row    = _bc_lookup(int(p.span_ft), int(p.height_ft), int(p.max_earth_cover_ft), logger)
-    T2     = row["T2"]
-    a_size = row["a_s"]
+    row = _bc_lookup(int(p.span_ft), int(p.height_ft), int(p.max_earth_cover_ft), logger)
+    T2  = row["T2"]
 
-    n_ends  = 2 if notch == "Both Ends" else 1
-    bar_len = S_in + 2 * T2 - 6.0
-    qty     = 2 * n_ends  # 1 roof + 1 invert per notched end
+    n_ends = 2 if notch == "Both Ends" else 1
+    body   = S_in + 2 * T2 - 6.0        # flat width — 3" cover each outer face
+    legs   = 12.0                         # #4 development length per D82
+    deduct = bend_reduce("shape_2", "#4")
+    bar_len = body + 2 * legs - deduct
+    qty    = 2 * n_ends  # 1 roof + 1 invert per notched end
 
     logger.step(
-        f"G1 ({a_size}): notch_ends={notch}  n_ends={n_ends}  depth={depth}\"  "
-        f"bar_len=S+2T2-6={S_in}+{2*T2:.1f}-6={bar_len:.1f}\"  qty=2×{n_ends}={qty}",
+        f"G1 (#4 U): notch_ends={notch}  n_ends={n_ends}  depth={depth}\"  "
+        f"body=S+2T2-6={S_in}+{2*T2:.1f}-6={body:.1f}\"  "
+        f"legs=2×{legs}\"  deduct(shape_2,#4)={deduct}\"  "
+        f"bar_len={bar_len:.1f}\"  qty=2×{n_ends}={qty}",
         source="BoxCulvertRules",
     )
-    logger.result("G1", f"{a_size} x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+    logger.result("G1", f"#4 x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
 
     return [BarRow(
-        mark="G1", size=a_size, qty=qty, length_in=bar_len,
-        shape="Str",
+        mark="G1", size="#4", qty=qty, length_in=bar_len,
+        shape="U",
+        leg_a_in=legs, leg_b_in=body,
         notes=(
-            f"Notch bars  {notch}  depth={depth}\"  "
-            f"1 roof + 1 invert per end  bar_len={fmt_inches(bar_len)}"
+            f"Barrel-end notch bars  {notch}  depth={depth}\"  "
+            f"#4 U-bar per D82  1 roof + 1 invert per end  "
+            f"body={fmt_inches(body)}  legs={legs}\""
         ),
-        review_flag=(
-            "Verify G-bar shape/count against D80 barrel-end detail; "
-            "may require L or U shape and/or additional bars in notch zone"
-        ),
+        review_flag="Verify leg dimension and bar count per D82 CAST-IN-PLACE END ELEVATION",
         source_rule="rule_bc_notch_bars",
     )]
 
