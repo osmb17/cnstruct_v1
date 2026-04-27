@@ -11,7 +11,7 @@ class BoxCulvertTemplate(BaseTemplate):
     def __init__(self):
         super().__init__()
         self.name = "Box Culvert"
-        self.version = "3.0"
+        self.version = "3.1"
         self.description = (
             "Caltrans D80 CIP single box culvert. "
             "Bar sizes and concrete thicknesses looked up from the D80 table "
@@ -43,6 +43,19 @@ class BoxCulvertTemplate(BaseTemplate):
                 group="Loading",
                 hint="Maximum earth cover over the roof slab — governs D80 table row selection",
             ),
+            InputField(
+                "notch_ends", str, label="Barrel-End Notch",
+                choices=["None", "Both Ends", "Inlet End Only", "Outlet End Only"],
+                default="None",
+                group="End Treatment",
+                hint="Rectangular recess formed in roof and invert slab ends where headwall/wingwall keys in",
+            ),
+            InputField(
+                "notch_depth_in", float, label="Notch Depth (in)",
+                min=2.0, max=8.0, default=3.0,
+                group="End Treatment",
+                hint="Depth of the barrel-end recess (along the barrel axis)",
+            ),
         ]
 
         self.rules = [
@@ -53,6 +66,7 @@ class BoxCulvertTemplate(BaseTemplate):
             "rule_bc_f_bars",
             "rule_bc_i_bars",
             "rule_bc_haunch_bars",
+            "rule_bc_notch_bars",
             "rule_bc_validate",
         ]
 

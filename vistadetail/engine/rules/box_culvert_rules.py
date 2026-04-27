@@ -13,6 +13,7 @@ Marks produced:
   H1  — horizontal h-bars          (straight, all 4 faces, longitudinal)
   F1  — roof transverse f-bars     (straight, #4 @ 12\" max)
   I1  — longitudinal i-bars        (straight, invert, from D80 count table)
+  G1  — barrel-end notch bars      (straight, roof+invert per notched end)
 
 Bar geometry based on Caltrans Standard Plan D80 (bar descriptions and
 typical section).  Quantities verified against user barlist for
@@ -596,6 +597,66 @@ def rule_bc_haunch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
         notes="Haunch bars #5  4 corners x 2/corner  each leg=18\" (est.)",
         review_flag="Verify leg dims per D82 haunch detail",
         source_rule="rule_bc_haunch_bars",
+    )]
+
+
+def rule_bc_notch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
+    """
+    G1 — Barrel-end notch bars.
+
+    When notch_ends != "None" a rectangular recess is formed at each
+    specified barrel end in the roof slab and the invert slab.  The
+    adjacent headwall / wingwall concrete keys into this recess.
+
+    One straight transverse G-bar is placed at each notch location:
+      - one at the roof-slab notch level
+      - one at the invert-slab notch level
+      per notched end.
+
+    Bar geometry:
+      bar_len = S + 2*T2 - 6   (3\" cover each outer wall face — same flat
+                                 width as A-bars)
+      size    = a_s (matches A-bar size from D80 table)
+      qty     = 2 * n_ends   (roof + invert per end)
+
+    NOTE: D80 end-detail sheet may require a different shape (L or U) or
+    additional bars in the notch zone.  review_flag is set; verify against
+    the D80 barrel-end / wing-wall connection detail before issuing.
+    """
+    notch = getattr(p, "notch_ends", "None")
+    if notch == "None":
+        return []
+
+    S_in  = int(p.span_ft) * 12
+    depth = float(getattr(p, "notch_depth_in", 3.0))
+
+    row    = _bc_lookup(int(p.span_ft), int(p.height_ft), int(p.max_earth_cover_ft), logger)
+    T2     = row["T2"]
+    a_size = row["a_s"]
+
+    n_ends  = 2 if notch == "Both Ends" else 1
+    bar_len = S_in + 2 * T2 - 6.0
+    qty     = 2 * n_ends  # 1 roof + 1 invert per notched end
+
+    logger.step(
+        f"G1 ({a_size}): notch_ends={notch}  n_ends={n_ends}  depth={depth}\"  "
+        f"bar_len=S+2T2-6={S_in}+{2*T2:.1f}-6={bar_len:.1f}\"  qty=2×{n_ends}={qty}",
+        source="BoxCulvertRules",
+    )
+    logger.result("G1", f"{a_size} x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+
+    return [BarRow(
+        mark="G1", size=a_size, qty=qty, length_in=bar_len,
+        shape="Str",
+        notes=(
+            f"Notch bars  {notch}  depth={depth}\"  "
+            f"1 roof + 1 invert per end  bar_len={fmt_inches(bar_len)}"
+        ),
+        review_flag=(
+            "Verify G-bar shape/count against D80 barrel-end detail; "
+            "may require L or U shape and/or additional bars in notch zone"
+        ),
+        source_rule="rule_bc_notch_bars",
     )]
 
 

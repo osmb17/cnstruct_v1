@@ -887,6 +887,28 @@ def _diag_box_culvert() -> bytes:
             f"Max Earth Cover = {cover_ft}'",
             ha="center", va="center", fontsize=8.0, color=_LABEL, fontweight="bold")
 
+    # Notch callout (when enabled)
+    notch_ends  = str(_LIVE_PARAMS.get("notch_ends", "None"))
+    notch_depth = float(_LIVE_PARAMS.get("notch_depth_in", 3.0))
+    if notch_ends != "None":
+        notch_label = f"Barrel-End Notch: {notch_ends}  ({notch_depth:.0f}\" deep)"
+        ax.text(total_w / 2, -1.60,
+                notch_label,
+                ha="center", va="center", fontsize=7.5, color="#c04000",
+                fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.2", fc="#fff3ec", ec="#c04000", lw=0.7))
+        # Notch tick marks on left and right corners of the top slab
+        notch_d = min(notch_depth / 12.0 * sc, T * 0.6)  # plot-unit depth, capped
+        for notch_x, notch_lbl in [(0, "Notch"), (total_w, "")]:
+            ax.annotate(
+                notch_lbl,
+                xy=(notch_x, total_h),
+                xytext=(notch_x + (-0.5 if notch_x == 0 else 0.5), total_h + 0.35),
+                fontsize=6, color="#c04000",
+                arrowprops=dict(arrowstyle="->", color="#c04000", lw=0.7),
+                ha="right" if notch_x == 0 else "left",
+            )
+
     _axes_compass(ax, -1.2, -1.4)
     _title(ax, "BOX CULVERT -- CROSS SECTION")
 
@@ -1685,7 +1707,9 @@ _FIELD_LABELS: dict[str, dict[str, str]] = {
     "Spread Footing":        {"footing_length_ft": "L", "footing_width_ft": "W",
                               "footing_depth_in": "D"},
     "Box Culvert":           {"span_ft": "S", "height_ft": "H",
-                              "barrel_length_ft": "L"},
+                              "barrel_length_ft": "L",
+                              "notch_ends": "notch_ends",
+                              "notch_depth_in": "notch_depth_in"},
     "Retaining Wall":        {"wall_length_ft": "L", "stem_height_ft": "H"},
     "Caltrans Retaining Wall": {"design_h_ft": "H\n(design)"},
     "Sound Wall":            {"wall_height_ft": "H", "wall_length_ft": "L"},
