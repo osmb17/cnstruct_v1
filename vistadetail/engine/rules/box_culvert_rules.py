@@ -171,6 +171,25 @@ _KNOWN_SPANS = sorted({k[0] for k in _D80})
 
 
 # ---------------------------------------------------------------------------
+# Helper: notch end-treatment info
+# ---------------------------------------------------------------------------
+
+def _notch_info(p: Params) -> tuple[int, float]:
+    """
+    Return (n_notch_ends, notch_depth_in).
+
+    n_notch_ends: 0 = no notch, 1 = one end, 2 = both ends.
+    notch_depth_in: depth of the barrel-end recess (in).
+    """
+    notch = getattr(p, "notch_ends", "None")
+    n = (2 if notch == "Both Ends" else
+         1 if notch in ("Inlet End Only", "Outlet End Only") else
+         0)
+    d = float(getattr(p, "notch_depth_in", 0.0))
+    return n, d
+
+
+# ---------------------------------------------------------------------------
 # Helper: D80 lookup (with nearest-height fallback for missing heights)
 # ---------------------------------------------------------------------------
 
@@ -281,14 +300,19 @@ def rule_bc_a_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
 
     B_flat  = S_in + 2 * T2 - 6
     deduct  = bend_reduce("shape_2", a_size)
-    qty     = math.floor(L_in / a_sp) + 2
+
+    # A-bars do not extend into the notch zone at each notched end
+    n_notch, notch_d = _notch_info(p)
+    eff_L = L_in - n_notch * notch_d
+    qty   = math.floor(eff_L / a_sp) + 2
 
     len_inv  = 2 * (_J_INV  + _A_LEG) + B_flat - deduct
     len_roof = 2 * (_J_ROOF + _A_LEG) + B_flat - deduct
 
+    notch_note = (f"  eff_L={L_in}-{n_notch}×{notch_d}={eff_L:.1f}\"" if n_notch else "")
     logger.step(
         f"A-bars ({a_size}@{a_sp}\"): B_flat=S+2T2-6={S_in}+{2*T2:.1f}-6={B_flat:.1f}\"  "
-        f"deduct(shape_2)={deduct}\"  qty=floor({L_in}/{a_sp})+2={qty}",
+        f"deduct(shape_2)={deduct}\"  qty=floor({eff_L:.1f}/{a_sp})+2={qty}{notch_note}",
         source="BoxCulvertRules",
     )
     logger.step(
@@ -456,11 +480,16 @@ def rule_bc_f_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     T2  = row["T2"]
 
     bar_len = S_in + 2 * T2 - 6.0
-    qty     = math.floor(L_in / 12) + 2
 
+    # F-bars do not extend into the notch zone at each notched end
+    n_notch, notch_d = _notch_info(p)
+    eff_L = L_in - n_notch * notch_d
+    qty   = math.floor(eff_L / 12) + 2
+
+    notch_note = (f"  eff_L={L_in}-{n_notch}×{notch_d}={eff_L:.1f}\"" if n_notch else "")
     logger.step(
         f"F1 (#4@12\"): S+2T2-6={S_in}+{2*T2:.1f}-6={bar_len:.1f}\"  "
-        f"qty=floor({L_in}/12)+2={qty}",
+        f"qty=floor({eff_L:.1f}/12)+2={qty}{notch_note}",
         source="BoxCulvertRules",
     )
     logger.result("F1", f"#4 x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
@@ -488,7 +517,9 @@ def rule_bc_i_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     cover = int(p.max_earth_cover_ft)
     span  = int(p.span_ft)
 
-    bar_len = L_in - 4.0
+    # I1 bars run in the invert slab; stop at notch face (not barrel end face)
+    n_notch, notch_d = _notch_info(p)
+    bar_len = L_in - 4.0 - n_notch * notch_d
 
     if cover <= 10:
         qty = _I_BAR_COUNT.get(span)
@@ -508,15 +539,18 @@ def rule_bc_i_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
                 f"I-bar count for span={span}' not in table — interpolated qty={qty}.",
                 source="BoxCulvertRules",
             )
+        notch_note = f"  notch adj: -{n_notch}×{notch_d}\"" if n_notch else ""
         logger.step(
-            f"I1 (cover={cover}'<=10'): D80 table count={qty}  len={fmt_inches(bar_len)}",
+            f"I1 (cover={cover}'<=10'): D80 table count={qty}  "
+            f"len=L-4{notch_note}={fmt_inches(bar_len)}",
             source="BoxCulvertRules",
         )
     else:
         qty = math.floor((S_in - 4) / 12) + 1
+        notch_note = f"  notch adj: -{n_notch}×{notch_d}\"" if n_notch else ""
         logger.step(
             f"I1 (cover={cover}'>10'): #4@12\" max  qty=floor(({S_in}-4)/12)+1={qty}  "
-            f"len={fmt_inches(bar_len)}",
+            f"len=L-4{notch_note}={fmt_inches(bar_len)}",
             source="BoxCulvertRules",
         )
 

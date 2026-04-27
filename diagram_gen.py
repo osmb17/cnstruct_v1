@@ -829,46 +829,75 @@ def _diag_footing() -> bytes:
 
 
 def _diag_box_culvert() -> bytes:
-    """Cross-section of box culvert -- live span S, height H, cover, barrel B."""
-    # --- Live inputs -----------------------------------------------------------
-    span_ft   = float(_LIVE_PARAMS.get("span_ft",   8.0))
-    height_ft = float(_LIVE_PARAMS.get("height_ft", 6.0))
-    barrel_ft = float(_LIVE_PARAMS.get("barrel_length_ft", 20.0))
-    cover_ft  = int(_LIVE_PARAMS.get("max_earth_cover_ft", 10))
+    """
+    Box culvert diagram.
+    No notch: single cross-section panel (barrel end view).
+    Notch enabled: cross-section left + longitudinal section right.
+    The longitudinal section shows the barrel profile with slab thicknesses
+    from the D80 table, notch cutouts, G-bar locations, and the I1 bar.
+    """
+    # --- Live inputs ---
+    span_ft     = float(_LIVE_PARAMS.get("span_ft",   8.0))
+    height_ft   = float(_LIVE_PARAMS.get("height_ft", 6.0))
+    barrel_ft   = float(_LIVE_PARAMS.get("barrel_length_ft", 20.0))
+    cover_ft    = int(_LIVE_PARAMS.get("max_earth_cover_ft", 10))
+    notch_ends  = str(_LIVE_PARAMS.get("notch_ends", "None"))
+    notch_depth = float(_LIVE_PARAMS.get("notch_depth_in", 3.0))
+    show_notch  = notch_ends != "None"
+    notch_left  = notch_ends in ("Both Ends", "Inlet End Only")
+    notch_right = notch_ends in ("Both Ends", "Outlet End Only")
 
-    # Scale to plot coordinates (max inner dim → ~5 plot units)
-    max_dim   = max(span_ft, height_ft, 1.0)
-    sc        = 5.0 / max_dim
-    S   = span_ft   * sc          # inner span (plot units)
-    H   = height_ft * sc          # inner height (plot units)
-    T   = max(0.35, min(0.65, sc * 0.75))   # wall thickness — proportional, clamped
+    # D80 table lookup for actual slab thicknesses (used in longitudinal section)
+    T1_in = T3_in = 9.5
+    try:
+        from vistadetail.engine.rules.box_culvert_rules import _D80
+        cover_key = 20 if cover_ft > 10 else 10
+        row = _D80.get((int(span_ft), int(height_ft), cover_key))
+        if row:
+            T1_in = float(row["T1"])
+            T3_in = float(row["T3"])
+    except Exception:
+        pass
 
+    # --- Cross-section scale (max inner dim → 5 plot units) ---
+    max_dim = max(span_ft, height_ft, 1.0)
+    sc_cs   = 5.0 / max_dim
+    S       = span_ft   * sc_cs
+    H       = height_ft * sc_cs
+    T       = max(0.35, min(0.65, sc_cs * 0.75))
     total_w = S + 2 * T
     total_h = H + 2 * T
 
-    fig, ax = _fig(7.5, 6.5)
+    # --- Figure layout ---
+    if show_notch:
+        fig   = plt.figure(figsize=(13.5, 6.5), facecolor=_BG)
+        ax    = fig.add_axes([0.02, 0.08, 0.34, 0.88])
+        ax_ls = fig.add_axes([0.42, 0.10, 0.56, 0.82])
+        for a in [ax, ax_ls]:
+            a.set_aspect("equal"); a.axis("off"); a.set_facecolor(_BG)
+    else:
+        fig, ax = _fig(7.5, 6.5)
+
+    # =========================================================
+    # CROSS-SECTION panel (existing view)
+    # =========================================================
     ax.set_xlim(-1.5, total_w + 2.2)
     ax.set_ylim(-1.8, total_h + 1.5)
 
-    # Outer section
     _rect(ax, 0, 0, total_w, total_h, fc=_CONCRETE, ec=_OUTLINE, lw=2.0)
-    # Inner void
     _rect(ax, T, T, S, H, fc="white", ec=_OUTLINE, lw=1.2)
 
-    # Rebar in walls (inside + outside face lines)
     for offset in [0.10, 0.25]:
         ax.plot([offset, offset], [T + 0.12, T + H - 0.12],
                 color=_REBAR, lw=1.0, zorder=4)
         ax.plot([total_w - offset, total_w - offset], [T + 0.12, T + H - 0.12],
                 color=_REBAR, lw=1.0, zorder=4)
-    # Rebar in top/bottom slabs
     for offset in [0.10, 0.25]:
         ax.plot([T + 0.08, T + S - 0.08], [offset, offset],
                 color=_REBAR, lw=0.8, zorder=4)
         ax.plot([T + 0.08, T + S - 0.08], [total_h - offset, total_h - offset],
                 color=_REBAR, lw=0.8, zorder=4)
 
-    # --- Dimension labels with live values ------------------------------------
     s_label = _fmt_dim_value("span_ft",   span_ft)
     h_label = _fmt_dim_value("height_ft", height_ft)
     b_label = _fmt_dim_value("barrel_length_ft", barrel_ft)
@@ -876,41 +905,145 @@ def _diag_box_culvert() -> bytes:
     _dim_h(ax, T, T + S, T + H * 0.5, f"S = {s_label}", gap=-0.38, fontsize=9)
     _dim_v(ax, T, T + H, T + S * 0.82, f"H = {h_label}", gap=0.18, fontsize=9)
 
-    # Barrel label (centre of section)
     ax.text(total_w / 2, total_h / 2,
             f"L = {b_label}\n(Barrel Length)",
             ha="center", va="center", fontsize=7.5, color="#555",
             bbox=dict(boxstyle="round", fc="white", ec="#ccc", alpha=0.88), zorder=5)
-
-    # Max earth cover label (bottom, below section)
     ax.text(total_w / 2, -1.35,
             f"Max Earth Cover = {cover_ft}'",
             ha="center", va="center", fontsize=8.0, color=_LABEL, fontweight="bold")
-
-    # Notch callout (when enabled)
-    notch_ends  = str(_LIVE_PARAMS.get("notch_ends", "None"))
-    notch_depth = float(_LIVE_PARAMS.get("notch_depth_in", 3.0))
-    if notch_ends != "None":
-        notch_label = f"Barrel-End Notch: {notch_ends}  ({notch_depth:.0f}\" deep)"
-        ax.text(total_w / 2, -1.60,
-                notch_label,
-                ha="center", va="center", fontsize=7.5, color="#c04000",
-                fontweight="bold",
+    if show_notch:
+        ax.text(total_w / 2, -1.62,
+                f"Notch: {notch_ends}  ({notch_depth:.0f}\" deep)",
+                ha="center", va="center", fontsize=7.0, color="#c04000", fontweight="bold",
                 bbox=dict(boxstyle="round,pad=0.2", fc="#fff3ec", ec="#c04000", lw=0.7))
-        # Notch tick marks on left and right corners of the top slab
-        notch_d = min(notch_depth / 12.0 * sc, T * 0.6)  # plot-unit depth, capped
-        for notch_x, notch_lbl in [(0, "Notch"), (total_w, "")]:
-            ax.annotate(
-                notch_lbl,
-                xy=(notch_x, total_h),
-                xytext=(notch_x + (-0.5 if notch_x == 0 else 0.5), total_h + 0.35),
-                fontsize=6, color="#c04000",
-                arrowprops=dict(arrowstyle="->", color="#c04000", lw=0.7),
-                ha="right" if notch_x == 0 else "left",
-            )
 
     _axes_compass(ax, -1.2, -1.4)
-    _title(ax, "BOX CULVERT -- CROSS SECTION")
+    _title(ax, "CROSS SECTION" if show_notch else "BOX CULVERT -- CROSS SECTION")
+
+    # =========================================================
+    # LONGITUDINAL SECTION panel (when notch is active)
+    # =========================================================
+    if show_notch:
+        T1_ft    = T1_in / 12.0
+        T3_ft    = T3_in / 12.0
+        tot_h_ft = T1_ft + height_ft + T3_ft
+
+        # Scale: barrel length → 7.0 plot units, height proportional
+        sc_ls = min(7.0 / barrel_ft, 3.5 / max(tot_h_ft, 1.0))
+        bL  = barrel_ft * sc_ls
+        bH  = height_ft * sc_ls
+        t1  = T1_ft * sc_ls
+        t3  = T3_ft * sc_ls
+        # Notch length in plot units — cap at 15 % of barrel length for readability
+        nd  = min((notch_depth / 12.0) * sc_ls, bL * 0.15)
+        nh_r = t1 * 0.45   # notch void height in roof slab
+        nh_i = t3 * 0.45   # notch void height in invert slab
+
+        # Coordinate origin (bottom-left of invert)
+        ox = 0.8
+        oy = 0.6
+        x0 = ox;       x1 = ox + bL
+        y_ib = oy;     y_it = oy + t3          # invert bottom / top
+        y_rb = oy + t3 + bH                    # roof slab bottom
+        y_rt = y_rb + t1                        # roof slab top
+
+        # ---- invert slab polygon ----
+        inv_pts = [(x0, y_ib)]
+        if notch_left:
+            inv_pts += [(x0, y_it - nh_i), (x0 + nd, y_it - nh_i), (x0 + nd, y_it)]
+        else:
+            inv_pts.append((x0, y_it))
+        if notch_right:
+            inv_pts += [(x1 - nd, y_it), (x1 - nd, y_it - nh_i), (x1, y_it - nh_i)]
+        else:
+            inv_pts.append((x1, y_it))
+        inv_pts.append((x1, y_ib))
+        ax_ls.add_patch(plt.Polygon(inv_pts, closed=True,
+                                    fc=_CONCRETE, ec=_OUTLINE, lw=1.5, zorder=2))
+
+        # ---- roof slab polygon ----
+        roof_pts = []
+        if notch_left:
+            roof_pts += [(x0 + nd, y_rb), (x0 + nd, y_rb + nh_r), (x0, y_rb + nh_r)]
+        else:
+            roof_pts.append((x0, y_rb))
+        roof_pts.append((x0, y_rt))
+        roof_pts.append((x1, y_rt))
+        if notch_right:
+            roof_pts += [(x1, y_rb + nh_r), (x1 - nd, y_rb + nh_r), (x1 - nd, y_rb)]
+        else:
+            roof_pts.append((x1, y_rb))
+        ax_ls.add_patch(plt.Polygon(roof_pts, closed=True,
+                                    fc=_CONCRETE, ec=_OUTLINE, lw=1.5, zorder=2))
+
+        # ---- earth fill above roof ----
+        earth_h = t1 * 0.55
+        _rect(ax_ls, x0, y_rt, bL, earth_h, fc=_SOIL, ec="#c4b498", lw=0.5,
+              hatch="....", zorder=1)
+        ax_ls.text(x0 + bL * 0.5, y_rt + earth_h * 0.5, "EARTH",
+                   ha="center", va="center", fontsize=6, color="#8b7355", style="italic")
+
+        # ---- G-bar dots at each notch ----
+        for is_left in [True, False]:
+            if (is_left and notch_left) or (not is_left and notch_right):
+                gx = x0 if is_left else x1
+                # G-bar in roof notch — dot (bar runs into page in longitudinal section)
+                gy_r = y_rb + nh_r * 0.5
+                # G-bar in invert notch
+                gy_i = y_it - nh_i * 0.5
+                ax_ls.plot(gx, gy_r, "o", color=_REBAR, ms=5, zorder=6)
+                ax_ls.plot(gx, gy_i, "o", color=_REBAR, ms=5, zorder=6)
+                lx = gx - 0.22 if is_left else gx + 0.22
+                ha = "right" if is_left else "left"
+                ax_ls.text(lx, (gy_r + gy_i) / 2, "G1",
+                           ha=ha, va="center", fontsize=6.5,
+                           color=_REBAR, fontweight="bold")
+
+        # ---- I1 bar (longitudinal invert slab bar) ----
+        i1_y  = y_ib + t3 * 0.32
+        i1_x0 = x0 + nd + 0.03 if notch_left  else x0 + 0.06
+        i1_x1 = x1 - nd - 0.03 if notch_right else x1 - 0.06
+        ax_ls.plot([i1_x0, i1_x1], [i1_y, i1_y], color=_REBAR, lw=1.2, zorder=5)
+        ax_ls.text((i1_x0 + i1_x1) / 2, i1_y - 0.10, "I1",
+                   ha="center", va="top", fontsize=6, color=_REBAR)
+
+        # ---- Dimension labels ----
+        _ext_dim_h(ax_ls, x0, x1, y_ib, y_ib - 0.42, "L", fontsize=8)
+        _ext_dim_v(ax_ls, y_it, y_rb, x1, x1 + 0.42, "H", fontsize=8)
+        # T1 and T3 callouts on the left
+        ax_ls.annotate(f"T1={T1_in:.1f}\"",
+                       xy=(x0, (y_rb + y_rt) / 2),
+                       xytext=(x0 - 0.55, (y_rb + y_rt) / 2),
+                       fontsize=6.5, color=_LABEL, fontweight="bold", ha="right", va="center",
+                       arrowprops=dict(arrowstyle="->", color=_DIM, lw=0.5))
+        ax_ls.annotate(f"T3={T3_in:.1f}\"",
+                       xy=(x0, (y_ib + y_it) / 2),
+                       xytext=(x0 - 0.55, (y_ib + y_it) / 2),
+                       fontsize=6.5, color=_LABEL, fontweight="bold", ha="right", va="center",
+                       arrowprops=dict(arrowstyle="->", color=_DIM, lw=0.5))
+        # Notch depth callout at right end (if right end has notch)
+        if notch_right:
+            _dim_h(ax_ls, x1 - nd, x1, y_rt + 0.18,
+                   f"{notch_depth:.0f}\"", gap=0.10, fontsize=6)
+        elif notch_left:
+            _dim_h(ax_ls, x0, x0 + nd, y_rt + 0.18,
+                   f"{notch_depth:.0f}\"", gap=0.10, fontsize=6)
+
+        # End labels
+        if notch_left:
+            ax_ls.text(x0, y_ib - 0.18, "INLET",
+                       ha="center", va="top", fontsize=6.5, color="#c04000", fontweight="bold")
+        if notch_right:
+            ax_ls.text(x1, y_ib - 0.18, "OUTLET",
+                       ha="center", va="top", fontsize=6.5, color="#c04000", fontweight="bold")
+
+        ax_ls.text((x0 + x1) / 2, y_rt + 0.60,
+                   "LONGITUDINAL SECTION  (BARREL END DETAIL)",
+                   ha="center", va="bottom", fontsize=8, color=_LABEL, fontweight="bold")
+
+        ax_ls.set_xlim(x0 - 1.1, x1 + 1.1)
+        ax_ls.set_ylim(y_ib - 0.75, y_rt + 0.85)
 
     return _to_png(fig)
 
