@@ -212,7 +212,7 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     L      = p.wall_width_ft * 12
     H      = p.wall_height_ft * 12
-    H1     = float(getattr(p, "h1_ft", p.wall_height_ft + 1.0)) * 12.0
+    H1     = _h1(p)
     row    = _d89_by_height(H)
     c_size = row["c_s"]
     c_sp   = int(row["c_p"])
