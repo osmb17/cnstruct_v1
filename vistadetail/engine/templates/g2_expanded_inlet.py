@@ -49,13 +49,13 @@ class G2ExpandedInletTemplate(BaseTemplate):
             InputField(
                 "y_dim_ft", float,
                 label="Y Main Box (ft)",
-                min=3.0, max=15.0, default=5.0,
-                hint="Main box exterior Y dimension (Caltrans standard: 5'-0\")",
+                min=5.667, max=15.0, default=5.667,
+                hint="Main box exterior Y dimension (minimum 5'-8\")",
             ),
             InputField(
                 "y_expanded_ft", float,
                 label="Y Expanded Section (ft)",
-                min=5.0, max=20.0, default=8.0,
+                min=5.667, max=20.0, default=8.0,
                 hint="Expanded section exterior Y dimension (Caltrans standard: 8'-0\")",
             ),
             InputField(
