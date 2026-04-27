@@ -22,8 +22,8 @@ class G2ExpandedInletTemplate(BaseTemplate):
         self.version = "5.0"
         self.description = (
             "Caltrans G2 expanded inlet -- main box + expansion room. "
-            "Y dimensions default to standard values (5'-0\" main, 8'-0\" expanded) "
-            "per Caltrans D73A but can be customized. "
+            "Y is the main box exterior dimension (min 5'-8\"). "
+            "Expanded section Y defaults to 8'-0\" per Caltrans D73A. "
             "Bar sizes/spacings per Vista Steel spreadsheet."
         )
 
@@ -33,6 +33,12 @@ class G2ExpandedInletTemplate(BaseTemplate):
                 label="X -- Exterior Width (ft)",
                 min=2.5, max=30.0, default=5.667,
                 hint="Exterior face-to-face width in plan. Interior X = X − 2×T.",
+            ),
+            InputField(
+                "y_dim_ft", float,
+                label="Y -- Exterior Length (ft)",
+                min=5.667, max=15.0, default=5.667,
+                hint="Main box exterior Y dimension (minimum 5'-8\")",
             ),
             InputField(
                 "wall_height_ft", float,
@@ -45,18 +51,6 @@ class G2ExpandedInletTemplate(BaseTemplate):
                 label="Wall Thickness (in)",
                 min=9, max=12, default=9,
                 hint="9\" standard; 11\" for larger spans.",
-            ),
-            InputField(
-                "y_dim_ft", float,
-                label="Y Main Box (ft)",
-                min=5.667, max=15.0, default=5.667,
-                hint="Main box exterior Y dimension (minimum 5'-8\")",
-            ),
-            InputField(
-                "y_expanded_ft", float,
-                label="Y Expanded Section (ft)",
-                min=5.667, max=20.0, default=8.0,
-                hint="Expanded section exterior Y dimension (Caltrans standard: 8'-0\")",
             ),
             InputField(
                 "grate_type", str,

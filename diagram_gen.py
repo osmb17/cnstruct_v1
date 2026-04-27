@@ -1827,7 +1827,7 @@ _FIELD_LABELS: dict[str, dict[str, str]] = {
     "G5 Inlet":              {"x_dim_ft": "L1"},
     "G6 Inlet":              {"x_dim_ft": "L1"},
     "G2 Expanded Inlet":     {"x_dim_ft": "X", "y_dim_ft": "Y",
-                              "y_expanded_ft": "Y exp", "wall_thick_in": "T",
+                              "wall_thick_in": "T",
                               "_inside_x_ft": "Inside X", "_inside_y_ft": "Inside Y"},
     "G2 Inlet Top":          {"x_dim_ft": "X", "y_dim_ft": "Y",
                               "wall_height_ft": "H"},
