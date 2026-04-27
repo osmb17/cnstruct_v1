@@ -673,8 +673,8 @@ def _diag_headwall() -> bytes:
         if xx > ex + L*s: break
         ax.plot(xx, ey, "o", color=_REBAR, ms=4, zorder=5)
 
-    # Dimensions — front elevation: W below, H1 on left (avoids crowding the section gap)
-    _ext_dim_h(ax, ex, ex + L*s, ey - F*s, ey - F*s - 0.32, "W")
+    # Dimensions — front elevation: L below (wall width), H1 on left
+    _ext_dim_h(ax, ex, ex + L*s, ey - F*s, ey - F*s - 0.32, "L")
     _ext_dim_v(ax, ey, ey + H1*s, ex, ex - 0.55, "H1")
 
     # Callouts
@@ -744,16 +744,15 @@ def _diag_headwall() -> bytes:
     _ext_dim_v(ax, ty, ty + H*s,  wx,          wx - 0.55, "H")
     _ext_dim_v(ax, ty, ty + H1*s, tx + W*s,    tx + W*s + 0.55, "H1")
     _dim_v(ax, ty - F*s, ty, tx - 0.1, f"F={fmt_inches(F_in)}", gap=0.22, fontsize=7)
-    _ext_dim_h(ax, tx, tx + W*s, ty - F*s, ty - F*s - 0.32, "W")
+    # C and B dimension lines at same level, W below them (matches Caltrans D89A layout)
+    _dim_h(ax, tx, wx,        ty - F*s - 0.20, f"C={fmt_inches(C_in)}", gap=0.12, fontsize=7)
+    _dim_h(ax, wx, tx + W*s,  ty - F*s - 0.20, f"B={fmt_inches(B_in)}", gap=0.12, fontsize=7)
+    _ext_dim_h(ax, tx, tx + W*s, ty - F*s, ty - F*s - 0.55, "W", fontsize=8)
     ax.annotate(f"T={T_in:.0f}\"", xy=(wx + T*s/2, ty + H1*s*0.35),
                 xytext=(wx + T*s + 0.75, ty + H1*s*0.5),
                 fontsize=7.5, color=_LABEL, fontweight="bold",
                 arrowprops=dict(arrowstyle="->", color=_DIM, lw=0.7),
                 bbox=dict(boxstyle="round,pad=0.2", fc="white", ec=_DIM, lw=0.5))
-    ax.text(tx + C*s/2, ty - F*s - 0.15, f"C={fmt_inches(C_in)}",
-            ha="center", va="top", fontsize=7, color=_LABEL, fontweight="bold")
-    ax.text(wx + T*s + B*s/2, ty - F*s - 0.15, f"B={fmt_inches(B_in)}",
-            ha="center", va="top", fontsize=7, color=_LABEL, fontweight="bold")
 
     ax.text(wx + T*s / 2, ty + H1*s + 0.22, "TYPICAL SECTION",
             ha="center", va="bottom", fontsize=8, color=_LABEL,
@@ -761,7 +760,7 @@ def _diag_headwall() -> bytes:
 
     # ── Bounds ───────────────────────────────────────────────────────────
     ax.set_xlim(ex - 1.6, tx + W*s + 1.7)
-    ax.set_ylim(ty - F*s - 0.75, ty + H1*s + 1.0)
+    ax.set_ylim(ty - F*s - 1.00, ty + H1*s + 1.0)
     _title(ax, "STRAIGHT HEADWALL  (D89A)")
 
     return _to_png(fig)
@@ -879,7 +878,7 @@ def _diag_box_culvert() -> bytes:
 
     # Barrel label (centre of section)
     ax.text(total_w / 2, total_h / 2,
-            f"B = {b_label}\n(Barrel Length)",
+            f"L = {b_label}\n(Barrel Length)",
             ha="center", va="center", fontsize=7.5, color="#555",
             bbox=dict(boxstyle="round", fc="white", ec="#ccc", alpha=0.88), zorder=5)
 
@@ -1679,14 +1678,14 @@ _FIELD_LABELS: dict[str, dict[str, str]] = {
                               "wall_height_ft": "H"},
     "G2 Expanded Inlet Top": {"x_dim_ft": "X", "y_dim_ft": "Y",
                               "wall_height_ft": "H"},
-    "Straight Headwall":     {"wall_width_ft": "W", "wall_height_ft": "H", "h1_ft": "H1"},
+    "Straight Headwall":     {"wall_width_ft": "L", "wall_height_ft": "H", "h1_ft": "H1"},
     "Wing Wall":             {"wing_length_ft": "L",
                               "hw_height_ft": "H\u2081",
                               "tip_height_ft": "H\u2082"},
     "Spread Footing":        {"footing_length_ft": "L", "footing_width_ft": "W",
                               "footing_depth_in": "D"},
-    "Box Culvert":           {"clear_span_ft": "S", "clear_rise_ft": "R",
-                              "wall_thick_in": "T"},
+    "Box Culvert":           {"span_ft": "S", "height_ft": "H",
+                              "barrel_length_ft": "L"},
     "Retaining Wall":        {"wall_length_ft": "L", "stem_height_ft": "H"},
     "Caltrans Retaining Wall": {"design_h_ft": "H\n(design)"},
     "Sound Wall":            {"wall_height_ft": "H", "wall_length_ft": "L"},
