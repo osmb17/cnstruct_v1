@@ -6,17 +6,19 @@ Bar sizes, spacings, and concrete thicknesses looked up from the D80 standard
 plan table keyed by (span_ft, height_ft, max_earth_cover_ft).
 
 Marks produced:
-  A1  — transverse a-bars  (C/U-shape, wrapping inside of box)
-  B1  — transverse b-bars  (outside straight U-shape)
-  E1  — longitudinal e-bars (distribution bars along barrel)
-  I1  — longitudinal i-bars (count from i-bar table or #4@12")
-  HP1 — #4 hoops @ 12" max (per D82 miscellaneous details)
+  A1  — transverse a-bars, invert  (C-bar, inside face, 3\" cover)
+  A2  — transverse a-bars, roof    (C-bar, inside face, 3\" cover)
+  B1  — transverse b-bars          (L-bar, both side walls)
+  E1  — vertical e-bars            (straight, both side walls)
+  H1  — horizontal h-bars          (straight, all 4 faces, longitudinal)
+  F1  — roof transverse f-bars     (straight, #4 @ 12\" max)
+  I1  — longitudinal i-bars        (straight, invert, from D80 count table)
 
-Reference: Caltrans Standard Plan D80 (bar and dimension tables) and
-           D82 (miscellaneous details — hoop requirement).
+Bar geometry based on Caltrans Standard Plan D80 (bar descriptions and
+typical section).  Quantities verified against user barlist for
+(H=6, S=8, L=20, cover=10).
 
-Cover: 2" typical, 1" interior surfaces
-       (D82 Note 9: "2" concrete cover are typical except as shown").
+Reference: Caltrans Standard Plan D80.
 """
 
 from __future__ import annotations
@@ -24,7 +26,7 @@ from __future__ import annotations
 import logging
 import math
 
-from vistadetail.engine.hooks import bend_reduce, hook_add
+from vistadetail.engine.hooks import bend_reduce
 from vistadetail.engine.reasoning_logger import ReasoningLogger
 from vistadetail.engine.schema import BarRow, Params, fmt_inches
 
@@ -35,14 +37,19 @@ log = logging.getLogger(__name__)
 # D80 lookup table
 #
 # Key:    (span_ft, height_ft, max_cover_ft)
-# Values: T1  = roof thickness (in)
-#         T2  = wall thickness (in)
-#         T3  = invert thickness (in)
-#         a_s = a-bar size,  a_sp = a-bar spacing (in)
-#         b_s = b-bar size,  b_sp = b-bar spacing (in)
-#         e_s = e-bar size,  e_sp = e-bar spacing (in)
-#         B   = B dimension (in) — nominal hook-engagement dimension
-#         lblf = reinforcement lb per linear foot (for validation only)
+# Values: T1   = roof thickness (in)
+#         T2   = wall thickness (in)
+#         T3   = invert thickness (in)
+#         a_s  = a-bar size,  a_sp = a-bar spacing (in)
+#         b_s  = b-bar size,  b_sp = b-bar spacing (in)
+#         e_s  = e-bar size,  e_sp = e-bar spacing (in)
+#         B    = b-bar short leg dimension (in) — direct from D80 table
+#         lblf = reinforcement lb per linear foot (reference/validation only)
+#
+# Spans 4, 5: confirmed correct from D80 screenshots.
+# Spans 6, 7: carried from prior entry — verify against D80 screenshots.
+# Span  8:    corrected from clean D80 screenshots.
+# Spans 10, 12, 14: unvalidated — update when screenshots are available.
 # ---------------------------------------------------------------------------
 
 _D80: dict[tuple[int, int, int], dict] = {
@@ -65,7 +72,7 @@ _D80: dict[tuple[int, int, int], dict] = {
     (5, 5, 10): dict(T1=8,   T2=7,   T3=7.5, a_s="#5", a_sp=5,   b_s="#5", b_sp=4.5, e_s="#4", e_sp=6.5,  B=33, lblf=154),
     (5, 5, 20): dict(T1=8,   T2=9,   T3=9.5, a_s="#5", a_sp=5,   b_s="#5", b_sp=5.5, e_s="#4", e_sp=7.5,  B=34, lblf=140),
 
-    # --- SPAN 6' ---
+    # --- SPAN 6' (verify against D80 screenshots) ---
     (6, 3, 10): dict(T1=7.5,  T2=6.5,  T3=8.5,  a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.5, e_s="#4", e_sp=13.5, B=33, lblf=268),
     (6, 3, 20): dict(T1=12.0, T2=7.5,  T3=12.5, a_s="#4", a_sp=5.0, b_s="#4", b_sp=6.0, e_s="#4", e_sp=11.0, B=31, lblf=209),
     (6, 4, 10): dict(T1=7.5,  T2=7.0,  T3=8.5,  a_s="#5", a_sp=5.5, b_s="#4", b_sp=5.0, e_s="#4", e_sp=12.5, B=34, lblf=287),
@@ -75,7 +82,7 @@ _D80: dict[tuple[int, int, int], dict] = {
     (6, 6, 10): dict(T1=8.0,  T2=8.5,  T3=8.5,  a_s="#5", a_sp=5.0, b_s="#5", b_sp=4.5, e_s="#4", e_sp=7.0,  B=35, lblf=362),
     (6, 6, 20): dict(T1=11.5, T2=11.0, T3=12.5, a_s="#4", a_sp=5.0, b_s="#5", b_sp=5.0, e_s="#4", e_sp=6.5,  B=34, lblf=297),
 
-    # --- SPAN 7' ---
+    # --- SPAN 7' (verify against D80 screenshots) ---
     (7, 3, 10): dict(T1=9.0,  T2=6.5,  T3=9.5,  a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=13.5, B=40, lblf=327),
     (7, 3, 20): dict(T1=13.5, T2=7.5,  T3=14.0, a_s="#4", a_sp=6.0, b_s="#4", b_sp=5.0,  e_s="#4", e_sp=11.0, B=41, lblf=264),
     (7, 4, 10): dict(T1=8.5,  T2=7.5,  T3=9.5,  a_s="#5", a_sp=5.0, b_s="#5", b_sp=6.0,  e_s="#4", e_sp=11.0, B=41, lblf=333),
@@ -87,19 +94,19 @@ _D80: dict[tuple[int, int, int], dict] = {
     (7, 7, 10): dict(T1=8.5,  T2=9.5,  T3=9.5,  a_s="#5", a_sp=5.5, b_s="#6", b_sp=5.5,  e_s="#4", e_sp=6.0,  B=46, lblf=406),
     (7, 7, 20): dict(T1=13.0, T2=13.0, T3=14.5, a_s="#5", a_sp=6.0, b_s="#5", b_sp=6.0,  e_s="#4", e_sp=5.5,  B=49, lblf=348),
 
-    # --- SPAN 8' ---
-    (8, 4, 10): dict(T1=10.0, T2=6.5,  T3=10.5, a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=13.0, B=44, lblf=373),
-    (8, 4, 20): dict(T1=15.0, T2=8.0,  T3=15.5, a_s="#5", a_sp=5.5, b_s="#5", b_sp=7.0,  e_s="#4", e_sp=10.0, B=44, lblf=339),
-    (8, 5, 10): dict(T1=9.5,  T2=7.5,  T3=10.5, a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=11.0, B=44, lblf=388),
-    (8, 5, 20): dict(T1=15.0, T2=9.5,  T3=15.5, a_s="#5", a_sp=5.5, b_s="#5", b_sp=6.0,  e_s="#4", e_sp=8.0,  B=47, lblf=367),
-    (8, 6, 10): dict(T1=9.5,  T2=8.5,  T3=10.5, a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.5,  e_s="#4", e_sp=9.0,  B=45, lblf=399),
-    (8, 6, 20): dict(T1=14.5, T2=11.5, T3=16.0, a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.5,  e_s="#4", e_sp=6.0,  B=47, lblf=395),
-    (8, 7, 10): dict(T1=9.5,  T2=9.5,  T3=10.5, a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=7.0,  B=48, lblf=429),
-    (8, 7, 20): dict(T1=14.5, T2=13.0, T3=16.0, a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.5,  e_s="#4", e_sp=5.5,  B=49, lblf=414),
-    (8, 8, 10): dict(T1=9.5,  T2=11.0, T3=10.5, a_s="#5", a_sp=5.5, b_s="#6", b_sp=5.0,  e_s="#4", e_sp=5.5,  B=53, lblf=509),
-    (8, 8, 20): dict(T1=14.5, T2=15.0, T3=16.0, a_s="#5", a_sp=6.5, b_s="#5", b_sp=5.5,  e_s="#5", e_sp=7.0,  B=53, lblf=441),
+    # --- SPAN 8' (corrected from clean D80 screenshots) ---
+    (8, 4, 10): dict(T1=9.5,  T2=6.5,  T3=8.5,  a_s="#6", a_sp=5.0, b_s="#5", b_sp=4.5, e_s="#4", e_sp=11.0, B=37, lblf=193),
+    (8, 4, 20): dict(T1=12.5, T2=8.0,  T3=13.0, a_s="#6", a_sp=4.5, b_s="#5", b_sp=4.5, e_s="#4", e_sp=10.0, B=33, lblf=197),
+    (8, 5, 10): dict(T1=9.5,  T2=7.0,  T3=8.5,  a_s="#6", a_sp=5.0, b_s="#6", b_sp=5.0, e_s="#4", e_sp=9.0,  B=40, lblf=229),
+    (8, 5, 20): dict(T1=11.5, T2=9.5,  T3=13.0, a_s="#6", a_sp=4.5, b_s="#5", b_sp=4.5, e_s="#4", e_sp=8.0,  B=32, lblf=210),
+    (8, 6, 10): dict(T1=9.5,  T2=8.5,  T3=8.5,  a_s="#6", a_sp=5.0, b_s="#6", b_sp=4.5, e_s="#4", e_sp=7.5,  B=43, lblf=262),
+    (8, 6, 20): dict(T1=11.5, T2=11.0, T3=12.0, a_s="#6", a_sp=4.5, b_s="#5", b_sp=4.5, e_s="#4", e_sp=6.5,  B=39, lblf=234),
+    (8, 7, 10): dict(T1=9.0,  T2=10.0, T3=8.5,  a_s="#5", a_sp=4.5, b_s="#9", b_sp=4.5, e_s="#4", e_sp=7.0,  B=68, lblf=491),
+    (8, 7, 20): dict(T1=11.5, T2=12.0, T3=13.0, a_s="#6", a_sp=5.0, b_s="#5", b_sp=4.5, e_s="#4", e_sp=6.0,  B=42, lblf=242),
+    (8, 8, 10): dict(T1=9.0,  T2=11.0, T3=8.5,  a_s="#5", a_sp=4.5, b_s="#9", b_sp=4.5, e_s="#4", e_sp=5.0,  B=69, lblf=527),
+    (8, 8, 20): dict(T1=11.5, T2=13.5, T3=12.0, a_s="#6", a_sp=5.0, b_s="#6", b_sp=4.5, e_s="#5", e_sp=7.0,  B=46, lblf=309),
 
-    # --- SPAN 10' ---
+    # --- SPAN 10' (unvalidated — update when D80 screenshots available) ---
     (10, 5,  10): dict(T1=10,   T2=8.5,  T3=10,   a_s="#6", a_sp=4.5, b_s="#5", b_sp=4.5, e_s="#4", e_sp=9.5, B=46, lblf=251),
     (10, 5,  20): dict(T1=15,   T2=10,   T3=15,   a_s="#7", a_sp=5,   b_s="#5", b_sp=4.5, e_s="#4", e_sp=7.5, B=46, lblf=284),
     (10, 6,  10): dict(T1=9.5,  T2=8.5,  T3=10,   a_s="#6", a_sp=4.5, b_s="#6", b_sp=5,   e_s="#4", e_sp=8.5, B=45, lblf=285),
@@ -113,7 +120,7 @@ _D80: dict[tuple[int, int, int], dict] = {
     (10, 10, 10): dict(T1=10,   T2=13.5, T3=10.5, a_s="#5", a_sp=4.5, b_s="#7", b_sp=4.5, e_s="#5", e_sp=6,   B=58, lblf=425),
     (10, 10, 20): dict(T1=15,   T2=16.5, T3=15,   a_s="#6", a_sp=5,   b_s="#6", b_sp=4.5, e_s="#5", e_sp=5,   B=55, lblf=404),
 
-    # --- SPAN 12' ---
+    # --- SPAN 12' (unvalidated — update when D80 screenshots available) ---
     (12, 6,  10): dict(T1=11.5, T2=9,    T3=11,   a_s="#7", a_sp=4.5, b_s="#6", b_sp=4.5, e_s="#4", e_sp=8.5, B=51, lblf=381),
     (12, 6,  20): dict(T1=17,   T2=12,   T3=17.5, a_s="#7", a_sp=4.5, b_s="#6", b_sp=4.5, e_s="#4", e_sp=6,   B=49, lblf=381),
     (12, 7,  10): dict(T1=11.5, T2=10.5, T3=11,   a_s="#7", a_sp=5,   b_s="#6", b_sp=4.5, e_s="#4", e_sp=7,   B=51, lblf=382),
@@ -129,7 +136,7 @@ _D80: dict[tuple[int, int, int], dict] = {
     (12, 12, 10): dict(T1=12,   T2=16.5, T3=12.5, a_s="#6", a_sp=4.5, b_s="#7", b_sp=4.5, e_s="#5", e_sp=4.5, B=64, lblf=548),
     (12, 12, 20): dict(T1=18,   T2=20,   T3=20,   a_s="#6", a_sp=4.5, b_s="#6", b_sp=4.5, e_s="#6", e_sp=6,   B=67, lblf=515),
 
-    # --- SPAN 14' ---
+    # --- SPAN 14' (unvalidated — update when D80 screenshots available) ---
     (14, 7,  10): dict(T1=13,   T2=9.5,  T3=12.5, a_s="#8", a_sp=5,   b_s="#7", b_sp=4.5, e_s="#4", e_sp=7.5, B=56, lblf=526),
     (14, 7,  20): dict(T1=19.5, T2=13.5, T3=19.5, a_s="#8", a_sp=5,   b_s="#7", b_sp=4.5, e_s="#4", e_sp=5,   B=54, lblf=492),
     (14, 8,  10): dict(T1=13,   T2=11.5, T3=12.5, a_s="#7", a_sp=4.5, b_s="#7", b_sp=5,   e_s="#4", e_sp=6,   B=60, lblf=498),
@@ -149,16 +156,13 @@ _D80: dict[tuple[int, int, int], dict] = {
 }
 
 # ---------------------------------------------------------------------------
-# "i" bar count table (earth cover <= 10')
-# Key: span_ft -> count of i-bars
-# For cover > 10': use #4 @ 12" max instead (computed from span)
+# "i" bar count table — confirmed from D80 plan inset
+# Key: span_ft → count of i-bars (earth cover <= 10')
+# For cover > 10': use #4 @ 12" max (computed from span width)
 # ---------------------------------------------------------------------------
 
 _I_BAR_COUNT: dict[int, int] = {
-    # Confirmed from D80 sheet "I BARS, FOR EARTH COVERS UP TO AND INCLUDING 10'-0"
-    # 4→7, 5→8, 6→9, 7→10 read directly from table.
-    # 8, 10, 12, 14 are best-available estimates — update when full table is legible.
-    4: 7, 5: 8, 6: 9, 7: 10, 8: 13, 10: 14, 12: 16, 14: 19,
+    4: 7, 5: 8, 6: 9, 7: 10, 8: 11, 10: 12, 12: 15, 14: 20,
 }
 
 # Known spans present in the D80 table
@@ -166,7 +170,7 @@ _KNOWN_SPANS = sorted({k[0] for k in _D80})
 
 
 # ---------------------------------------------------------------------------
-# Helper: D80 lookup (with nearest-span interpolation for missing spans 6/7/8)
+# Helper: D80 lookup (with nearest-height fallback for missing heights)
 # ---------------------------------------------------------------------------
 
 def _bc_lookup(span_ft: int, height_ft: int, cover_ft: int,
@@ -175,11 +179,9 @@ def _bc_lookup(span_ft: int, height_ft: int, cover_ft: int,
     Return the D80 row for (span_ft, height_ft, cover_ft).
 
     All D80 standard spans (4, 5, 6, 7, 8, 10, 12, 14) are in the dict.
-    The interpolation branch below handles non-standard spans only.
-
-    For exact keys not in the table (height outside the populated range for a
-    given span), the nearest available height for that span/cover is used and
-    a warning is logged.
+    For non-standard spans, interpolates between nearest tabulated spans.
+    For heights outside the tabulated range for a given span, uses the
+    nearest available height and logs a warning.
     """
     cover_key = 20 if cover_ft > 10 else 10
 
@@ -205,12 +207,11 @@ def _bc_lookup(span_ft: int, height_ft: int, cover_ft: int,
         )
         return _D80[(span_ft, nearest_h, cover_key)]
 
-    # --- span not in the table (6, 7, or 8) — interpolate between neighbours ---
+    # --- span not in the table — interpolate between neighbours ---
     lower_spans = [s for s in _KNOWN_SPANS if s < span_ft]
     upper_spans = [s for s in _KNOWN_SPANS if s > span_ft]
 
     if not lower_spans or not upper_spans:
-        # Off the edge of the table — clamp to nearest span
         clamp = _KNOWN_SPANS[0] if not lower_spans else _KNOWN_SPANS[-1]
         logger.warn(
             f"D80: span={span_ft}' outside table range — clamping to span={clamp}'",
@@ -220,12 +221,11 @@ def _bc_lookup(span_ft: int, height_ft: int, cover_ft: int,
 
     s_lo = lower_spans[-1]
     s_hi = upper_spans[0]
-    t = (span_ft - s_lo) / (s_hi - s_lo)   # interpolation factor [0, 1]
+    t = (span_ft - s_lo) / (s_hi - s_lo)
 
     row_lo = _bc_lookup(s_lo, height_ft, cover_ft, logger)
     row_hi = _bc_lookup(s_hi, height_ft, cover_ft, logger)
 
-    # Interpolate numeric fields; use lower span for bar size strings
     interp: dict = {}
     for field_name in ("T1", "T2", "T3", "a_sp", "b_sp", "e_sp", "B", "lblf"):
         interp[field_name] = row_lo[field_name] + t * (row_hi[field_name] - row_lo[field_name])
@@ -249,141 +249,249 @@ def _bc_lookup(span_ft: int, height_ft: int, cover_ft: int,
 # Rule functions
 # ---------------------------------------------------------------------------
 
+# D80 a-bar hook dimensions (from D80 plan bar descriptions)
+_J_INV  = 4.0   # invert a-bar hook tail (in)
+_J_ROOF = 5.0   # roof a-bar hook tail (in)
+_A_LEG  = 6.0   # a-bar short vertical leg (in)
+
+
 def rule_bc_a_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
-    A1 — Main transverse a-bars (C/U-shape wrapping inside of box).
+    A1/A2 — Transverse a-bars (C-shaped, inside face).
 
-    These are the primary flexural bars on the inside face.  The bar wraps
-    around the inside perimeter: span + 2 rises + two 90-deg hooks.
+    A1 = invert C-bar, A2 = roof C-bar.  Both use the same size and spacing
+    from the D80 table, but have different hook tails (J=4\" invert, J=5\" roof)
+    per D80 bar schedule.
 
-    Cover: 1" interior (per D82 Note 9).
+    B_flat = S + 2*T2 - 6   (3\" cover at each outside wall face)
+    A_leg  = 6\" (standard)
+    J_inv  = 4\", J_roof = 5\"
+    Stock  = 2*(J + A_leg) + B_flat − bend_reduce(\"shape_2\", size)
 
-    qty = floor((barrel_length_in - 2) / a_sp) + 1   [1" end cover each end]
-    bar_length = S_in + 2*H_in + 2*hook_add("std_90", a_size)
-    """
-    S_in   = int(p.span_ft) * 12
-    H_in   = p.height_ft * 12
-    L_in   = p.barrel_length_ft * 12
-
-    row    = _bc_lookup(int(p.span_ft), int(p.height_ft), int(p.max_earth_cover_ft), logger)
-    a_size = row["a_s"]
-    a_sp   = row["a_sp"]
-
-    ha      = hook_add("std_90", a_size)
-    bar_len = S_in + 2 * H_in + 2 * ha
-    qty     = math.floor((L_in - 2) / a_sp) + 1
-
-    logger.step(
-        f"A1 ({a_size}@{a_sp}\"): S={S_in}\" + 2×H={2*H_in}\" + 2×hook({ha}\") = {bar_len:.1f}\"  "
-        f"qty=⌊({L_in}-2)/{a_sp}⌋+1={qty}",
-        source="BoxCulvertRules",
-    )
-    logger.result("A1", f"{a_size} × {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
-
-    return [BarRow(
-        mark="A1", size=a_size, qty=qty, length_in=bar_len,
-        shape="C",
-        leg_a_in=ha, leg_b_in=H_in, leg_c_in=S_in, leg_d_in=H_in,
-        notes=f"A-bars @{a_sp}\" oc  S+2H+2hooks",
-        source_rule="rule_bc_a_bars",
-    )]
-
-
-def rule_bc_b_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
-    """
-    B1 — Secondary transverse b-bars (outside face, U-shape).
-
-    These bars span the outside of the box: span + 2 wall thicknesses + hooks.
-
-    qty = floor((barrel_length_in - 2) / b_sp) + 1   [1" end cover each end]
-    bar_length = S_in + 2*T2 + 2*hook_add("std_90", b_size)
+    qty each = floor(L / a_sp) + 2
     """
     S_in = int(p.span_ft) * 12
     L_in = p.barrel_length_ft * 12
 
     row    = _bc_lookup(int(p.span_ft), int(p.height_ft), int(p.max_earth_cover_ft), logger)
-    b_size = row["b_s"]
-    b_sp   = row["b_sp"]
+    a_size = row["a_s"]
+    a_sp   = row["a_sp"]
     T2     = row["T2"]
 
-    hb      = hook_add("std_90", b_size)
-    bar_len = S_in + 2 * T2 + 2 * hb
-    qty     = math.floor((L_in - 2) / b_sp) + 1
+    B_flat  = S_in + 2 * T2 - 6
+    deduct  = bend_reduce("shape_2", a_size)
+    qty     = math.floor(L_in / a_sp) + 2
+
+    len_inv  = 2 * (_J_INV  + _A_LEG) + B_flat - deduct
+    len_roof = 2 * (_J_ROOF + _A_LEG) + B_flat - deduct
 
     logger.step(
-        f"B1 ({b_size}@{b_sp}\"): S={S_in}\" + 2×T2={2*T2}\" + 2×hook({hb}\") = {bar_len:.1f}\"  "
-        f"qty=⌊({L_in}-2)/{b_sp}⌋+1={qty}",
+        f"A-bars ({a_size}@{a_sp}\"): B_flat=S+2T2-6={S_in}+{2*T2:.1f}-6={B_flat:.1f}\"  "
+        f"deduct(shape_2)={deduct}\"  qty=floor({L_in}/{a_sp})+2={qty}",
         source="BoxCulvertRules",
     )
-    logger.result("B1", f"{b_size} × {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+    logger.step(
+        f"A1 invert: 2*(J={_J_INV}+A={_A_LEG})+{B_flat:.1f}-{deduct}={len_inv:.1f}\"  "
+        f"A2 roof:   2*(J={_J_ROOF}+A={_A_LEG})+{B_flat:.1f}-{deduct}={len_roof:.1f}\"",
+        source="BoxCulvertRules",
+    )
+    logger.result("A1", f"{a_size} x {qty} @ {fmt_inches(len_inv)}", source="BoxCulvertRules")
+    logger.result("A2", f"{a_size} x {qty} @ {fmt_inches(len_roof)}", source="BoxCulvertRules")
+
+    return [
+        BarRow(
+            mark="A1", size=a_size, qty=qty, length_in=len_inv,
+            shape="C",
+            leg_a_in=_J_INV, leg_b_in=_A_LEG, leg_c_in=B_flat,
+            notes=f"Invert a-bars @{a_sp}\" oc  J={_J_INV}\" A={fmt_inches(_A_LEG)} B={fmt_inches(B_flat)}",
+            source_rule="rule_bc_a_bars",
+        ),
+        BarRow(
+            mark="A2", size=a_size, qty=qty, length_in=len_roof,
+            shape="C",
+            leg_a_in=_J_ROOF, leg_b_in=_A_LEG, leg_c_in=B_flat,
+            notes=f"Roof a-bars @{a_sp}\" oc  J={_J_ROOF}\" A={fmt_inches(_A_LEG)} B={fmt_inches(B_flat)}",
+            source_rule="rule_bc_a_bars",
+        ),
+    ]
+
+
+def rule_bc_b_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
+    """
+    B1 — Transverse b-bars (L-shaped, both side walls).
+
+    Per D80 typical section the b-bar is an L-bar with:
+      long_leg  = H + 12\"   (wall height plus 1'-0\" into slab)
+      short_leg = table B    (horizontal arm; read directly from D80 table)
+
+    Stock = long_leg + short_leg − bend_reduce(\"shape_1\", size)
+
+    qty = 2 * (floor(L / b_sp) + 2)   (2 walls, 1\" cover each end)
+    """
+    H_in = p.height_ft * 12
+    L_in = p.barrel_length_ft * 12
+
+    row    = _bc_lookup(int(p.span_ft), int(p.height_ft), int(p.max_earth_cover_ft), logger)
+    b_size = row["b_s"]
+    b_sp   = row["b_sp"]
+    B_dim  = row["B"]
+
+    long_leg  = H_in + 12.0
+    short_leg = float(B_dim)
+    deduct    = bend_reduce("shape_1", b_size)
+    bar_len   = long_leg + short_leg - deduct
+    qty       = 2 * (math.floor(L_in / b_sp) + 2)
+
+    logger.step(
+        f"B1 ({b_size}@{b_sp}\"): long=H+12={H_in:.0f}+12={long_leg:.0f}\"  "
+        f"short=B={short_leg:.0f}\"  deduct(shape_1)={deduct}\"  "
+        f"stock={bar_len:.1f}\"  qty=2*(floor({L_in}/{b_sp})+2)={qty}",
+        source="BoxCulvertRules",
+    )
+    logger.result("B1", f"{b_size} x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
 
     return [BarRow(
         mark="B1", size=b_size, qty=qty, length_in=bar_len,
-        shape="U",
-        leg_a_in=hb, leg_b_in=S_in + 2 * T2, leg_c_in=hb,
-        notes=f"B-bars @{b_sp}\" oc  S+2×T2+2hooks",
+        shape="L",
+        leg_a_in=long_leg, leg_b_in=short_leg,
+        notes=f"Wall b-bars @{b_sp}\" oc  A={fmt_inches(long_leg)} B={fmt_inches(short_leg)}",
         source_rule="rule_bc_b_bars",
     )]
 
 
 def rule_bc_e_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
-    E1 — Longitudinal distribution e-bars (both faces, along barrel length).
+    E1 — Vertical e-bars (straight, both side walls).
 
-    These bars run the full barrel length and are distributed around the
-    cross-section perimeter (both faces of all four walls/slabs).
+    Per D80 typical section e-bars run vertically the full wall height
+    including slab thicknesses, with 3\" cover top and bottom:
 
-    qty_per_row = floor(2*(S_in + H_in) / e_sp) + 1
-    bar_length  = barrel_length_in - 4   [2" cover each end]
+      bar_len = T1 + H + T3 - 6   (3\" cover at top and bottom)
+
+    qty = 2 * (floor(L / e_sp) + 1)   (2 walls)
     """
-    S_in = int(p.span_ft) * 12
     H_in = p.height_ft * 12
     L_in = p.barrel_length_ft * 12
 
     row    = _bc_lookup(int(p.span_ft), int(p.height_ft), int(p.max_earth_cover_ft), logger)
     e_size = row["e_s"]
     e_sp   = row["e_sp"]
+    T1     = row["T1"]
+    T3     = row["T3"]
 
-    bar_len = L_in - 4
-    qty     = math.floor(2 * (S_in + H_in) / e_sp) + 1
+    bar_len = T1 + H_in + T3 - 6.0
+    qty     = 2 * (math.floor(L_in / e_sp) + 1)
 
     logger.step(
-        f"E1 ({e_size}@{e_sp}\"): length={L_in}-4={bar_len}\"  "
-        f"qty=⌊2×({S_in}+{H_in})/{e_sp}⌋+1={qty}",
+        f"E1 ({e_size}@{e_sp}\"): T1+H+T3-6={T1}+{H_in:.0f}+{T3}-6={bar_len:.1f}\"  "
+        f"qty=2*(floor({L_in}/{e_sp})+1)={qty}",
         source="BoxCulvertRules",
     )
-    logger.result("E1", f"{e_size} × {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+    logger.result("E1", f"{e_size} x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
 
     return [BarRow(
         mark="E1", size=e_size, qty=qty, length_in=bar_len,
         shape="Str",
-        notes=f"E-bars @{e_sp}\" oc  perimeter distribution",
+        notes=f"Vertical e-bars @{e_sp}\" oc  T1+H+T3-6={fmt_inches(bar_len)}",
         source_rule="rule_bc_e_bars",
+    )]
+
+
+def rule_bc_h_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
+    """
+    H1 — Horizontal h-bars (#4 @ 12\" max, longitudinal, all 4 wall faces).
+
+    Per D80 typical section h-bars are horizontal longitudinal distribution
+    bars at 12\" max vertical spacing on all four faces (inside and outside
+    of both side walls).
+
+      H_total       = T1 + H + T3
+      bars_per_face = floor(H_total / 12) + 1
+      qty           = 4 * bars_per_face   (2 walls x 2 faces)
+      bar_len       = L - 6              (3\" cover each end)
+    """
+    H_in = p.height_ft * 12
+    L_in = p.barrel_length_ft * 12
+
+    row = _bc_lookup(int(p.span_ft), int(p.height_ft), int(p.max_earth_cover_ft), logger)
+    T1  = row["T1"]
+    T3  = row["T3"]
+
+    H_total       = T1 + H_in + T3
+    bars_per_face = math.floor(H_total / 12) + 1
+    qty           = 4 * bars_per_face
+    bar_len       = L_in - 6.0
+
+    logger.step(
+        f"H1 (#4@12\"): H_total=T1+H+T3={T1}+{H_in:.0f}+{T3}={H_total:.1f}\"  "
+        f"bars_per_face=floor({H_total:.1f}/12)+1={bars_per_face}  "
+        f"qty=4x{bars_per_face}={qty}  len={fmt_inches(bar_len)}",
+        source="BoxCulvertRules",
+    )
+    logger.result("H1", f"#4 x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+
+    return [BarRow(
+        mark="H1", size="#4", qty=qty, length_in=bar_len,
+        shape="Str",
+        notes=f"h-bars #4 @12\" vert  4 faces x {bars_per_face}/face  len={fmt_inches(bar_len)}",
+        source_rule="rule_bc_h_bars",
+    )]
+
+
+def rule_bc_f_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
+    """
+    F1 — Transverse f-bars (#4 @ 12\" max, roof slab).
+
+    Per D80 typical section f-bars are straight transverse bars in the
+    roof slab, same flat length as the a-bars:
+
+      bar_len = S + 2*T2 - 6   (3\" cover at each outside wall face)
+      qty     = floor(L / 12) + 2
+    """
+    S_in = int(p.span_ft) * 12
+    L_in = p.barrel_length_ft * 12
+
+    row = _bc_lookup(int(p.span_ft), int(p.height_ft), int(p.max_earth_cover_ft), logger)
+    T2  = row["T2"]
+
+    bar_len = S_in + 2 * T2 - 6.0
+    qty     = math.floor(L_in / 12) + 2
+
+    logger.step(
+        f"F1 (#4@12\"): S+2T2-6={S_in}+{2*T2:.1f}-6={bar_len:.1f}\"  "
+        f"qty=floor({L_in}/12)+2={qty}",
+        source="BoxCulvertRules",
+    )
+    logger.result("F1", f"#4 x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+
+    return [BarRow(
+        mark="F1", size="#4", qty=qty, length_in=bar_len,
+        shape="Str",
+        notes=f"Roof f-bars #4 @12\" oc  S+2T2-6={fmt_inches(bar_len)}",
+        source_rule="rule_bc_f_bars",
     )]
 
 
 def rule_bc_i_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
-    I1 — Longitudinal i-bars along the barrel (from D80 i-bar count table).
+    I1 — Longitudinal i-bars (straight, invert slab).
 
-    For earth cover <= 10': count from {4:7, 5:8, 6:9, 7:10, 8:13, 10:14, 12:16, 14:19}
-    (4–7 confirmed from D80 sheet; 8–14 are estimates pending legible scan).
-    For earth cover >  10': qty = floor((S_in - 4) / 12) + 1  (#4 @ 12" max).
+    For earth cover <= 10': count from D80 i-bar table.
+    For earth cover >  10': qty = floor((S - 4) / 12) + 1  (#4 @ 12\" max).
 
     Size is always #4.
-    bar_length = barrel_length_in - 4   [2" cover each end]
+    bar_len = L - 4   (2\" cover each end)
     """
-    S_in   = int(p.span_ft) * 12
-    L_in   = p.barrel_length_ft * 12
-    cover  = int(p.max_earth_cover_ft)
-    span   = int(p.span_ft)
+    S_in  = int(p.span_ft) * 12
+    L_in  = p.barrel_length_ft * 12
+    cover = int(p.max_earth_cover_ft)
+    span  = int(p.span_ft)
 
-    bar_len = L_in - 4
+    bar_len = L_in - 4.0
 
     if cover <= 10:
         qty = _I_BAR_COUNT.get(span)
         if qty is None:
-            # Interpolate for spans not in the i-bar count table (6, 7, 8)
             lo_spans = [s for s in sorted(_I_BAR_COUNT) if s <= span]
             hi_spans = [s for s in sorted(_I_BAR_COUNT) if s >= span]
             if lo_spans and hi_spans:
@@ -396,41 +504,36 @@ def rule_bc_i_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
             else:
                 qty = math.floor((S_in - 4) / 12) + 1
             logger.warn(
-                f"I-bar count for span={span}' not in table — interpolated qty={qty}. "
-                "Verify when D80 span data is obtained.",
+                f"I-bar count for span={span}' not in table — interpolated qty={qty}.",
                 source="BoxCulvertRules",
             )
         logger.step(
-            f"I1 (cover={cover}'<=10'): table count={qty} bars  length={fmt_inches(bar_len)}",
+            f"I1 (cover={cover}'<=10'): D80 table count={qty}  len={fmt_inches(bar_len)}",
             source="BoxCulvertRules",
         )
     else:
         qty = math.floor((S_in - 4) / 12) + 1
         logger.step(
-            f"I1 (cover={cover}'>10'): #4@12\" max  qty=⌊({S_in}-4)/12⌋+1={qty}  "
-            f"length={fmt_inches(bar_len)}",
+            f"I1 (cover={cover}'>10'): #4@12\" max  qty=floor(({S_in}-4)/12)+1={qty}  "
+            f"len={fmt_inches(bar_len)}",
             source="BoxCulvertRules",
         )
 
-    logger.result("I1", f"#4 × {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+    logger.result("I1", f"#4 x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
 
     return [BarRow(
         mark="I1", size="#4", qty=qty, length_in=bar_len,
         shape="Str",
-        notes="I-bars  cover={}'  {}".format(cover, "table" if cover <= 10 else "#4@12\" max"),
+        notes="I-bars  cover={}'  {}".format(cover, "D80 table" if cover <= 10 else "#4@12\" max"),
         source_rule="rule_bc_i_bars",
     )]
 
 
 def rule_bc_hoops(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
-    HP1 — #4 closed rectangular hoops @ 12" max (per D82 miscellaneous details).
+    HP1 — #4 closed rectangular hoops (D82 miscellaneous details).
 
-    Hoops encircle the full box cross-section perimeter.
-
-    qty        = floor((barrel_length_in - 2) / 12) + 1   [1" end cover]
-    hoop_perimeter = 2*(S_in + 2*T2 + H_in + T1 + T3)
-    hoop_length = hoop_perimeter - bend_reduce("shape_4", "#4")
+    Not called by the default template rules list.  Retained for reference.
     """
     S_in = int(p.span_ft) * 12
     H_in = p.height_ft * 12
@@ -441,101 +544,25 @@ def rule_bc_hoops(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     T2  = row["T2"]
     T3  = row["T3"]
 
-    perimeter  = 2 * (S_in + 2 * T2 + H_in + T1 + T3)
-    deduct     = bend_reduce("shape_4", "#4")
-    hoop_len   = perimeter - deduct
-    qty        = math.floor((L_in - 2) / 12) + 1
+    perimeter = 2 * (S_in + 2 * T2 + H_in + T1 + T3)
+    deduct    = bend_reduce("shape_4", "#4")
+    hoop_len  = perimeter - deduct
+    qty       = math.floor((L_in - 2) / 12) + 1
 
     logger.step(
-        f"HP1 (#4@12\"): perimeter=2×(S+2T2+H+T1+T3)=2×({S_in}+{2*T2}+{H_in}+{T1}+{T3})={perimeter}\"  "
-        f"deduct={deduct}\"  hoop_len={hoop_len:.1f}\"  "
-        f"qty=⌊({L_in}-2)/12⌋+1={qty}",
+        f"HP1 (#4@12\"): perimeter=2*(S+2T2+H+T1+T3)={perimeter}\"  "
+        f"deduct={deduct}\"  hoop_len={hoop_len:.1f}\"  qty={qty}",
         source="BoxCulvertRules",
     )
-    logger.result("HP1", f"#4 × {qty} @ {fmt_inches(hoop_len)}", source="BoxCulvertRules")
+    logger.result("HP1", f"#4 x {qty} @ {fmt_inches(hoop_len)}", source="BoxCulvertRules")
 
     return [BarRow(
         mark="HP1", size="#4", qty=qty, length_in=hoop_len,
         shape="Rect",
         leg_a_in=S_in + 2 * T2,
         leg_b_in=H_in + T1 + T3,
-        notes=f"Hoops @12\" oc  perimeter={fmt_inches(perimeter)}-{deduct}\" deduct",
+        notes=f"Hoops @12\" oc  (not in default template)",
         source_rule="rule_bc_hoops",
-    )]
-
-
-def rule_bc_f_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
-    """
-    F1 — LONG 'f' bars: outside-face longitudinal distribution on roof and floor slabs.
-
-    D80 typical section shows LONG 'f' BAR at the top and bottom of the section
-    (outside face of roof slab and outside face of invert slab), running the full
-    barrel length.  Size is #4 at 12\" max — the same '#4 @ 12 Max' notation that
-    appears throughout the D80 drawing.
-
-    qty = 2 × (⌊S_in / 12⌋ + 1)   [one row per slab face, top + bottom]
-    length = barrel_length_in − 4   [2\" cover each end]
-
-    NOTE: Placement and qty per D80 drawing interpretation. Verify against D80
-          notes when available.
-    """
-    S_in = int(p.span_ft) * 12
-    L_in = p.barrel_length_ft * 12
-
-    bar_len      = L_in - 4
-    qty_per_slab = math.floor(S_in / 12) + 1
-    qty          = 2 * qty_per_slab          # roof outside face + floor outside face
-
-    logger.step(
-        f"F1 (#4@12\"): roof+floor outside face  "
-        f"qty=2×(⌊{S_in}/12⌋+1)=2×{qty_per_slab}={qty}  length={fmt_inches(bar_len)}",
-        source="BoxCulvertRules",
-    )
-    logger.result("F1", f"#4 × {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
-
-    return [BarRow(
-        mark="F1", size="#4", qty=qty, length_in=bar_len,
-        shape="Str",
-        notes="LONG f-bars @12\" oc  outside face roof+floor slabs",
-        review_flag="Verify f-bar qty per D80 notes",
-        source_rule="rule_bc_f_bars",
-    )]
-
-
-def rule_bc_h_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
-    """
-    H1 — 'h' bars: longitudinal #4 distribution bars in both side walls.
-
-    D80 typical section labels 'h' BARS with '#4 @ 12 Max' in the wall area.
-    These run the full barrel length at 12\" vertical spacing on both faces
-    of both side walls.
-
-    bars_per_face = ⌊(H_in − 4) / 12⌋ + 1
-    qty           = 2 walls × 2 faces × bars_per_face
-    length        = barrel_length_in − 4   [2\" cover each end]
-
-    NOTE: Qty formula is estimated. Verify against D80 Note 9.
-    """
-    H_in = p.height_ft * 12
-    L_in = p.barrel_length_ft * 12
-
-    bar_len       = L_in - 4
-    bars_per_face = math.floor((H_in - 4) / 12) + 1
-    qty           = 2 * 2 * bars_per_face    # 2 walls × 2 faces
-
-    logger.step(
-        f"H1 (#4@12\" vert): bars_per_face=⌊({H_in}-4)/12⌋+1={bars_per_face}  "
-        f"qty=2w×2f×{bars_per_face}={qty}  length={fmt_inches(bar_len)}",
-        source="BoxCulvertRules",
-    )
-    logger.result("H1", f"#4 × {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
-
-    return [BarRow(
-        mark="H1", size="#4", qty=qty, length_in=bar_len,
-        shape="Str",
-        notes=f"h-bars @12\" vert  2 walls×2 faces×{bars_per_face}/face",
-        review_flag="Verify h-bar count per D80 Note 9",
-        source_rule="rule_bc_h_bars",
     )]
 
 
@@ -544,32 +571,29 @@ def rule_bc_haunch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     HC1 — #5 L-bars at the 4 inside re-entrant corners (D80 'SEE NOTE 6').
 
     D82 cross-section shows '#5 TOTAL 2' at each inside barrel corner
-    (wall-to-slab junction), so 2 bars per corner × 4 corners = 8 bars total.
-    These are placed transversely (not repeated along the barrel).
-    Leg lengths are estimated at 18\" each — verify against D82 detail.
+    (wall-to-slab junction), so 2 bars per corner x 4 corners = 8 bars total.
+    Placed transversely; leg lengths estimated at 18\" each — verify per D82.
 
-    qty    = 4 corners × 2 bars/corner = 8
+    qty    = 4 corners x 2 bars/corner = 8
     length = 18 + 18 − bend_reduce('shape_1', '#5')
     """
-    L_in = p.barrel_length_ft * 12   # kept for potential future use
-
-    leg     = 18.0    # each leg — estimated; verify per D82 detail
-    deduct  = bend_reduce("shape_1", "#5")
+    leg    = 18.0
+    deduct = bend_reduce("shape_1", "#5")
     bar_len = 2 * leg - deduct
-    qty     = 8       # 4 corners × 2 bars/corner per D82 cross-section
+    qty     = 8
 
     logger.step(
-        f"HC1 (#5 L): 4 corners × 2 bars/corner = {qty}  "
-        f"length=2×{leg}\"-{deduct}\"deduct={bar_len:.1f}\"  (D82 '#5 TOTAL 2' per corner)",
+        f"HC1 (#5 L): 4 corners x 2/corner = {qty}  "
+        f"len=2x{leg}-{deduct}={bar_len:.1f}\"",
         source="BoxCulvertRules",
     )
-    logger.result("HC1", f"#5 × {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+    logger.result("HC1", f"#5 x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
 
     return [BarRow(
         mark="HC1", size="#5", qty=qty, length_in=bar_len,
         shape="L",
         leg_a_in=leg, leg_b_in=leg,
-        notes="Haunch bars #5  4 corners × 2 bars/corner  each leg≈18\" (est.)",
+        notes="Haunch bars #5  4 corners x 2/corner  each leg=18\" (est.)",
         review_flag="Verify leg dims per D82 haunch detail",
         source_rule="rule_bc_haunch_bars",
     )]
@@ -577,8 +601,8 @@ def rule_bc_haunch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
 
 def rule_bc_validate(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
-    Validate span/height combo exists (or can be interpolated) in the D80 table,
-    and log lb/lf estimate against the D80 published value for sanity checking.
+    Validate span/height combo exists in the D80 table and log the
+    published lb/lf for sanity checking.
     """
     span   = int(p.span_ft)
     height = int(p.height_ft)
@@ -592,10 +616,8 @@ def rule_bc_validate(p: Params, logger: ReasoningLogger) -> list[BarRow]:
             f"D80 exact row found: span={span}' height={height}' cover={cover_key}'",
             source="BoxCulvertRules",
         )
-        published_lblf = _D80[exact_key]["lblf"]
         logger.step(
-            f"D80 published lb/lf = {published_lblf} (reference only — "
-            "actual weight depends on barrel length and bar cut lengths)",
+            f"D80 published lb/lf = {_D80[exact_key]['lblf']} (reference only)",
             source="BoxCulvertRules",
         )
     else:
