@@ -1045,24 +1045,19 @@ def _bar_shape_svg(shape: str) -> str:
         lines.append(ln(x_ext, yt, x_ext, yt + 12))
 
     elif shape == "S6":
-        # S6 closed hoop -- per Vista bend chart scan_20260131.pdf:
-        # rectangular hoop with two short tails (A,G=5.5") at top corners
-        # plus a short bottom return leg (C=6.5"). Drawn tight per shop note.
+        # S6 closed hoop per user sketch -- closed rectangular outline with the
+        # right leg extending DOWN past the bottom-right corner (anchorage tail).
         xl    = m + 8
-        xr    = W - m - 8
+        xr    = W - m - 12
         yt    = m + 6
-        yb    = H - m - 6
-        tail  = 7
-        # left side
-        lines.append(ln(xl, yt, xl, yb))
-        # bottom
-        lines.append(ln(xl, yb, xr, yb))
-        # right side
-        lines.append(ln(xr, yt, xr, yb))
-        # top bar with hook tails curling down at both ends (A and G)
-        lines.append(ln(xl - 3, yt, xr + 3, yt))
-        lines.append(ln(xl - 3, yt, xl - 3, yt + tail))
-        lines.append(ln(xr + 3, yt, xr + 3, yt + tail))
+        yb    = H - m - 12
+        tail  = 10  # right-side overrun below the bottom edge
+        # closed rectangle
+        lines.append(ln(xl, yt, xr, yt))   # top
+        lines.append(ln(xl, yt, xl, yb))   # left
+        lines.append(ln(xl, yb, xr, yb))   # bottom
+        # right side -- starts at top-right and runs PAST the bottom corner
+        lines.append(ln(xr, yt, xr, yb + tail))
 
     elif shape == "T14":
         # T14 stepped / L-shape closed hoop per Vista bend chart.
