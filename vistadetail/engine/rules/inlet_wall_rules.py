@@ -788,12 +788,20 @@ def rule_g2exp_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 
 def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """Expanded G2 hoops — S6 bend type.
+    """Expanded G2 hoops.
 
-    Excel formulas:
-      Reg:    ROUNDUP((Y_exp_ext) / 5 * n, 0)    span = gut_dim
-      Notch:  ROUNDUP((X_ext) / 5 * 2 * n, 0)   span = notch_dim
-    Bend chart S6: A=5.5" B=span C=6.5" D=span G=5.5"
+    HP1 (regular) — S6 bend type, unchanged from prior version.
+      Excel:    ROUNDUP((Y_exp_ext) / 5 * n, 0)
+      Span:     gut_dim
+      Bend:     S6   A=5.5"  B=span  C=6.5"  D=span  G=5.5"
+
+    HP2 (notch) — T14 bend type per Vista shop bend chart.
+      T14 is a stepped / L-shaped closed hoop wrapping the expansion notch.
+      Quantity formula unchanged (Excel match).
+      Length formula treats the bar as a perimeter wrap of the notch-zone
+      cross-section (notch_dim + tails); T14 leg breakdown left to shop
+      drawings — review_flag set so the detailer can confirm A–G dims
+      against the Vista T14 bend chart.
     """
     bars: list[BarRow] = []
     n = p.n_struct
@@ -805,7 +813,7 @@ def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
                  f"gut={fmt_inches(p.gut_dim)}, S6 stock=2×gut+11.5\"={fmt_inches(hp1_total)}")
         bars.append(BarRow(
             mark="HP1", size="#5", qty=qty_reg, length_in=hp1_total,
-            shape="Hoop",
+            shape="S6",
             leg_a_in=_HP_TAIL_HOOK,    # A = 5.5"
             leg_b_in=p.gut_dim,        # B = left side height
             leg_c_in=_HP_TAIL_PLAIN,   # C = 6.5" bottom span
@@ -819,16 +827,20 @@ def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
         qty_notch = math.ceil(p.x_ext_in / 5.0 * 2 * n)
         hp2_total = _s6_total(p.notch_dim)
         log.step(f"HP2 notch: CEIL({fmt_inches(p.x_ext_in)}/5*2*{n}) = {qty_notch}, "
-                 f"notch={fmt_inches(p.notch_dim)}, S6 stock=2×notch+11.5\"={fmt_inches(hp2_total)}")
+                 f"notch={fmt_inches(p.notch_dim)}, T14 stock≈2×notch+11.5\"={fmt_inches(hp2_total)}")
         bars.append(BarRow(
             mark="HP2", size="#5", qty=qty_notch, length_in=hp2_total,
-            shape="Hoop",
-            leg_a_in=_HP_TAIL_HOOK,    # A = 5.5"
+            shape="T14",
+            leg_a_in=_HP_TAIL_HOOK,    # A = 5.5" (inside step tail)
             leg_b_in=p.notch_dim,      # B = notch span
             leg_c_in=_HP_TAIL_PLAIN,   # C = 6.5"
             leg_d_in=p.notch_dim,      # D = notch span
             leg_g_in=_HP_TAIL_HOOK,    # G = 5.5"
-            notes="Notched Hoops @5oc, S6 bend",
+            notes="Notched Hoops @5oc, T14 bend (Vista bend chart)",
+            review_flag=(
+                "T14 leg breakdown (A–G) per Vista shop bend chart. "
+                "Verify A/B/C/D/E/F/G dimensions against bend chart at shop-drawing stage."
+            ),
             source_rule="rule_g2exp_hoops",
         ))
 
