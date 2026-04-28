@@ -1044,6 +1044,48 @@ def _bar_shape_svg(shape: str) -> str:
         # small hook curl from overshoot end downward
         lines.append(ln(x_ext, yt, x_ext, yt + 12))
 
+    elif shape == "S6":
+        # S6 closed hoop -- per Vista bend chart scan_20260131.pdf:
+        # rectangular hoop with two short tails (A,G=5.5") at top corners
+        # plus a short bottom return leg (C=6.5"). Drawn tight per shop note.
+        xl    = m + 8
+        xr    = W - m - 8
+        yt    = m + 6
+        yb    = H - m - 6
+        tail  = 7
+        # left side
+        lines.append(ln(xl, yt, xl, yb))
+        # bottom
+        lines.append(ln(xl, yb, xr, yb))
+        # right side
+        lines.append(ln(xr, yt, xr, yb))
+        # top bar with hook tails curling down at both ends (A and G)
+        lines.append(ln(xl - 3, yt, xr + 3, yt))
+        lines.append(ln(xl - 3, yt, xl - 3, yt + tail))
+        lines.append(ln(xr + 3, yt, xr + 3, yt + tail))
+
+    elif shape == "T14":
+        # T14 stepped / L-shape closed hoop per Vista bend chart.
+        # Two rectangles overlapping: smaller upper-right + larger lower-left.
+        # Labels on chart: F (left) E (bot) D (right) C (top-upper) B (step)
+        # G (top-lower) and A (small inside step tail).
+        xl   = m + 4              # F = left
+        xr   = W - m - 4          # D = right
+        yt_u = m + 4              # top of UPPER rectangle (C row)
+        yt_l = H * 0.42           # top of LOWER rectangle (G row, where step is)
+        yb   = H - m - 5          # bottom (E row)
+        x_step = W * 0.38         # x of vertical step (B / A column)
+        # Outer L perimeter, traversed clockwise from F-top:
+        # F up | G right | B up | C right | D down | E left back to F
+        lines.append(ln(xl, yt_l, xl, yb))           # F  left vertical (lower portion)
+        lines.append(ln(xl, yb, xr, yb))             # E  bottom
+        lines.append(ln(xr, yb, xr, yt_u))           # D  right vertical (full height)
+        lines.append(ln(xr, yt_u, x_step, yt_u))     # C  top of upper rect
+        lines.append(ln(x_step, yt_u, x_step, yt_l)) # B  vertical step down
+        lines.append(ln(x_step, yt_l, xl, yt_l))     # G  top of lower rect (back to F)
+        # A = small inside tail/hook indicator at the step corner
+        lines.append(ln(x_step + 4, yt_l - 1, x_step + 4, yt_l + 6))
+
     elif shape == "Rect":
         xl, xr = m + 4, W - m - 4
         yt, yb = m + 6, H - m - 6
