@@ -292,9 +292,12 @@ def _diag_g2_inlet() -> bytes:
 def _diag_expanded_inlet() -> bytes:
     """Plan view of G2 expanded inlet -- per Caltrans Expanded G2/G4 standard plan.
 
-    Outer concrete box, dashed min-clear boundary, Grate Type 24 with horizontal
-    stripes, bar-mark circles (F, H, G, C per Caltrans legend), T labels at
+    Outer concrete box, Grate Type 24 with horizontal stripes, T labels at
     corners, and L1 / L2 dimension callouts.
+
+    Section-cut callouts (F, H, G, C) are intentionally omitted at this stage --
+    they will be added later as proper Caltrans-style section markers
+    (circle + arrow tag, NOT a bar-mark circle) when shop drawings are added.
     """
     T   = 0.75   # wall thickness (ft) ≈ 9"
     OX  = 7.5    # exterior X width (ft)
@@ -338,19 +341,9 @@ def _diag_expanded_inlet() -> bytes:
             ha="center", va="center", fontsize=7, color="#333", zorder=7,
             bbox=dict(boxstyle="round,pad=0.22", fc="white", ec="none", alpha=0.9))
 
-    # ── Bar-mark circles (F, H, G, C per Caltrans legend) ─────────────────
-    def _mark(x, y, letter, fs=8):
-        ax.plot(x, y, "o", color="white", ms=16, mec=_OUTLINE, mew=1.0, zorder=8)
-        ax.text(x, y, letter, ha="center", va="center",
-                fontsize=fs, color=_LABEL, fontweight="bold", zorder=9)
-
-    _mark(OX / 2, OY + 0.5, "G")                              # G — top center (curb ref)
-    _mark(grate_cx, grate_cy + 0.55, "G", fs=7)               # G — inside grate
-    _mark(-0.38, OY / 2, "F")                                  # F — left outer face
-    _mark(OX + 0.38, OY / 2, "F")                             # F — right outer face
-    _mark(grate_x + grate_w + 0.38, OY / 2, "H")              # H — right open zone
-    _mark(grate_x + grate_w / 2, grate_y - 0.38, "C")         # C — bottom of grate
-    _mark(grate_x + grate_w / 2, grate_y + grate_h + 0.38, "C")  # C — top of grate
+    # ── Section-cut callouts (F, H, G, C) intentionally omitted ──────────
+    # Will be added as Caltrans section markers (circle + tag arrow) when
+    # shop drawings are added.
 
     # ── T labels — vertical at right corners ──────────────────────────────
     tr_x = OX + 0.38
@@ -483,8 +476,10 @@ def _diag_inlet_top() -> bytes:
 def _diag_expanded_inlet_top() -> bytes:
     """Plan view of G2 expanded inlet top.
 
-    Same layout as G2 Expanded Inlet (bar-mark circles, grate, L1/L2, T labels)
-    with an H dimension arrow added on the far right for the fill height.
+    Same layout as G2 Expanded Inlet (grate, L1/L2, T labels) with an H
+    dimension arrow on the far right for the fill height.
+
+    Section-cut callouts omitted (added later for shop drawings).
     """
     T   = 0.75
     OX  = 7.5
@@ -527,19 +522,8 @@ def _diag_expanded_inlet_top() -> bytes:
             ha="center", va="center", fontsize=7, color="#333", zorder=7,
             bbox=dict(boxstyle="round,pad=0.22", fc="white", ec="none", alpha=0.9))
 
-    # ── Bar-mark circles (F, H, G, C per Caltrans legend) ─────────────────
-    def _mark(x, y, letter, fs=8):
-        ax.plot(x, y, "o", color="white", ms=16, mec=_OUTLINE, mew=1.0, zorder=8)
-        ax.text(x, y, letter, ha="center", va="center",
-                fontsize=fs, color=_LABEL, fontweight="bold", zorder=9)
-
-    _mark(OX / 2, OY + 0.5, "G")
-    _mark(grate_cx, grate_cy + 0.55, "G", fs=7)
-    _mark(-0.38, OY / 2, "F")
-    _mark(OX + 0.38, OY / 2, "F")
-    _mark(grate_x + grate_w + 0.38, OY / 2, "H")
-    _mark(grate_x + grate_w / 2, grate_y - 0.38, "C")
-    _mark(grate_x + grate_w / 2, grate_y + grate_h + 0.38, "C")
+    # ── Section-cut callouts (F, H, G, C) intentionally omitted ──────────
+    # Will be added as Caltrans section markers when shop drawings are added.
 
     # ── T labels ──────────────────────────────────────────────────────────
     tr_x = OX + 0.38
