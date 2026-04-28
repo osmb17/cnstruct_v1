@@ -1045,41 +1045,49 @@ def _bar_shape_svg(shape: str) -> str:
         lines.append(ln(x_ext, yt, x_ext, yt + 12))
 
     elif shape == "S6":
-        # S6 closed hoop per user sketch -- closed rectangular outline with the
-        # right leg extending DOWN past the bottom-right corner (anchorage tail).
-        xl    = m + 8
-        xr    = W - m - 12
-        yt    = m + 6
+        # S6 closed hoop per user sketch: closed rectangle with right leg
+        # extending down past the bottom corner (anchorage tail).
+        xl    = m + 6
+        xr    = W - m - 10
+        yt    = m + 5
         yb    = H - m - 12
-        tail  = 10  # right-side overrun below the bottom edge
-        # closed rectangle
-        lines.append(ln(xl, yt, xr, yt))   # top
-        lines.append(ln(xl, yt, xl, yb))   # left
-        lines.append(ln(xl, yb, xr, yb))   # bottom
-        # right side -- starts at top-right and runs PAST the bottom corner
-        lines.append(ln(xr, yt, xr, yb + tail))
+        tail  = 12
+        lines.append(ln(xl, yt, xr, yt))         # top
+        lines.append(ln(xl, yt, xl, yb))         # left
+        lines.append(ln(xl, yb, xr, yb))         # bottom
+        lines.append(ln(xr, yt, xr, yb + tail))  # right with tail
 
     elif shape == "T14":
-        # T14 stepped / L-shape closed hoop per Vista bend chart.
-        # Two rectangles overlapping: smaller upper-right + larger lower-left.
-        # Labels on chart: F (left) E (bot) D (right) C (top-upper) B (step)
-        # G (top-lower) and A (small inside step tail).
-        xl   = m + 4              # F = left
-        xr   = W - m - 4          # D = right
-        yt_u = m + 4              # top of UPPER rectangle (C row)
-        yt_l = H * 0.42           # top of LOWER rectangle (G row, where step is)
-        yb   = H - m - 5          # bottom (E row)
-        x_step = W * 0.38         # x of vertical step (B / A column)
-        # Outer L perimeter, traversed clockwise from F-top:
-        # F up | G right | B up | C right | D down | E left back to F
-        lines.append(ln(xl, yt_l, xl, yb))           # F  left vertical (lower portion)
-        lines.append(ln(xl, yb, xr, yb))             # E  bottom
-        lines.append(ln(xr, yb, xr, yt_u))           # D  right vertical (full height)
-        lines.append(ln(xr, yt_u, x_step, yt_u))     # C  top of upper rect
-        lines.append(ln(x_step, yt_u, x_step, yt_l)) # B  vertical step down
-        lines.append(ln(x_step, yt_l, xl, yt_l))     # G  top of lower rect (back to F)
-        # A = small inside tail/hook indicator at the step corner
-        lines.append(ln(x_step + 4, yt_l - 1, x_step + 4, yt_l + 6))
+        # T14 per user sketch: two overlapping similar-sized rectangles,
+        # diagonal offset (upper-right + lower-left), with small inside detail.
+        # Lower rect (wider, bottom-left)
+        xl_L = m + 3
+        xr_L = m + 3 + 58
+        yt_L = H * 0.37
+        yb_L = H - m - 5
+        # Upper rect (top-right, overlapping lower)
+        xl_U = m + 3 + 22
+        xr_U = W - m - 3
+        yt_U = m + 3
+        yb_U = H * 0.56
+        # Lower rect (all 4 sides)
+        lines.append(ln(xl_L, yt_L, xr_L, yt_L))     # top
+        lines.append(ln(xl_L, yt_L, xl_L, yb_L))     # left
+        lines.append(ln(xl_L, yb_L, xr_L, yb_L))     # bottom
+        lines.append(ln(xr_L, yt_L, xr_L, yb_L))     # right
+        # Upper rect (all 4 sides)
+        lines.append(ln(xl_U, yt_U, xr_U, yt_U))     # top
+        lines.append(ln(xl_U, yt_U, xl_U, yb_U))     # left
+        lines.append(ln(xl_U, yb_U, xr_U, yb_U))     # bottom
+        lines.append(ln(xr_U, yt_U, xr_U, yb_U))     # right
+        # Inside detail in overlap zone (small C-shape, opens to left)
+        a_x = xl_U + 5
+        a_y_t = yb_U - 8
+        a_y_b = yb_U - 3
+        a_w = 8
+        lines.append(ln(a_x + a_w, a_y_t, a_x, a_y_t))    # top
+        lines.append(ln(a_x, a_y_t, a_x, a_y_b))          # left vert
+        lines.append(ln(a_x, a_y_b, a_x + a_w, a_y_b))    # bottom
 
     elif shape == "Rect":
         xl, xr = m + 4, W - m - 4
