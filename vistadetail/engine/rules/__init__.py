@@ -146,12 +146,15 @@ from vistadetail.engine.rules.inlet_top_rules import (
     rule_validate_inlet_top,
 )
 from vistadetail.engine.rules.junction_structure_rules import (
+    rule_junction_top_slab_trans,
+    rule_junction_top_slab_long,
+    rule_junction_floor_trans,
+    rule_junction_floor_long,
     rule_junction_long_wall_horiz,
     rule_junction_long_wall_vert,
     rule_junction_short_wall_horiz,
     rule_junction_short_wall_vert,
-    rule_junction_floor_long,
-    rule_junction_floor_short,
+    rule_junction_a_bars,
     rule_validate_junction,
 )
 from vistadetail.engine.rules.sound_wall_rules import (
@@ -334,12 +337,15 @@ RULE_REGISTRY: dict = {
     "rule_inlet_top_short_bars":     rule_inlet_top_short_bars,
     "rule_validate_inlet_top":       rule_validate_inlet_top,
     # Junction Structure
+    "rule_junction_top_slab_trans":  rule_junction_top_slab_trans,
+    "rule_junction_top_slab_long":   rule_junction_top_slab_long,
+    "rule_junction_floor_trans":     rule_junction_floor_trans,
+    "rule_junction_floor_long":      rule_junction_floor_long,
     "rule_junction_long_wall_horiz": rule_junction_long_wall_horiz,
     "rule_junction_long_wall_vert":  rule_junction_long_wall_vert,
     "rule_junction_short_wall_horiz":rule_junction_short_wall_horiz,
     "rule_junction_short_wall_vert": rule_junction_short_wall_vert,
-    "rule_junction_floor_long":      rule_junction_floor_long,
-    "rule_junction_floor_short":     rule_junction_floor_short,
+    "rule_junction_a_bars":          rule_junction_a_bars,
     "rule_validate_junction":        rule_validate_junction,
     # Sound Wall
     "rule_sw_wall_verticals":        rule_sw_wall_verticals,
