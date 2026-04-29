@@ -17,9 +17,9 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
-import assistant as asst
-import defaults as dflt
-from caltrans_tables import caltrans_lookup
+from web import assistant as asst
+from web import defaults as dflt
+from web.caltrans_tables import caltrans_lookup
 
 def _api_key_available() -> bool:
     """Check for API key in Streamlit secrets (cloud) or env var (local)."""
@@ -29,8 +29,8 @@ def _api_key_available() -> bool:
     except Exception:
         pass
     return bool(os.environ.get("ANTHROPIC_API_KEY"))
-import diagram_gen
-import history as hist
+from web import diagram_gen
+from web import history as hist
 from vistadetail.engine.calculator import barlist_to_rows, barlist_total_weight_lb, generate_barlist
 from vistadetail.engine.reasoning_logger import ReasoningLogger
 from vistadetail.engine.templates import TEMPLATE_NAMES, TEMPLATE_REGISTRY
