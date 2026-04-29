@@ -1343,9 +1343,9 @@ def _diag_pipe_encasement() -> bytes:
 
 def _diag_junction() -> bytes:
     """
-    Plan-view schematic matching Caltrans drawing:
-    D1 inlet at top (two-hump symbol), box in middle with T|Span|T,
-    D2 outlet at bottom (two-hump symbol). Length shown on right.
+    Outline-style plan schematic matching Caltrans reference drawing.
+    D1 at top (flat semiellipse arch), box in middle, D2 at bottom.
+    Dashed lines for walls; T|Span|T labeled inside.
     """
     length_ft = float(_LIVE_PARAMS.get("length_ft", 6.0) or 6.0)
     span_ft   = float(_LIVE_PARAMS.get("span_ft",   5.0) or 5.0)
@@ -1364,75 +1364,101 @@ def _diag_junction() -> bytes:
     d2_ft   = d2_in / 12.0
     total_w = span_ft + 2 * T
     cx      = total_w / 2
-    box_h   = max(2.5, min(length_ft * 0.55, 4.5))
-    d1_sym  = d1_ft / 4
-    d2_sym  = d2_ft / 4
-    d_max   = max(d1_ft, d2_ft)
+    # True-proportion box height (display scale limited to keep diagram readable)
+    box_h   = max(length_ft, span_ft * 0.9)
+    box_h   = min(box_h, span_ft * 2.0)
 
-    left_m  = -(d_max / 2 + 1.8)
-    right_m = total_w + 1.8
-    bot_m   = -(T + d2_sym + 1.0)
-    top_m   = box_h + T + d1_sym + 1.9
+    # Flat semiellipse arch heights = D × 0.13 (very flat, matches Caltrans schematic)
+    d1_h = d1_ft * 0.13
+    d2_h = d2_ft * 0.13
+
+    # Figure margins
+    half_max = max(d1_ft, d2_ft) / 2
+    left_m   = min(cx - half_max, 0) - 1.8
+    right_m  = max(cx + half_max, total_w) + 2.2
+    bot_m    = -(d2_h + 1.0)
+    top_m    = box_h + d1_h + 2.2
 
     fig, ax = _fig(7.0, 8.5)
     ax.set_aspect("equal")
     ax.set_xlim(left_m, right_m)
     ax.set_ylim(bot_m, top_m)
 
-    # Concrete box: outer fill, interior punch-out
-    _rect(ax, 0, -T, total_w, box_h + 2 * T, fc=_CONCRETE, ec=_OUTLINE, lw=1.8)
-    _rect(ax, T, 0, span_ft, box_h, fc="white", ec=_OUTLINE, lw=1.2, zorder=3)
+    C = _OUTLINE
+    kw_outer = dict(color=C, lw=0.9, ls="--",  zorder=2)   # outer box walls
+    kw_inner = dict(color=C, lw=1.1, ls="-",   zorder=3)   # inner span boundary
+    kw_proj  = dict(color=C, lw=0.8, ls="--",  zorder=2)   # pipe projection lines
+    kw_arch  = dict(color=C, lw=1.6, zorder=5)              # pipe arch symbols
+    kw_base  = dict(color=C, lw=1.1, ls="-",   zorder=4)   # arch base line
 
-    # Dashed projection lines showing pipe edges through box and into symbols
-    dash_kw = dict(color=_OUTLINE, lw=0.75, ls="--", zorder=6)
-    for dx in (-d1_ft / 2, d1_ft / 2):
-        ax.plot([cx + dx, cx + dx], [-T, box_h + T + d1_sym], **dash_kw)
-    for dx in (-d2_ft / 2, d2_ft / 2):
-        ax.plot([cx + dx, cx + dx], [-T - d2_sym, box_h + T], **dash_kw)
+    # ── Outer box boundary (dashed) ──────────────────────────────────────
+    # Vertical outer wall faces
+    ax.plot([0,       0      ], [0, box_h], **kw_outer)
+    ax.plot([total_w, total_w], [0, box_h], **kw_outer)
+    # Top wall — portions outside D1 arch (pipe opening in centre)
+    if cx - d1_ft / 2 > 0:
+        ax.plot([0, cx - d1_ft / 2], [box_h, box_h], **kw_outer)
+        ax.plot([cx + d1_ft / 2, total_w], [box_h, box_h], **kw_outer)
+    else:
+        ax.plot([0, total_w], [box_h, box_h], **kw_outer)
+    # Bottom wall — portions outside D2 arch
+    if cx - d2_ft / 2 > 0:
+        ax.plot([0, cx - d2_ft / 2], [0, 0], **kw_outer)
+        ax.plot([cx + d2_ft / 2, total_w], [0, 0], **kw_outer)
+    else:
+        ax.plot([0, total_w], [0, 0], **kw_outer)
 
-    # Two-hump pipe symbols
-    # D1: two upward arcs at outer face of top wall
-    for off in (-d1_ft / 4, d1_ft / 4):
-        ax.add_patch(mpatches.Arc((cx + off, box_h + T),
-                                   d1_ft / 2, d1_ft / 2,
-                                   theta1=0, theta2=180,
-                                   color=_OUTLINE, lw=1.8, zorder=5))
-    # D2: two downward arcs at outer face of bottom wall
-    for off in (-d2_ft / 4, d2_ft / 4):
-        ax.add_patch(mpatches.Arc((cx + off, -T),
-                                   d2_ft / 2, d2_ft / 2,
-                                   theta1=180, theta2=360,
-                                   color=_OUTLINE, lw=1.8, zorder=5))
+    # ── Inner span boundary (T walls, solid thin lines) ──────────────────
+    ax.plot([T, T],             [0, box_h], **kw_inner)
+    ax.plot([T + span_ft, T + span_ft], [0, box_h], **kw_inner)
 
-    # D1 dimension above symbol
-    d1_top = box_h + T + d1_sym
-    _ext_dim_h(ax, cx - d1_ft / 2, cx + d1_ft / 2, d1_top, d1_top + 0.42, "D1")
+    # ── Centreline (dash-dot) ────────────────────────────────────────────
+    ax.plot([cx, cx], [0, box_h], color=C, lw=0.55, ls="-.", zorder=2)
 
-    # D2 dimension below symbol
-    d2_bot = -(T + d2_sym)
-    _ext_dim_h(ax, cx - d2_ft / 2, cx + d2_ft / 2, d2_bot, d2_bot - 0.42, "D2")
+    # ── Pipe projection lines through box ────────────────────────────────
+    for dx in (-d1_ft / 2, d1_ft / 2, -d2_ft / 2, d2_ft / 2):
+        ax.plot([cx + dx, cx + dx], [0, box_h], **kw_proj)
 
-    # Span: double-headed arrow inside box at 1/3 height
-    span_y = box_h * 0.35
+    # ── D1 pipe arch (semiellipse above box) ─────────────────────────────
+    ax.add_patch(mpatches.Arc((cx, box_h), d1_ft, 2 * d1_h,
+                               theta1=0, theta2=180, **kw_arch))
+    # D1 base line (extends the arch base across D1 width)
+    ax.plot([cx - d1_ft / 2, cx + d1_ft / 2], [box_h, box_h], **kw_base)
+
+    # ── D2 pipe arch (semiellipse below box) ─────────────────────────────
+    ax.add_patch(mpatches.Arc((cx, 0), d2_ft, 2 * d2_h,
+                               theta1=180, theta2=360, **kw_arch))
+    ax.plot([cx - d2_ft / 2, cx + d2_ft / 2], [0, 0], **kw_base)
+
+    # ── Dimension lines ───────────────────────────────────────────────────
+    # D1 dimension above arch
+    _ext_dim_h(ax, cx - d1_ft / 2, cx + d1_ft / 2,
+               box_h + d1_h, box_h + d1_h + 0.38, "D1")
+
+    # D2 dimension below arch
+    _ext_dim_h(ax, cx - d2_ft / 2, cx + d2_ft / 2,
+               -(d2_h), -(d2_h + 0.38), "D2")
+
+    # Span inside box
+    span_y = box_h * 0.48
     _dim_h(ax, T, T + span_ft, span_y, "Span")
 
-    # T labels centered in left and right walls
-    ax.text(T / 2, span_y, "T", ha="center", va="center",
+    # T labels in wall zones
+    ax.text(T / 2,             span_y + 0.35, "T", ha="center", va="bottom",
             fontsize=9, color=_LABEL, fontweight="bold", zorder=6)
-    ax.text(T + span_ft + T / 2, span_y, "T", ha="center", va="center",
+    ax.text(T + span_ft + T / 2, span_y + 0.35, "T", ha="center", va="bottom",
             fontsize=9, color=_LABEL, fontweight="bold", zorder=6)
 
-    # HB callout inside box (upper area, away from Span arrow)
-    ax.text(cx, box_h * 0.72, _aug_label("HB"),
-            ha="center", va="center", fontsize=7.5, color="#555",
+    # HB callout (upper interior)
+    ax.text(cx, box_h * 0.75, _aug_label("HB"),
+            ha="center", va="center", fontsize=7.5, color="#444",
             bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#bbb", alpha=0.9), zorder=6)
 
-    # Length: vertical dim on right side
+    # Length dimension (right side)
     _ext_dim_v(ax, 0, box_h, total_w, total_w + 0.8, "Length")
 
     _axes_compass(ax, left_m + 0.3, bot_m + 0.3)
     _title(ax, "JUNCTION STRUCTURE -- PLAN VIEW")
-
     return _to_png(fig)
 
 
