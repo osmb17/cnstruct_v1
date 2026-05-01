@@ -625,37 +625,51 @@ def rule_bc_hoops(p: Params, logger: ReasoningLogger) -> list[BarRow]:
 
 def rule_bc_haunch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
-    HC1 — #5 L-bars at the 4 inside re-entrant corners (D80 'SEE NOTE 6').
+    HC1 — #5 closed-stirrup haunch bars at the 4 inside re-entrant corners.
 
-    SOURCE: D80 typical section labels '#5 TOTAL 2' at each inside wall-to-slab
-    corner. Bar count (8 total) is from the plan. Leg length (18\") is an
-    ESTIMATE — it was read off the D82 cross-section proportionally but is not
-    given in a table or note on either D80 or D82. Must be confirmed with PE
-    or from a dimensioned D82 detail before use on a project.
+    D80 Note 6 / D82 haunch detail: '#5 C @ 12"' — closed rectangular stirrups
+    placed at 12" oc along the barrel axis at each of the 4 inside wall-to-slab
+    junctions (floor-wall and roof-wall corners, 2 walls each side).
 
-    qty    = 4 corners x 2 bars/corner = 8  (per D80)
-    length = 18 + 18 − bend_reduce('shape_1', '#5')  (18\" leg = ASSUMPTION)
+    qty per corner = floor(L_in / 12) + 1
+    qty total      = 4 × (floor(L_in / 12) + 1)
+
+    Leg dimensions — ESTIMATED, pending PE confirmation per D80 Note 6:
+      leg_a = 9\"   (haunch leg parallel to slab face)
+      leg_b = 9\"   (haunch leg parallel to wall face)
+      stock  = 2*(leg_a + leg_b) − bend_reduce('shape_4', '#5')
+             = 2*(9+9) − 6 = 30\"
+
+    ENGINEERING AUDIT 2025-04-30: Previous implementation used 8 fixed
+    transverse L-bars — wrong geometry and wrong quantity. This version uses
+    the correct qty formula (@ 12\" oc) from D80. Leg dims (9\") are a
+    proportional estimate from D80 cross-section — not from a plan table.
+    Confirm with PE or dimensioned D82 haunch detail before use on any project.
     """
-    # ASSUMPTION: 18" leg length estimated from D82 section — not in a plan table.
-    # Pending boss confirmation. See engineering audit note 2025-04-30.
-    leg    = 18.0
-    deduct = bend_reduce("shape_1", "#5")
-    bar_len = 2 * leg - deduct
-    qty     = 8
+    L_in = p.barrel_length_ft * 12.0
+    qty_per_corner = math.floor(L_in / 12) + 1
+    qty = 4 * qty_per_corner
+
+    # ASSUMPTION: 9" haunch leg — proportional estimate from D80 cross-section.
+    # Pending boss confirmation of D80 Note 6 dimensioned detail.
+    leg    = 9.0
+    deduct = bend_reduce("shape_4", "#5")
+    length = 2 * (leg + leg) - deduct   # closed rect: perimeter = 2*(a+b)
 
     logger.step(
-        f"HC1 (#5 L): 4 corners x 2/corner = {qty}  "
-        f"len=2x{leg}-{deduct}={bar_len:.1f}\"",
+        f"HC1 (#5 C@12\"): qty/corner=floor({L_in:.0f}/12)+1={qty_per_corner}  "
+        f"total=4x{qty_per_corner}={qty}  "
+        f"leg={leg}\" (est.)  stock=2x(9+9)-{deduct}={length:.1f}\"",
         source="BoxCulvertRules",
     )
-    logger.result("HC1", f"#5 x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+    logger.result("HC1", f"#5 x {qty} @ {fmt_inches(length)}", source="BoxCulvertRules")
 
     return [BarRow(
-        mark="HC1", size="#5", qty=qty, length_in=bar_len,
-        shape="L",
+        mark="HC1", size="#5", qty=qty, length_in=length,
+        shape="Rect",
         leg_a_in=leg, leg_b_in=leg,
-        notes="Haunch bars #5  4 corners x 2/corner  each leg=18\" (est.)",
-        review_flag="Verify leg dims per D82 haunch detail",
+        notes=f"Haunch corner bars  4 corners x {qty_per_corner} @ 12\" oc  leg=9\" (est.)",
+        review_flag="HC1 leg dim 9\" is ESTIMATE — verify per D80 Note 6 haunch detail with PE",
         source_rule="rule_bc_haunch_bars",
     )]
 
