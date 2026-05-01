@@ -168,14 +168,19 @@ def rule_d84_top_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 def rule_d84_footing_mat(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     Footing bottom mat -- #4 @ 12" each way.
-    Footing width = approx 0.55 * H (conservative estimate if not specified).
     Footing length = LOL.
+
+    SOURCE: #4 @ 12" each way is per D84 standard plan.
+    ASSUMPTION: Footing width = 0.55 × H when not specified by the user.
+    This ratio is a conservative estimate — D84 does not publish a footing
+    width formula. The actual footing width should come from the project plans
+    or be designed by the PE for the specific loading condition.
     """
     lol_in   = p.wall_length_ft * 12
     ftg_w_in = getattr(p, "footing_width_ft", p.wall_height_ft * 0.55) * 12
     if ftg_w_in == 0:
-        ftg_w_in = p.wall_height_ft * 0.55 * 12
-    spac     = 12.0
+        ftg_w_in = p.wall_height_ft * 0.55 * 12  # ASSUMPTION — see docstring
+    spac     = 12.0  # per D84 standard plan
 
     qty_trans = math.ceil(lol_in / spac) + 1
     qty_long  = math.ceil(ftg_w_in / spac) + 1

@@ -6,13 +6,23 @@ Geometry: circular cage for drilled pier / caisson.
   - Standard hoops at uniform spacing over full depth
   - Optional seismic confinement zone at top (closer hoop spacing)
 
-Hardcoded constants (removed from user inputs):
-  EMBED_IN   = 6.0"    bottom embedment
-  RING_BAR   = "#4"    hoop bar size
-  LAP_FT     = 3.0     hoop lap length
-  COVER_IN   = 3.0"    clear cover (ACI cast-against-earth)
-  CONF_SPC   = 3.0"    confinement hoop spacing
-  CONF_DEP   = 6.0"    confinement zone depth
+Hardcoded constants — source notes:
+  EMBED_IN = 6.0"   ASSUMPTION — common field practice for cage bottom
+                    embedment; match project spec or Caltrans SDC requirement.
+  RING_BAR = "#4"   ASSUMPTION — standard hoop size for typical shaft diameters;
+                    larger shafts or seismic zones may require #5 or #6.
+                    Verify against Caltrans SDC §8.2 or AASHTO LRFD §5.13.4.
+  LAP_FT   = 3.0    ASSUMPTION — 3'-0" hoop lap is common practice; verify
+                    against ACI 318-19 §25.7.3 for actual bar size and f'c.
+  COVER_IN = 3.0"   CITED — ACI 318-19 Table 20.6.1.3.1: 3" min for concrete
+                    cast against earth.
+  CONF_SPC = 3.0"   ASSUMPTION — 3" confinement spacing is a seismic default;
+                    actual requirement depends on Caltrans SDC §8.6 plastic
+                    hinge zone criteria. Verify with project PE.
+  CONF_DEP = 6.0"   ASSUMPTION — 6" confinement zone depth is a placeholder;
+                    Caltrans SDC §8.6 requires confinement over the plastic
+                    hinge length (function of column height and diameter).
+                    Verify with project PE before use on a Caltrans project.
 
 Verified formulas (from gold barlists):
   vert_length  = cage_depth_in + EMBED_IN

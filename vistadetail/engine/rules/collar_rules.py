@@ -4,6 +4,17 @@ Rule functions for Concrete Pipe Collar template.
 Geometry: rectangular reinforced concrete collar block placed around a pipe
 penetration. Straight bars in two orthogonal directions form a grid mat.
 
+SOURCE NOTES:
+  Cover = 3.0"   CITED — ACI 318-19 Table 20.6.1.3.1: 3" min for concrete
+                  cast against earth.
+  Spacing = 9.0" ASSUMPTION — 9" o/c is a common field standard for collar
+                  mats verified against historical project barlists, but is
+                  not cited to a specific Caltrans or ACI code section.
+                  ACI 318-19 §24.3.2 limits max spacing to the lesser of
+                  3×slab-thickness or 18" for one-way slabs — 9" satisfies
+                  this for typical collar thicknesses. Verify for the specific
+                  collar thickness used on the project.
+
 Verified formula (from collar PDFs):
   qty  = floor(perpendicular_dim_in / spacing_in)
   len  = span_dim_in - 2 × cover_in

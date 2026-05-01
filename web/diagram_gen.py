@@ -886,10 +886,10 @@ def _diag_box_culvert() -> bytes:
     h_label = _fmt_dim_value("height_ft", height_ft)
     b_label = _fmt_dim_value("barrel_length_ft", barrel_ft)
 
-    _dim_h(ax, T, T + S, T + H * 0.5, f"S = {s_label}", gap=-0.38, fontsize=9)
+    _dim_h(ax, T, T + S, T + H * 0.28, f"S = {s_label}", gap=-0.30, fontsize=9)
     _dim_v(ax, T, T + H, T + S * 0.82, f"H = {h_label}", gap=0.18, fontsize=9)
 
-    ax.text(total_w / 2, total_h / 2,
+    ax.text(total_w / 2, T + H * 0.68,
             f"L = {b_label}\n(Barrel Length)",
             ha="center", va="center", fontsize=7.5, color="#555",
             bbox=dict(boxstyle="round", fc="white", ec="#ccc", alpha=0.88), zorder=5)
@@ -1385,59 +1385,58 @@ def _diag_junction() -> bytes:
     ax.set_ylim(bot_m, top_m)
 
     C = _OUTLINE
-    kw_outer = dict(color=C, lw=0.9, ls="--",  zorder=2)   # outer box walls
-    kw_inner = dict(color=C, lw=1.1, ls="-",   zorder=3)   # inner span boundary
-    kw_proj  = dict(color=C, lw=0.8, ls="--",  zorder=2)   # pipe projection lines
-    kw_arch  = dict(color=C, lw=1.6, zorder=5)              # pipe arch symbols
-    kw_base  = dict(color=C, lw=1.1, ls="-",   zorder=4)   # arch base line
+    kw_box  = dict(color=C, lw=1.4, ls="-",  zorder=3)   # outer box walls (solid)
+    kw_wall = dict(color=C, lw=0.7, ls="--", zorder=2)   # inner wall face (dashed, lighter)
+    kw_arch = dict(color=C, lw=1.6, zorder=5)             # pipe arch symbols
 
-    # ── Outer box boundary (dashed) ──────────────────────────────────────
-    # Vertical outer wall faces
-    ax.plot([0,       0      ], [0, box_h], **kw_outer)
-    ax.plot([total_w, total_w], [0, box_h], **kw_outer)
-    # Top wall — portions outside D1 arch (pipe opening in centre)
+    # ── Outer box (solid) — vertical sides full height ────────────────────
+    ax.plot([0,       0      ], [0, box_h], **kw_box)
+    ax.plot([total_w, total_w], [0, box_h], **kw_box)
+    # Top wall with D1 opening
     if cx - d1_ft / 2 > 0:
-        ax.plot([0, cx - d1_ft / 2], [box_h, box_h], **kw_outer)
-        ax.plot([cx + d1_ft / 2, total_w], [box_h, box_h], **kw_outer)
+        ax.plot([0, cx - d1_ft / 2],      [box_h, box_h], **kw_box)
+        ax.plot([cx + d1_ft / 2, total_w], [box_h, box_h], **kw_box)
     else:
-        ax.plot([0, total_w], [box_h, box_h], **kw_outer)
-    # Bottom wall — portions outside D2 arch
+        ax.plot([0, total_w], [box_h, box_h], **kw_box)
+    # Bottom wall with D2 opening
     if cx - d2_ft / 2 > 0:
-        ax.plot([0, cx - d2_ft / 2], [0, 0], **kw_outer)
-        ax.plot([cx + d2_ft / 2, total_w], [0, 0], **kw_outer)
+        ax.plot([0, cx - d2_ft / 2],      [0, 0], **kw_box)
+        ax.plot([cx + d2_ft / 2, total_w], [0, 0], **kw_box)
     else:
-        ax.plot([0, total_w], [0, 0], **kw_outer)
+        ax.plot([0, total_w], [0, 0], **kw_box)
 
-    # ── Inner span boundary (T walls, solid thin lines) ──────────────────
-    ax.plot([T, T],             [0, box_h], **kw_inner)
-    ax.plot([T + span_ft, T + span_ft], [0, box_h], **kw_inner)
+    # ── Inner wall faces (dashed, shows wall thickness T) ─────────────────
+    ax.plot([T,           T          ], [0, box_h], **kw_wall)
+    ax.plot([T + span_ft, T + span_ft], [0, box_h], **kw_wall)
 
-    # ── Centreline (dash-dot) ────────────────────────────────────────────
-    ax.plot([cx, cx], [0, box_h], color=C, lw=0.55, ls="-.", zorder=2)
-
-    # ── Pipe projection lines through box ────────────────────────────────
-    for dx in (-d1_ft / 2, d1_ft / 2, -d2_ft / 2, d2_ft / 2):
-        ax.plot([cx + dx, cx + dx], [0, box_h], **kw_proj)
-
-    # ── D1 pipe arch (semiellipse above box) ─────────────────────────────
+    # ── D1 pipe arch (flat semiellipse above box) ─────────────────────────
     ax.add_patch(mpatches.Arc((cx, box_h), d1_ft, 2 * d1_h,
                                theta1=0, theta2=180, **kw_arch))
-    # D1 base line (extends the arch base across D1 width)
-    ax.plot([cx - d1_ft / 2, cx + d1_ft / 2], [box_h, box_h], **kw_base)
+    ax.plot([cx - d1_ft / 2, cx + d1_ft / 2], [box_h, box_h],
+            color=C, lw=1.1, zorder=4)
 
-    # ── D2 pipe arch (semiellipse below box) ─────────────────────────────
+    # ── D2 pipe arch (flat semiellipse below box) ─────────────────────────
     ax.add_patch(mpatches.Arc((cx, 0), d2_ft, 2 * d2_h,
                                theta1=180, theta2=360, **kw_arch))
-    ax.plot([cx - d2_ft / 2, cx + d2_ft / 2], [0, 0], **kw_base)
+    ax.plot([cx - d2_ft / 2, cx + d2_ft / 2], [0, 0],
+            color=C, lw=1.1, zorder=4)
 
     # ── Dimension lines ───────────────────────────────────────────────────
     # D1 dimension above arch
     _ext_dim_h(ax, cx - d1_ft / 2, cx + d1_ft / 2,
                box_h + d1_h, box_h + d1_h + 0.38, "D1")
 
-    # D2 dimension below arch
-    _ext_dim_h(ax, cx - d2_ft / 2, cx + d2_ft / 2,
-               -(d2_h), -(d2_h + 0.38), "D2")
+    # D2 dimension below arch — text placed below the dim line (mirrors D1 above)
+    _cx1, _cx2 = cx - d2_ft / 2, cx + d2_ft / 2
+    _obj_y, _dim_y = -(d2_h), -(d2_h + 0.55)
+    for _xp in [_cx1, _cx2]:
+        ax.plot([_xp, _xp], [_obj_y, _dim_y], color=_DIM, lw=0.4, zorder=5)
+    ax.annotate("", xy=(_cx2, _dim_y), xytext=(_cx1, _dim_y),
+                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0,
+                                mutation_scale=10, shrinkA=0, shrinkB=0))
+    ax.text((_cx1 + _cx2) / 2, _dim_y - 0.10, _aug_label("D2"),
+            ha="center", va="top", fontsize=9, color=_LABEL, fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.92))
 
     # Span inside box
     span_y = box_h * 0.48

@@ -3,6 +3,15 @@ Rule functions for Junction Structure template (v3.0).
 
 Caltrans CIP rectangular junction box connecting two circular pipes.
 
+SOURCE NOTE:
+  No specific Caltrans standard plan has been identified for CIP rectangular
+  junction structures. Bar sizes (#6 @ 6" EF), spacing, and cover (2") are
+  engineering assumptions based on common Caltrans practice for similar buried
+  concrete structures. These values should be verified by the project PE against
+  the applicable Caltrans standard or special design criteria before use on a
+  Caltrans project. (Pending confirmation — see boss Q&A on junction structure
+  standard plan.)
+
 Marks produced:
   JT1 — Top slab transverse bars   (#6 @ 6", across Span, EF)
   JT2 — Top slab longitudinal bars (#6 @ 6", along Length, EF)
@@ -21,7 +30,7 @@ Geometry reference:
   - wall_thick_in = uniform wall/slab thickness T
   - Outside Span   = span_ft×12 + 2×T
   - Outside Length = length_ft×12 + 2×T
-  - Cover = 2" throughout
+  - Cover = 2" throughout (ASSUMPTION — verify against Caltrans standard plan)
 """
 
 from __future__ import annotations
@@ -32,6 +41,9 @@ from vistadetail.engine.hooks import hook_add
 from vistadetail.engine.reasoning_logger import ReasoningLogger
 from vistadetail.engine.schema import BarRow, Params, fmt_inches
 
+# ASSUMPTION: 2" cover is standard Caltrans practice for buried CIP concrete but
+# has not been verified against a specific junction structure standard plan.
+# Confirm with project PE or Caltrans standard before use on a Caltrans project.
 _COVER = 2.0
 
 
@@ -40,10 +52,14 @@ def rule_junction_top_slab_trans(p: Params, log: ReasoningLogger) -> list[BarRow
     Top slab transverse bars — #6 @ 6", running across the Span direction.
     Bar length spans the full outside span minus cover each end.
     Qty spaced at 6" o/c along the Length.
+
+    ASSUMPTION: #6 @ 6" EF is standard Caltrans practice for buried box slabs
+    (consistent with D80 roof slab reinforcement for similar spans) but has not
+    been traced to a junction structure standard plan. Verify with PE.
     """
     outside_span_in = p.span_ft * 12 + 2 * p.wall_thick_in
     bar_len_in      = outside_span_in - 2 * _COVER
-    qty             = math.floor((p.length_ft * 12) / 6.0) + 1
+    qty             = math.floor((p.length_ft * 12) / 6.0) + 1  # 6" o/c — ASSUMPTION
 
     log.step(
         f"Top slab trans: outside span = {outside_span_in:.0f} in  "

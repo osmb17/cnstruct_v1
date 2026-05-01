@@ -53,9 +53,12 @@ _B3_1A_TABLE = {
     26: {"T": 18, "W": 204, "B": 124, "C": 62, "F": 27, "c": "#10","cS": 6, "d": "#9", "dS": 6,  "s": "#6", "sS": 12},
 }
 
-# Caltrans covers
-_STEM_COVER = 2.0   # inches
-_FTG_COVER = 3.0    # inches
+# Cover values per Caltrans B3-1 typical section notes:
+#   Stem face: 2" clear (exposed to weather, not cast against earth)
+#   Footing bottom/sides: 3" clear (cast against earth)
+# Both are also consistent with ACI 318-19 Table 20.6.1.3.1.
+_STEM_COVER = 2.0   # inches — CITED: Caltrans B3-1 typical section / ACI Table 20.6.1.3.1
+_FTG_COVER  = 3.0   # inches — CITED: Caltrans B3-1 typical section / ACI Table 20.6.1.3.1
 
 
 def _snap_h(h_ft: float) -> int:
@@ -323,7 +326,10 @@ def rule_ct_rw_shear_key(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     qty = math.floor((wall_len_in - 2 * _FTG_COVER) / d_spacing) + 1
 
-    # Key depth: 1'-0" typical for all heights per B3-1
+    # ASSUMPTION: 1'-0" key depth used for all wall heights.
+    # The B3-1 standard plan shows a shear key but does not publish a depth
+    # table — 12" is a common Caltrans practice value. Verify against the
+    # current B3-1 plan sheet or project-specific geotechnical requirements.
     key_depth = 12.0
     from vistadetail.engine.hooks import min_bend_diameter
     bend_d = min_bend_diameter(d_size)   # ACI 318-19 Table 25.3.1

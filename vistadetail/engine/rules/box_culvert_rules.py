@@ -586,6 +586,10 @@ def rule_bc_hoops(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
     HP1 — #4 closed rectangular hoops (D82 miscellaneous details).
 
+    SOURCE: D82 typical section shows closed hoops around the barrel perimeter.
+    #4 bar size and 12" spacing are consistent with D80 wall reinforcement
+    conventions, but the exact spacing for these hoops is not explicitly stated
+    in a D82 table — it is an engineering assumption based on standard practice.
     Not called by the default template rules list.  Retained for reference.
     """
     S_in = int(p.span_ft) * 12
@@ -623,13 +627,17 @@ def rule_bc_haunch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
     HC1 — #5 L-bars at the 4 inside re-entrant corners (D80 'SEE NOTE 6').
 
-    D82 cross-section shows '#5 TOTAL 2' at each inside barrel corner
-    (wall-to-slab junction), so 2 bars per corner x 4 corners = 8 bars total.
-    Placed transversely; leg lengths estimated at 18\" each — verify per D82.
+    SOURCE: D80 typical section labels '#5 TOTAL 2' at each inside wall-to-slab
+    corner. Bar count (8 total) is from the plan. Leg length (18\") is an
+    ESTIMATE — it was read off the D82 cross-section proportionally but is not
+    given in a table or note on either D80 or D82. Must be confirmed with PE
+    or from a dimensioned D82 detail before use on a project.
 
-    qty    = 4 corners x 2 bars/corner = 8
-    length = 18 + 18 − bend_reduce('shape_1', '#5')
+    qty    = 4 corners x 2 bars/corner = 8  (per D80)
+    length = 18 + 18 − bend_reduce('shape_1', '#5')  (18\" leg = ASSUMPTION)
     """
+    # ASSUMPTION: 18" leg length estimated from D82 section — not in a plan table.
+    # Pending boss confirmation. See engineering audit note 2025-04-30.
     leg    = 18.0
     deduct = bend_reduce("shape_1", "#5")
     bar_len = 2 * leg - deduct

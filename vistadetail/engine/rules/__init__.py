@@ -43,6 +43,8 @@ from vistadetail.engine.rules.headwall_rules import (
     rule_hw_d_bars,
     rule_hw_trans_footing,
     rule_hw_long_invert,
+    rule_hw_pipe_hoops,
+    rule_hw_pipe_opening,
     rule_hw_long_wall,
     rule_hw_top_wall,
     rule_hw_vert_wall,
@@ -245,10 +247,12 @@ RULE_REGISTRY: dict = {
     "rule_bottom_longitudinal":      rule_bottom_longitudinal,
     "rule_dowels":                   rule_dowels,
     "rule_validate_footing_cover":   rule_validate_footing_cover,
-    # Headwall (D89A)
-    "rule_hw_d_bars":                rule_hw_d_bars,
+    # Headwall (D89A / D89B)
     "rule_hw_trans_footing":         rule_hw_trans_footing,
+    "rule_hw_d_bars":                rule_hw_d_bars,
     "rule_hw_long_invert":           rule_hw_long_invert,
+    "rule_hw_pipe_hoops":            rule_hw_pipe_hoops,
+    "rule_hw_pipe_opening":          rule_hw_pipe_opening,
     "rule_hw_long_wall":             rule_hw_long_wall,
     "rule_hw_top_wall":              rule_hw_top_wall,
     "rule_hw_vert_wall":             rule_hw_vert_wall,

@@ -4,6 +4,18 @@ Rule functions for Wing Wall template.
 Tapered wing wall: varies from full height at headwall to zero at tip.
 Uses average height for bar quantity calculation (conservative).
 
+SOURCE NOTES:
+  This is a general-purpose tapered wingwall, not tied to a specific Caltrans
+  standard plan. Key assumptions:
+  - Cover = 2.0" (ASSUMPTION — standard Caltrans practice for buried concrete;
+    not sourced to a specific plan. ACI 318-19 Table 20.6.1.3.1 requires 2" min
+    for concrete exposed to weather and 3" cast against earth — verify exposure.)
+  - Horizontal bar spacing = 12" o/c (ASSUMPTION — standard practice, no plan
+    citation)
+  - Vertical bar spacing = 12" o/c (ASSUMPTION — same as above)
+  - Corner bar leg formula: max(18", min(H/6, 24")) (ASSUMPTION — engineering
+    judgment, not from a standard plan)
+
 Generates:
   WH1 — wing face horizontal bars (each face)
   WV1 — wing face vertical bars (each face, varying length)
@@ -24,8 +36,8 @@ def rule_wing_horiz(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Horizontal bars each face, full wing length.
     Qty based on the taller (headwall) end height.
     """
-    usable_h = (p.hw_height_ft * 12) - (2 * 2.0)
-    qty_per_face = math.floor(usable_h / 12.0) + 1
+    usable_h = (p.hw_height_ft * 12) - (2 * 2.0)  # 2" cover each face — ASSUMPTION
+    qty_per_face = math.floor(usable_h / 12.0) + 1  # 12" spacing — ASSUMPTION
     qty_total = qty_per_face * 2
 
     hook_add_in = hook_add("std_90", "#4")
@@ -48,8 +60,8 @@ def rule_wing_vert(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Height tapers from hw_height at heel to tip_height at toe.
     Use maximum (conservative) bar length = hw_height + hooks.
     """
-    usable_len = (p.wing_length_ft * 12) - (2 * 2.0)
-    qty_per_face = math.floor(usable_len / 12.0) + 1
+    usable_len = (p.wing_length_ft * 12) - (2 * 2.0)  # 2" cover each end — ASSUMPTION
+    qty_per_face = math.floor(usable_len / 12.0) + 1  # 12" spacing — ASSUMPTION
     qty_total = qty_per_face * 2
 
     bot_hook = hook_add("std_90", "#4")
@@ -70,7 +82,12 @@ def rule_wing_vert(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 
 def rule_wing_corner(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """Corner L-bars at headwall–wing junction."""
+    """Corner L-bars at headwall–wing junction.
+    ASSUMPTION: leg = max(18\", min(H/6, 24\")) — engineering judgment, not from
+    a standard plan. 18\" minimum is a common development-length rule of thumb
+    for #4 bars in f'c=3000 psi; verify against ACI 318-19 §25.5 for the actual
+    f'c and fy used on the project.
+    """
     leg = max(18.0, min((p.hw_height_ft * 12) / 6.0, 24.0))
     qty = 4
     log.step(f"Corner leg = {leg:.0f} in  qty = {qty}")

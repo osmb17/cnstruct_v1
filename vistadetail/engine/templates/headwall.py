@@ -1,4 +1,4 @@
-"""Template: Straight Headwall (v3.0) — Caltrans D89A."""
+"""Template: Straight Headwall (v3.0) — Caltrans D89A / D89B."""
 
 from __future__ import annotations
 
@@ -13,11 +13,19 @@ class HeadwallTemplate(BaseTemplate):
         self.name = "Straight Headwall"
         self.version = "3.0"
         self.description = (
-            "Caltrans D89A straight headwall. "
-            "Bar sizes and footing dimensions looked up from the D89A table by wall height."
+            "Caltrans straight headwall. "
+            "Case I uses the D89A table (higher loading); Cases II/III use the D89B table (lighter loading). "
+            "Bar sizes and footing dimensions are looked up by wall height."
         )
 
         self.inputs = [
+            InputField(
+                "loading_case", str, label="Loading Case",
+                choices=["I", "II / III"],
+                default="I",
+                group="Design",
+                hint="Case I = D89A (higher loading); Cases II/III = D89B (lighter loading)",
+            ),
             InputField(
                 "wall_width_ft", float, label="Wall Width (ft)",
                 min=4.0, max=30.0, default=8.0,
@@ -49,13 +57,15 @@ class HeadwallTemplate(BaseTemplate):
         ]
 
         self.rules = [
-            "rule_hw_d_bars",
             "rule_hw_trans_footing",
+            "rule_hw_d_bars",
             "rule_hw_long_invert",
-            "rule_hw_long_wall",
-            "rule_hw_top_wall",
+            "rule_hw_pipe_hoops",
+            "rule_hw_pipe_opening",
             "rule_hw_vert_wall",
             "rule_hw_c_bars",
+            "rule_hw_long_wall",
+            "rule_hw_top_wall",
             "rule_hw_spreaders",
             "rule_hw_standees",
             "rule_validate_headwall",
@@ -63,7 +73,10 @@ class HeadwallTemplate(BaseTemplate):
 
     def evaluate_triggers(self, params: Params) -> list[str]:
         triggers: list[str] = []
-        if params.wall_height_ft * 12 > 89:
+        H = params.wall_height_ft * 12
+        case = getattr(params, "loading_case", "I")
+        max_h = 77 if case == "II / III" else 83
+        if H > max_h:
             triggers.append("height_exceeds_d89_table")
         return triggers
 

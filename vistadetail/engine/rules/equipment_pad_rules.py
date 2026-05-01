@@ -347,7 +347,11 @@ def rule_pad_vertical_dowels(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     len_in     = p.pad_length_ft * 12
     wid_in     = p.pad_width_ft  * 12
-    bar_len    = 12.0 + 18.0   # embed 12 in + project 18 in
+    # ASSUMPTION: 12" embed (min development for #4-#5 per ACI 318-19 §25.5.2)
+    # + 18" projection (common default for equipment anchor bolts).
+    # The actual projection should come from the equipment manufacturer's
+    # anchor bolt schedule — verify before use.
+    bar_len    = 12.0 + 18.0
     qty_long   = math.floor(len_in / 12.0)
     qty_short  = math.floor(wid_in / 12.0)
     qty        = max(1, qty_long * qty_short)
