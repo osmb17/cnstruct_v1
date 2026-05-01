@@ -17,7 +17,9 @@ class JunctionStructureTemplate(BaseTemplate):
         self.description = (
             "Caltrans CIP rectangular junction structure connecting two circular pipes. "
             "#6 @ 6\" slab and wall reinforcement EF, 2\" cover. "
-            "Min height HB = 5'-6\"."
+            "Min height HB = 5'-6\". "
+            "WARNING: Design basis is an engineering assumption — no Caltrans standard "
+            "plan has been confirmed. All marks are flagged for PE review."
         )
 
         self.inputs = [

@@ -3,14 +3,17 @@ Rule functions for Junction Structure template (v3.0).
 
 Caltrans CIP rectangular junction box connecting two circular pipes.
 
-SOURCE NOTE:
+SOURCE NOTE — ENGINEERING ASSUMPTION (UNVERIFIED):
   No specific Caltrans standard plan has been identified for CIP rectangular
   junction structures. Bar sizes (#6 @ 6" EF), spacing, and cover (2") are
   engineering assumptions based on common Caltrans practice for similar buried
-  concrete structures. These values should be verified by the project PE against
-  the applicable Caltrans standard or special design criteria before use on a
-  Caltrans project. (Pending confirmation — see boss Q&A on junction structure
-  standard plan.)
+  concrete structures. These values have NOT been verified against a Caltrans
+  standard plan or special design. Every BarRow is flagged with review_flag so
+  the detailer and PE can identify the unverified marks.
+
+  ACTION REQUIRED: Confirm applicable standard plan or special design with the
+  responsible PE before using this output on any Caltrans project.
+  (Pending boss confirmation of junction structure standard plan — 2025-04-30.)
 
 Marks produced:
   JT1 — Top slab transverse bars   (#6 @ 6", across Span, EF)
@@ -46,6 +49,9 @@ from vistadetail.engine.schema import BarRow, Params, fmt_inches
 # Confirm with project PE or Caltrans standard before use on a Caltrans project.
 _COVER = 2.0
 
+# Applied to every BarRow — triggers visual highlight in PDF and table output.
+_REVIEW = "Junction structure design basis UNVERIFIED — no standard plan confirmed. Review with PE."
+
 
 def rule_junction_top_slab_trans(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
@@ -72,6 +78,7 @@ def rule_junction_top_slab_trans(p: Params, log: ReasoningLogger) -> list[BarRow
     return [BarRow(
         mark="JT1", size="#6", qty=qty, length_in=bar_len_in,
         shape="Str", notes="Top slab transverse EF",
+        review_flag=_REVIEW,
         source_rule="rule_junction_top_slab_trans",
     )]
 
@@ -97,6 +104,7 @@ def rule_junction_top_slab_long(p: Params, log: ReasoningLogger) -> list[BarRow]
     return [BarRow(
         mark="JT2", size="#6", qty=qty, length_in=bar_len_in,
         shape="Str", notes="Top slab longitudinal EF",
+        review_flag=_REVIEW,
         source_rule="rule_junction_top_slab_long",
     )]
 
@@ -120,6 +128,7 @@ def rule_junction_floor_trans(p: Params, log: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="JF1", size="#6", qty=qty, length_in=bar_len_in,
         shape="Str", notes="Floor transverse EF",
+        review_flag=_REVIEW,
         source_rule="rule_junction_floor_trans",
     )]
 
@@ -143,6 +152,7 @@ def rule_junction_floor_long(p: Params, log: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="JF2", size="#6", qty=qty, length_in=bar_len_in,
         shape="Str", notes="Floor longitudinal EF",
+        review_flag=_REVIEW,
         source_rule="rule_junction_floor_long",
     )]
 
@@ -173,6 +183,7 @@ def rule_junction_long_wall_horiz(p: Params, log: ReasoningLogger) -> list[BarRo
     return [BarRow(
         mark="JW1", size="#6", qty=qty, length_in=bar_len_in,
         shape="Str", notes="Long wall horiz EF (2 walls)",
+        review_flag=_REVIEW,
         source_rule="rule_junction_long_wall_horiz",
     )]
 
@@ -204,6 +215,7 @@ def rule_junction_long_wall_vert(p: Params, log: ReasoningLogger) -> list[BarRow
         mark="JW2", size="#4", qty=qty, length_in=bar_len_in,
         shape="L", leg_a_in=p.hb_ft * 12 + 6.0, leg_b_in=bot_hook_in,
         notes="Long wall vert EF (2 walls)",
+        review_flag=_REVIEW,
         source_rule="rule_junction_long_wall_vert",
     )]
 
@@ -229,6 +241,7 @@ def rule_junction_short_wall_horiz(p: Params, log: ReasoningLogger) -> list[BarR
     return [BarRow(
         mark="JS1", size="#6", qty=qty, length_in=bar_len_in,
         shape="Str", notes="Short wall horiz EF (2 walls, pipe end)",
+        review_flag=_REVIEW,
         source_rule="rule_junction_short_wall_horiz",
     )]
 
@@ -254,6 +267,7 @@ def rule_junction_short_wall_vert(p: Params, log: ReasoningLogger) -> list[BarRo
         mark="JS2", size="#4", qty=qty, length_in=bar_len_in,
         shape="L", leg_a_in=p.hb_ft * 12 + 6.0, leg_b_in=bot_hook_in,
         notes="Short wall vert EF (2 walls, pipe end)",
+        review_flag=_REVIEW,
         source_rule="rule_junction_short_wall_vert",
     )]
 
@@ -285,12 +299,22 @@ def rule_junction_a_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
         mark="JA1", size="#6", qty=qty, length_in=bar_len_in,
         shape="Str",
         notes=f"Addl 'a' bars at pipe openings — 3 at D1 ({p.d1_in}\") + 3 at D2 ({p.d2_in}\")",
+        review_flag=_REVIEW,
         source_rule="rule_junction_a_bars",
     )]
 
 
 def rule_validate_junction(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """Validate junction structure geometry."""
+    """Validate junction structure geometry and emit design-basis audit warning."""
+    # ALWAYS warn: design basis is unverified engineering assumption.
+    log.warn(
+        "DESIGN BASIS UNVERIFIED: Junction structure reinforcement (#6 @ 6\" EF, "
+        "2\" cover) is an engineering assumption — no Caltrans standard plan has "
+        "been confirmed for this structure type. All marks are highlighted for PE review. "
+        "Confirm applicable standard plan or special design before issuing for construction.",
+        source="JunctionRules",
+    )
+
     d1 = int(p.d1_in)
     d2 = int(p.d2_in)
     d_max = max(d1, d2)
