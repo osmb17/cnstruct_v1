@@ -73,27 +73,27 @@ _D80: dict[tuple[int, int, int], dict] = {
     (5, 5, 10): dict(T1=8,   T2=7,   T3=7.5, a_s="#5", a_sp=5,   b_s="#5", b_sp=4.5, e_s="#4", e_sp=6.5,  B=33, lblf=154),
     (5, 5, 20): dict(T1=8,   T2=9,   T3=9.5, a_s="#5", a_sp=5,   b_s="#5", b_sp=5.5, e_s="#4", e_sp=7.5,  B=34, lblf=140),
 
-    # --- SPAN 6' (verify against D80 screenshots) ---
-    (6, 3, 10): dict(T1=7.5,  T2=6.5,  T3=8.5,  a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.5, e_s="#4", e_sp=13.5, B=33, lblf=268),
-    (6, 3, 20): dict(T1=12.0, T2=7.5,  T3=12.5, a_s="#4", a_sp=5.0, b_s="#4", b_sp=6.0, e_s="#4", e_sp=11.0, B=31, lblf=209),
-    (6, 4, 10): dict(T1=7.5,  T2=7.0,  T3=8.5,  a_s="#5", a_sp=5.5, b_s="#4", b_sp=5.0, e_s="#4", e_sp=12.5, B=34, lblf=287),
-    (6, 4, 20): dict(T1=11.5, T2=8.5,  T3=12.5, a_s="#4", a_sp=5.0, b_s="#4", b_sp=5.5, e_s="#4", e_sp=9.5,  B=32, lblf=232),
-    (6, 5, 10): dict(T1=8.0,  T2=7.5,  T3=8.5,  a_s="#5", a_sp=5.0, b_s="#5", b_sp=5.0, e_s="#4", e_sp=9.0,  B=34, lblf=333),
-    (6, 5, 20): dict(T1=11.5, T2=10.0, T3=13.0, a_s="#4", a_sp=5.0, b_s="#4", b_sp=5.0, e_s="#4", e_sp=7.5,  B=32, lblf=244),
-    (6, 6, 10): dict(T1=8.0,  T2=8.5,  T3=8.5,  a_s="#5", a_sp=5.0, b_s="#5", b_sp=4.5, e_s="#4", e_sp=7.0,  B=35, lblf=362),
-    (6, 6, 20): dict(T1=11.5, T2=11.0, T3=12.5, a_s="#4", a_sp=5.0, b_s="#5", b_sp=5.0, e_s="#4", e_sp=6.5,  B=34, lblf=297),
+    # --- SPAN 6' (confirmed from D80 plan) ---
+    (6, 3, 10): dict(T1=8,    T2=7,    T3=8,    a_s="#5", a_sp=5.0, b_s="#5", b_sp=5.5, e_s="#4", e_sp=12.5, B=33, lblf=126),
+    (6, 3, 20): dict(T1=9,    T2=7,    T3=10,   a_s="#6", a_sp=5.0, b_s="#5", b_sp=4.5, e_s="#4", e_sp=12.5, B=27, lblf=147),
+    (6, 4, 10): dict(T1=8.5,  T2=7,    T3=8,    a_s="#5", a_sp=5.0, b_s="#5", b_sp=6.0, e_s="#4", e_sp=12.0, B=33, lblf=132),
+    (6, 4, 20): dict(T1=9.5,  T2=7.5,  T3=10.5, a_s="#5", a_sp=4.5, b_s="#5", b_sp=5.0, e_s="#4", e_sp=11.0, B=28, lblf=139),
+    (6, 5, 10): dict(T1=8,    T2=7.5,  T3=8,    a_s="#5", a_sp=4.5, b_s="#5", b_sp=5.0, e_s="#4", e_sp=9.0,  B=36, lblf=159),
+    (6, 5, 20): dict(T1=9,    T2=9,    T3=10.5, a_s="#5", a_sp=4.5, b_s="#5", b_sp=5.5, e_s="#4", e_sp=8.5,  B=35, lblf=153),
+    (6, 6, 10): dict(T1=8,    T2=8.5,  T3=8,    a_s="#5", a_sp=5.0, b_s="#6", b_sp=5.0, e_s="#4", e_sp=6.5,  B=40, lblf=206),
+    (6, 6, 20): dict(T1=9,    T2=10.5, T3=10,   a_s="#5", a_sp=4.5, b_s="#5", b_sp=4.5, e_s="#4", e_sp=6.0,  B=37, lblf=186),
 
-    # --- SPAN 7' (verify against D80 screenshots) ---
-    (7, 3, 10): dict(T1=9.0,  T2=6.5,  T3=9.5,  a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=13.5, B=40, lblf=327),
-    (7, 3, 20): dict(T1=13.5, T2=7.5,  T3=14.0, a_s="#4", a_sp=6.0, b_s="#4", b_sp=5.0,  e_s="#4", e_sp=11.0, B=41, lblf=264),
-    (7, 4, 10): dict(T1=8.5,  T2=7.5,  T3=9.5,  a_s="#5", a_sp=5.0, b_s="#5", b_sp=6.0,  e_s="#4", e_sp=11.0, B=41, lblf=333),
-    (7, 4, 20): dict(T1=13.5, T2=8.0,  T3=14.0, a_s="#4", a_sp=6.0, b_s="#4", b_sp=5.0,  e_s="#4", e_sp=10.0, B=41, lblf=276),
-    (7, 5, 10): dict(T1=8.5,  T2=7.5,  T3=9.5,  a_s="#5", a_sp=5.0, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=10.5, B=41, lblf=355),
-    (7, 5, 20): dict(T1=13.0, T2=9.5,  T3=14.0, a_s="#5", a_sp=6.0, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=8.0,  B=43, lblf=311),
-    (7, 6, 10): dict(T1=8.5,  T2=8.5,  T3=9.5,  a_s="#5", a_sp=5.5, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=8.0,  B=44, lblf=377),
-    (7, 6, 20): dict(T1=13.0, T2=11.0, T3=14.0, a_s="#5", a_sp=6.0, b_s="#5", b_sp=5.0,  e_s="#4", e_sp=6.5,  B=44, lblf=338),
-    (7, 7, 10): dict(T1=8.5,  T2=9.5,  T3=9.5,  a_s="#5", a_sp=5.5, b_s="#6", b_sp=5.5,  e_s="#4", e_sp=6.0,  B=46, lblf=406),
-    (7, 7, 20): dict(T1=13.0, T2=13.0, T3=14.5, a_s="#5", a_sp=6.0, b_s="#5", b_sp=6.0,  e_s="#4", e_sp=5.5,  B=49, lblf=348),
+    # --- SPAN 7' (confirmed from D80 plan) ---
+    (7, 3, 10): dict(T1=9,    T2=6.5,  T3=8,    a_s="#5", a_sp=4.5, b_s="#5", b_sp=5.0, e_s="#4", e_sp=13.5, B=35, lblf=145),
+    (7, 3, 20): dict(T1=11,   T2=7,    T3=11.5, a_s="#6", a_sp=5.0, b_s="#5", b_sp=4.5, e_s="#4", e_sp=12.5, B=30, lblf=162),
+    (7, 4, 10): dict(T1=9,    T2=6.5,  T3=8,    a_s="#5", a_sp=4.5, b_s="#5", b_sp=5.0, e_s="#4", e_sp=11.0, B=35, lblf=155),
+    (7, 4, 20): dict(T1=11,   T2=7.5,  T3=10.5, a_s="#6", a_sp=5.0, b_s="#5", b_sp=5.0, e_s="#4", e_sp=11.0, B=33, lblf=169),
+    (7, 5, 10): dict(T1=9,    T2=7,    T3=8,    a_s="#5", a_sp=4.5, b_s="#6", b_sp=5.0, e_s="#4", e_sp=9.0,  B=41, lblf=203),
+    (7, 5, 20): dict(T1=10.5, T2=9.5,  T3=11,   a_s="#6", a_sp=5.0, b_s="#5", b_sp=5.0, e_s="#4", e_sp=8.0,  B=35, lblf=186),
+    (7, 6, 10): dict(T1=9,    T2=8.5,  T3=8,    a_s="#5", a_sp=4.5, b_s="#6", b_sp=4.5, e_s="#4", e_sp=7.0,  B=42, lblf=232),
+    (7, 6, 20): dict(T1=10.5, T2=10.5, T3=11.5, a_s="#6", a_sp=5.0, b_s="#5", b_sp=5.0, e_s="#4", e_sp=7.0,  B=39, lblf=205),
+    (7, 7, 10): dict(T1=8.5,  T2=10,   T3=8.5,  a_s="#5", a_sp=5.0, b_s="#6", b_sp=4.5, e_s="#4", e_sp=6.0,  B=43, lblf=245),
+    (7, 7, 20): dict(T1=10.5, T2=12,   T3=11,   a_s="#5", a_sp=4.5, b_s="#6", b_sp=5.0, e_s="#4", e_sp=5.0,  B=43, lblf=244),
 
     # --- SPAN 8' (corrected from clean D80 screenshots) ---
     (8, 4, 10): dict(T1=9.5,  T2=6.5,  T3=8.5,  a_s="#6", a_sp=5.0, b_s="#5", b_sp=4.5, e_s="#4", e_sp=11.0, B=37, lblf=193),
@@ -157,14 +157,20 @@ _D80: dict[tuple[int, int, int], dict] = {
 }
 
 # ---------------------------------------------------------------------------
-# "i" bar count table — confirmed from D80 plan inset
-# Key: span_ft → count of i-bars (earth cover <= 10')
-# For cover > 10': use #4 @ 12" max (computed from span width)
+# "i" bar count — invert and roof longitudinal bars (#4, cover <= 10').
+#
+# Formula (confirmed against gold barlist for 8'×6'×20' RCB, cover=10'):
+#   qty = floor((S_in − 4) / 4) + 1
+# where S_in = span in inches.  Gives bars at ~4" OC across the invert/roof slab.
+#
+# For span=8 (S=96"): floor(92/4)+1 = 24  ← confirmed gold ✓
+#
+# For cover > 10': use #4 @ 12" max  →  floor((S_in−4)/12)+1.
 # ---------------------------------------------------------------------------
 
-_I_BAR_COUNT: dict[int, int] = {
-    4: 7, 5: 8, 6: 9, 7: 10, 8: 11, 10: 12, 12: 15, 14: 20,
-}
+def _i_bar_qty(span_ft: int) -> int:
+    """Invert/roof longitudinal bar count for cover ≤ 10' (bars at ~4\" OC)."""
+    return math.floor((span_ft * 12 - 4) / 4) + 1
 
 # Known spans present in the D80 table
 _KNOWN_SPANS = sorted({k[0] for k in _D80})
@@ -524,43 +530,28 @@ def rule_bc_i_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     """
     I1 — Longitudinal i-bars (straight, invert slab).
 
-    For earth cover <= 10': count from D80 i-bar table.
-    For earth cover >  10': qty = floor((S - 4) / 12) + 1  (#4 @ 12\" max).
+    For earth cover <= 10': qty = floor((S − 4) / 4) + 1  (bars at ~4\" OC).
+    For earth cover >  10': qty = floor((S − 4) / 12) + 1 (#4 @ 12\" max).
+
+    Gold confirmed (8'×6'×20', cover=10'): 24 #4 @ 19'-6\".
 
     Size is always #4.
-    bar_len = L - 4   (2\" cover each end)
+    bar_len = L − 6   (3\" cover each end)
     """
     S_in  = int(p.span_ft) * 12
     L_in  = p.barrel_length_ft * 12
     cover = int(p.max_earth_cover_ft)
-    span  = int(p.span_ft)
 
-    # I1 bars run in the invert slab; stop at notch face (not barrel end face)
+    # I1 bars run the full barrel; stop at notch face at each notched end
     n_notch, notch_d = _notch_info(p)
-    bar_len = L_in - 4.0 - n_notch * notch_d
+    bar_len = L_in - 6.0 - n_notch * notch_d
 
     if cover <= 10:
-        qty = _I_BAR_COUNT.get(span)
-        if qty is None:
-            lo_spans = [s for s in sorted(_I_BAR_COUNT) if s <= span]
-            hi_spans = [s for s in sorted(_I_BAR_COUNT) if s >= span]
-            if lo_spans and hi_spans:
-                s_lo, s_hi = lo_spans[-1], hi_spans[0]
-                if s_lo == s_hi:
-                    qty = _I_BAR_COUNT[s_lo]
-                else:
-                    t = (span - s_lo) / (s_hi - s_lo)
-                    qty = round(_I_BAR_COUNT[s_lo] + t * (_I_BAR_COUNT[s_hi] - _I_BAR_COUNT[s_lo]))
-            else:
-                qty = math.floor((S_in - 4) / 12) + 1
-            logger.warn(
-                f"I-bar count for span={span}' not in table — interpolated qty={qty}.",
-                source="BoxCulvertRules",
-            )
+        qty = _i_bar_qty(int(p.span_ft))
         notch_note = f"  notch adj: -{n_notch}×{notch_d}\"" if n_notch else ""
         logger.step(
-            f"I1 (cover={cover}'<=10'): D80 table count={qty}  "
-            f"len=L-4{notch_note}={fmt_inches(bar_len)}",
+            f"I1 (cover={cover}'<=10'): floor(({S_in}-4)/4)+1={qty}  "
+            f"len=L-6{notch_note}={fmt_inches(bar_len)}",
             source="BoxCulvertRules",
         )
     else:
@@ -568,7 +559,7 @@ def rule_bc_i_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
         notch_note = f"  notch adj: -{n_notch}×{notch_d}\"" if n_notch else ""
         logger.step(
             f"I1 (cover={cover}'>10'): #4@12\" max  qty=floor(({S_in}-4)/12)+1={qty}  "
-            f"len=L-4{notch_note}={fmt_inches(bar_len)}",
+            f"len=L-6{notch_note}={fmt_inches(bar_len)}",
             source="BoxCulvertRules",
         )
 
@@ -577,8 +568,104 @@ def rule_bc_i_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="I1", size="#4", qty=qty, length_in=bar_len,
         shape="Str",
-        notes="I-bars  cover={}'  {}".format(cover, "D80 table" if cover <= 10 else "#4@12\" max"),
+        notes="Invert long. bars  cover={}'  {}".format(
+            cover, "#4 @~4\" OC" if cover <= 10 else "#4@12\" max"
+        ),
         source_rule="rule_bc_i_bars",
+    )]
+
+
+def rule_bc_roof_long_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
+    """
+    RL1 — Longitudinal bars in the roof slab (straight, top face).
+
+    Symmetric to I1 (invert longitudinal bars).  Same formula and bar size.
+
+    For earth cover <= 10': qty = floor((S − 4) / 4) + 1  (bars at ~4\" OC).
+    For earth cover >  10': qty = floor((S − 4) / 12) + 1 (#4 @ 12\" max).
+
+    Gold confirmed (8'×6'×20', cover=10'): 24 #4 @ 19'-6\".
+
+    bar_len = L − 6   (3\" cover each end)
+    """
+    S_in  = int(p.span_ft) * 12
+    L_in  = p.barrel_length_ft * 12
+    cover = int(p.max_earth_cover_ft)
+
+    n_notch, notch_d = _notch_info(p)
+    bar_len = L_in - 6.0 - n_notch * notch_d
+
+    if cover <= 10:
+        qty = _i_bar_qty(int(p.span_ft))
+        logger.step(
+            f"RL1 (cover={cover}'<=10'): floor(({S_in}-4)/4)+1={qty}  "
+            f"len=L-6={fmt_inches(bar_len)}",
+            source="BoxCulvertRules",
+        )
+    else:
+        qty = math.floor((S_in - 4) / 12) + 1
+        logger.step(
+            f"RL1 (cover={cover}'>10'): #4@12\" max  qty={qty}  len={fmt_inches(bar_len)}",
+            source="BoxCulvertRules",
+        )
+
+    logger.result("RL1", f"#4 x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+
+    return [BarRow(
+        mark="RL1", size="#4", qty=qty, length_in=bar_len,
+        shape="Str",
+        notes="Roof long. bars  cover={}'  {}".format(
+            cover, "#4 @~4\" OC" if cover <= 10 else "#4@12\" max"
+        ),
+        source_rule="rule_bc_roof_long_bars",
+    )]
+
+
+def rule_bc_well_spreaders(p: Params, logger: ReasoningLogger) -> list[BarRow]:
+    """
+    WS1 — Wall spreader bars (#4, straight form-tie bars across interior width).
+
+    Spreader bars span the interior clear width and key into each wall with
+    bent legs.  Per gold barlist (8'×6'×20' RCB):
+      qty     = floor(L / 7) + 2 = 36   (@ ≈7\" OC along barrel axis)
+      legs    = 6\" each side (right and left)
+      top tab = 4\" (short hook at top of each leg)
+      body    = S_in = interior clear span (96\" for span=8')
+
+    Gold confirmed (8'×6'×20'): 36 #4 with 0'-6\" right/left and 0'-4\" on top.
+    The 7\" OC spacing derived from gold: 240\"/(36−2) ≈ 7\". Verify for other
+    barrel lengths if possible.
+    """
+    S_in = int(p.span_ft) * 12
+    L_in = p.barrel_length_ft * 12
+
+    qty    = math.floor(L_in / 7.0) + 2
+    leg    = 6.0   # side leg into wall
+    top    = 4.0   # short top tab
+
+    # Straight bar stock = body (interior span) + 2×leg + 2×top - bend_reduce
+    # Using same bend_reduce logic as similar C-bars; approximate deduction here.
+    deduct  = bend_reduce("shape_2", "#4")   # 2-bend shape approximation
+    bar_len = S_in + 2 * leg + 2 * top - deduct
+
+    logger.step(
+        f"WS1 (#4 spreader): qty=floor({L_in:.0f}/7)+2={qty}  "
+        f"body={S_in}\"  legs=2×{leg}\"  top=2×{top}\"  "
+        f"deduct(shape_2,#4)={deduct}\"  stock={bar_len:.1f}\"",
+        source="BoxCulvertRules",
+    )
+    logger.result("WS1", f"#4 x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
+
+    return [BarRow(
+        mark="WS1", size="#4", qty=qty, length_in=bar_len,
+        shape="C",
+        leg_a_in=top, leg_b_in=leg, leg_c_in=float(S_in),
+        notes=(
+            f"Wall spreader bars  body={fmt_inches(S_in)}  "
+            f"leg={leg}\" EF  top tab={top}\"  @≈7\" OC"
+        ),
+        review_flag="WS1 spacing (~7\" OC) derived from gold for L=20' only — verify for other lengths",
+        source_rule="rule_bc_well_spreaders",
     )]
 
 

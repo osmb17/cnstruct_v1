@@ -149,15 +149,10 @@ from vistadetail.engine.rules.inlet_top_rules import (
     rule_validate_inlet_top,
 )
 from vistadetail.engine.rules.junction_structure_rules import (
-    rule_junction_top_slab_trans,
-    rule_junction_top_slab_long,
-    rule_junction_floor_trans,
-    rule_junction_floor_long,
-    rule_junction_long_wall_horiz,
-    rule_junction_long_wall_vert,
-    rule_junction_short_wall_horiz,
-    rule_junction_short_wall_vert,
-    rule_junction_a_bars,
+    rule_junc_a_bars,
+    rule_junc_e_bars,
+    rule_junc_b_bars,
+    rule_junc_add_bars,
     rule_validate_junction,
 )
 from vistadetail.engine.rules.sound_wall_rules import (
@@ -190,8 +185,7 @@ from vistadetail.engine.rules.d84_wingwall_rules import (
 from vistadetail.engine.rules.d85_wingwall_rules import (
     rule_d85_validate,
     rule_d85_geometry,
-    rule_d85_n_bars,
-    rule_d85_o_bars,
+    rule_d85_k_bars,
     rule_d85_l_bars,
     rule_d85_hoops,
     rule_d85_top_bars,
@@ -342,16 +336,11 @@ RULE_REGISTRY: dict = {
     "rule_inlet_top_long_bars":      rule_inlet_top_long_bars,
     "rule_inlet_top_short_bars":     rule_inlet_top_short_bars,
     "rule_validate_inlet_top":       rule_validate_inlet_top,
-    # Junction Structure
-    "rule_junction_top_slab_trans":  rule_junction_top_slab_trans,
-    "rule_junction_top_slab_long":   rule_junction_top_slab_long,
-    "rule_junction_floor_trans":     rule_junction_floor_trans,
-    "rule_junction_floor_long":      rule_junction_floor_long,
-    "rule_junction_long_wall_horiz": rule_junction_long_wall_horiz,
-    "rule_junction_long_wall_vert":  rule_junction_long_wall_vert,
-    "rule_junction_short_wall_horiz":rule_junction_short_wall_horiz,
-    "rule_junction_short_wall_vert": rule_junction_short_wall_vert,
-    "rule_junction_a_bars":          rule_junction_a_bars,
+    # Junction Structure (D91A/D91B)
+    "rule_junc_a_bars":              rule_junc_a_bars,
+    "rule_junc_e_bars":              rule_junc_e_bars,
+    "rule_junc_b_bars":              rule_junc_b_bars,
+    "rule_junc_add_bars":            rule_junc_add_bars,
     "rule_validate_junction":        rule_validate_junction,
     # Sound Wall
     "rule_sw_wall_verticals":        rule_sw_wall_verticals,
@@ -380,8 +369,7 @@ RULE_REGISTRY: dict = {
     # D85 Wingwall (Types D/E)
     "rule_d85_validate":             rule_d85_validate,
     "rule_d85_geometry":             rule_d85_geometry,
-    "rule_d85_n_bars":               rule_d85_n_bars,
-    "rule_d85_o_bars":               rule_d85_o_bars,
+    "rule_d85_k_bars":               rule_d85_k_bars,
     "rule_d85_l_bars":               rule_d85_l_bars,
     "rule_d85_hoops":                rule_d85_hoops,
     "rule_d85_top_bars":             rule_d85_top_bars,

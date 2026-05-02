@@ -26,7 +26,7 @@ _GRATE_DEDUCTION: dict[str, float] = {
     "Type 18": 18.0,
 }
 
-_MIN_INTERIOR_Y_IN: float = 35.375   # 2'-11 3/8" — Caltrans G2 minimum clear depth
+_MIN_INTERIOR_Y_IN: float = 36.0   # 3'-0" — Caltrans G2 standard interior Y (fixed)
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ def rule_g2_inlet_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     if int_y_in < _MIN_INTERIOR_Y_IN:
         log.warn(
             f"Interior depth {fmt_inches(int_y_in)} < Caltrans G2 minimum "
-            f"{fmt_inches(_MIN_INTERIOR_Y_IN)} (2'-11 3/8\")"
+            f"{fmt_inches(_MIN_INTERIOR_Y_IN)} (3'-0\")"
         )
 
     # ── Grate opening L1 ────────────────────────────────────────────────
@@ -329,7 +329,7 @@ def rule_g2_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """Derive all G2 inlet dimensions matching the Vista Excel spreadsheet.
 
     Geometry rules (Caltrans D73A):
-      - Y interior is ALWAYS fixed at 2'-11 3/8" (35.375") for standard G2.
+      - Y interior is ALWAYS fixed at 3'-0" (36.0") for standard G2.
         Y exterior = Y_interior + 2 × T.
       - X interior = X_exterior − 2 × T.
       - T (wall_thick_in) is always explicitly provided by the user.
@@ -355,16 +355,16 @@ def rule_g2_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     log.step(f"T = {t:.0f}\"  (user input)")
     log.step(f"X exterior = {fmt_inches(x_ext)}  →  X interior = {fmt_inches(x_ext)} − 2×{t:.0f}\" = {fmt_inches(x_inside)}")
-    log.step(f"Y interior = {fmt_inches(y_inside)} (fixed, Caltrans D73A)  →  Y exterior = {fmt_inches(y_inside)} + 2×{t:.0f}\" = {fmt_inches(y_ext)}")
+    log.step(f"Y interior = {fmt_inches(y_inside)} (fixed 3'-0\", Caltrans D73A)  →  Y exterior = {fmt_inches(y_inside)} + 2×{t:.0f}\" = {fmt_inches(y_ext)}")
 
     n = int(getattr(p, "num_structures", 1)) or 1
 
     grate_type = str(getattr(p, "grate_type", "Type 24"))
     grate_ded = _GRATE_DEDUCTION.get(grate_type, 24.0)
 
-    # ── Height adjustment (Excel adds 4" for development) ──────────────
+    # ── Height adjustment (Excel adds 5" for development) ──────────────
     h_in = p.wall_height_ft * 12.0
-    h_adj = h_in + 4.0
+    h_adj = h_in + 5.0
 
     # ── Bar lengths (clearance = 6" = 3" cover each end) ──────────────
     y_bar = y_ext - 6.0   # horizontal bar spanning Y direction
@@ -373,8 +373,8 @@ def rule_g2_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     # ── Gut dimension (Excel: X_inside + T - grate_ded - 5) ──────────
     gut_dim = x_inside + t - (grate_ded + 5.0)
 
-    # ── A & B bar length (clearance = 4.5") ───────────────────────────
-    ab_bar_len = x_ext - 4.5
+    # ── A & B bar length: U-bars span Y direction, total = y_ext - 4.5 + 2×tail ──
+    ab_bar_len = y_ext - 4.5 + 2.0 * _AB_TAIL_IN   # = y_ext + 11.5"
 
     # ── Store derived values on params for downstream rules ───────────
     setattr(p, "x_ext_in", x_ext)
@@ -440,7 +440,8 @@ def rule_g2_horizontals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     hook_in = 12.0       # 1 ft hook each end
 
     qty_top = math.ceil(top_zone / top_spacing) * 2   # 6 × 2 walls = 12
-    qty_below = math.ceil((p.h_adj - top_zone) / below_spacing + 2 * n)
+    # Below zone: two wall faces, 5" oc, 14" base offset
+    qty_below = math.ceil((p.wall_height_ft * 12.0 - 14.0) / below_spacing) * 2 * n
 
     # Bar length = straight span + 2 hooks
     h1_len = p.y_bar + 2 * hook_in
@@ -449,7 +450,8 @@ def rule_g2_horizontals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     h4_len = p.x_bar + 2 * hook_in
 
     log.step(f"H1/H2 top 2ft: 24/{top_spacing}×2 = {qty_top} pcs, #6, 12\" hook EE")
-    log.step(f"H3/H4 below: CEIL(({fmt_inches(p.h_adj)}-24)/{below_spacing}+2×{n}) = {qty_below} pcs, #5, 12\" hook EE")
+    log.step(f"H3/H4 below: CEIL((H×12−14)/{below_spacing})×2×{n} = "
+             f"CEIL(({p.wall_height_ft * 12.0:.0f}−14)/{below_spacing})×2×{n} = {qty_below} pcs, #5, 12\" hook EE")
 
     return [
         BarRow(mark="H1", size="#6", qty=qty_top, length_in=h1_len,
@@ -489,17 +491,18 @@ def rule_g2_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     qty_v1 = math.ceil((p.x_bar * 2 - gd2 + p.y_bar + 6) / spacing)
     qty_v2 = math.ceil((p.y_bar + gd2 + 4) / spacing)
 
-    v1_len = p.h_adj + v1_ext
+    # V1 is shape_1 (L-bar) #5: apply 2.0" bend deduction per Vista bend chart
+    v1_len = p.h_adj + v1_ext - 2.0
     v2_len = p.h_adj
 
     log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}×2 − {gd2:.0f} + {fmt_inches(p.y_bar)} + 6)/{spacing}) = {qty_v1}, "
-             f"len={fmt_inches(v1_len)} (h_adj + 12\" top bend)")
+             f"len={fmt_inches(v1_len)} (h_adj + 12\" top bend − 2\" shape_1 deduct)")
     log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + {gd2:.0f} + 4)/{spacing}) = {qty_v2}, "
              f"len={fmt_inches(v2_len)} (h_adj, straight)")
 
     return [
         BarRow(mark="V1", size="#5", qty=qty_v1, length_in=v1_len,
-               shape="L", leg_a_in=p.h_adj, leg_b_in=v1_ext,
+               shape="L", leg_a_in=p.h_adj, leg_b_in=v1_ext - 2.0,
                notes="Verticals @5oc, 1ft top bend for hoops",
                source_rule="rule_g2_verticals"),
         BarRow(mark="V2", size="#5", qty=qty_v2, length_in=v2_len,
@@ -526,7 +529,7 @@ def rule_g2_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     log.step(f"A1: CEIL({fmt_inches(p.gut_dim)}/5) = {qty_a}, #5, "
              f"total {fmt_inches(p.ab_bar_len)} (8\" U-tails, span {fmt_inches(a_span)})")
-    log.step(f"B1: CEIL({fmt_inches(p.gut_dim)}/6) = {qty_b}, #4, "
+    log.step(f"B1: CEIL({fmt_inches(p.gut_dim)}/6) = {qty_b}, #5, "
              f"total {fmt_inches(p.ab_bar_len)} (8\" U-tails, span {fmt_inches(a_span)})")
 
     return [
@@ -534,7 +537,7 @@ def rule_g2_ab_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
                shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=a_span, leg_c_in=_AB_TAIL_IN,
                notes="A Bars @5oc, 8\" U-tails",
                source_rule="rule_g2_ab_bars"),
-        BarRow(mark="B1", size="#4", qty=qty_b, length_in=p.ab_bar_len,
+        BarRow(mark="B1", size="#5", qty=qty_b, length_in=p.ab_bar_len,
                shape="U", leg_a_in=_AB_TAIL_IN, leg_b_in=a_span, leg_c_in=_AB_TAIL_IN,
                notes="B Bars @6oc, 8\" U-tails",
                source_rule="rule_g2_ab_bars"),
@@ -553,10 +556,10 @@ def rule_g2_right_angle(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     deck_leg = p.gut_dim
     vert_leg = round(deck_leg * 1.5, 2)
-    qty = math.ceil(p.y_ext_in / 6.0 * p.n_struct)
+    qty = (math.floor(p.y_ext_in / 6.0) + 1) * p.n_struct
 
     log.step(f"RA1: deck={fmt_inches(deck_leg)}, vert={fmt_inches(vert_leg)}, "
-             f"qty=CEIL({fmt_inches(p.y_ext_in)}/6×{p.n_struct})={qty}")
+             f"qty=(FLOOR({fmt_inches(p.y_ext_in)}/6)+1)×{p.n_struct}={qty}")
 
     return [BarRow(
         mark="RA1", size="#5", qty=qty,
@@ -600,10 +603,10 @@ def rule_g2_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
         log.step("Hoops: skipped (gut_dim ≤ 0)")
         return []
 
-    qty = math.ceil(p.y_ext_in / 5.0 * p.n_struct)
+    qty = math.ceil(p.y_bar / 5.0 * p.n_struct)
     hp_total = _s6_total(p.gut_dim)
 
-    log.step(f"HP1: qty=CEIL({fmt_inches(p.y_ext_in)}/5×{p.n_struct})={qty}, "
+    log.step(f"HP1: qty=CEIL({fmt_inches(p.y_bar)}/5×{p.n_struct})={qty}, "
              f"gut={fmt_inches(p.gut_dim)}, S6 stock=2×gut+11.5\"={fmt_inches(hp_total)}")
 
     return [BarRow(

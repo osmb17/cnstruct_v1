@@ -4,14 +4,14 @@ Template: G2 Inlet  (v5.0)
 Caltrans G2 standard inlet box.
 
 Geometry rules (Caltrans Standard Plan D73A):
-  - Y interior is ALWAYS fixed at 2'-11 3/8" (35.375").
+  - Y interior is ALWAYS fixed at 3'-0" (36.0").
     Y exterior = Y_interior + 2 × T.  Y is never a free input.
   - X exterior is the primary user input.
     X interior = X_exterior − 2 × T.
   - Wall thickness T is always explicitly inputted (9" standard, 11" for
     larger spans).
 
-If Y interior must exceed 35.375" use the G2 Expanded Inlet template instead.
+If a non-standard Y interior is needed use the G2 Expanded Inlet template instead.
 Bar sizes and spacings per Vista Steel G2 Inlet spreadsheet (D73A).
 """
 
@@ -28,7 +28,7 @@ class InletWallTemplate(BaseTemplate):
         self.name = "G2 Inlet"
         self.version = "5.0"
         self.description = (
-            "Caltrans G2 inlet — Y interior fixed at 2'-11 3/8\" per D73A. "
+            "Caltrans G2 inlet — Y interior fixed at 3'-0\" per D73A. "
             "X exterior and wall thickness T are the primary inputs. "
             "Bar sizes/spacings per Vista Steel spreadsheet."
         )

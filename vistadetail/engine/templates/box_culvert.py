@@ -65,6 +65,8 @@ class BoxCulvertTemplate(BaseTemplate):
             "rule_bc_h_bars",
             "rule_bc_f_bars",
             "rule_bc_i_bars",
+            "rule_bc_roof_long_bars",
+            "rule_bc_well_spreaders",
             "rule_bc_haunch_bars",
             "rule_bc_notch_bars",
             "rule_bc_validate",

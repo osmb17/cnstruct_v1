@@ -1,39 +1,49 @@
 """
 Rule functions for Straight Headwall template (D89A / D89B).
 
-All formulas verified against two VistaSteel gold barlists:
+All formulas verified against three VistaSteel gold barlists:
   - SB County Schoolhouse Road: 8ft / D=36in / H=5'-11" (71in)
   - SB County Oak Valley:       10ft / D=48in / H=7'-6"  (90in, non-standard H)
+  - No-pipe headwall:           8ft / no pipe  / H=5'-0"  (60in)
 
 Reference: VistaProgram/src/caltrans_headwall.py (confirmed source).
 
 Formula notes:
-  ✓ = confirmed against both gold barlists
-  ASSUMPTION = not yet confirmed by additional gold barlists
+  ✓ = confirmed against gold barlists
+  NO-PIPE = formula or value applies only to the no-pipe (pipe_qty=0) case
   TABLE = value comes from D89A bar-count table (not derivable from formula)
 
 Marks produced:
-  TF  — transverse footing bars      (#4 @ 12" oc, qty = L//12 + 1)               ✓
-  D1  — top invert D-bars transverse (size from D89A/D89B table, qty = L//8)       ✓
-  LI  — longitudinal footing bars    (#4, qty = (H+12)//6 + 1, length = L-6)      ✓
-  LW  — longitudinal wall bars       (#4, qty = TABLE, length = L-6)               ✓
-  TW  — top-of-wall bars             (#5, qty = 3, length = L-6)                   ✓
-  VW  — vertical wall bars           (#4, qty = TABLE, length = ceil((H+18)/6)*6)  ✓
-  CB  — C-bar hairpin                (size = TABLE, qty = TABLE,
-                                      body = ceil((H+9)/2)*2, leg = T+4)           ✓
-  WS  — wall spreaders (mk401)       (#4, qty = L_ft, body = round((T-1.5)*2)/2,
-                                      legs = D//6)                                  ✓
-  ST  — mat standees (mk400)         (#4, qty = L_ft)                              ✓
-  PH  — pipe hoops (mk600)           (#6, qty = 2 per pipe, OD = D+6, lap = 36")  ✓
-  PO  — pipe opening bars            (size = TABLE, qty = L_ft, length = B+F)      ✓
+  TF  — transverse footing bars      (#4 @ 12" oc, qty = L//12 + 1)                ✓
+  D1  — top invert D-bars transverse (size from D89A/D89B table,
+                                      qty = L//8 [pipe] or L//8+1 [no-pipe])        ✓
+  LI  — longitudinal footing bars    (#4, qty = (H+12)//6+1 [pipe] or TABLE [no-pipe],
+                                      length = L-6)                                  ✓
+  LW  — longitudinal wall bars       (#4, qty = TABLE,
+                                      length = L-6 [pipe] or L-4 [no-pipe])         ✓
+  TW  — top-of-wall bars             (#5, qty = 3,
+                                      length = L-6 [pipe] or L-4 [no-pipe])         ✓
+  VW  — vertical wall bars           (#4, qty = TABLE, length = ceil((H+18)/6)*6)   ✓
+  CB  — C-bar hairpin                (size = TABLE c_s, qty = TABLE,
+                                      body = ceil((H+9)/2)*2, leg = T+4)            ✓
+  WS  — wall spreaders (mk401)       (pipe:   #4, qty=L_ft, body=round((T-1.5)*2)/2,
+                                               legs=D//6                             ✓
+                                       no-pipe:#4, qty=L_ft//2, body=T//2,
+                                               legs=T//2-0.5                        ✓)
+  ST  — mat standees (mk400)         (pipe:   #4, qty=L_ft, legs=D/6-0.5, base=12"  ✓
+                                       no-pipe:#5, qty=L_ft, legs=5.5",   base=18"  ✓)
+  PH  — pipe hoops (mk600)           (#6, qty = 2 per pipe, OD = D+6, lap = 36")   ✓
+  PO  — pipe opening bars            (size = TABLE, qty = L_ft, length = B+F)       ✓
 
-Count-table marks (VW, LW, CB):
+Count-table marks (VW, LW, CB, LI for no-pipe):
   Confirmed cases:
-    (D=36in, H=71in): vert=12, c_bar=12, wall_horz=22
-    (D=48in, H=90in): vert=10, c_bar=14, wall_horz=28
+    (D=36in, H=71in): vert=12, c_bar=12, wall_horz=22, li=14
+    (D=48in, H=90in): vert=10, c_bar=14, wall_horz=28, li=18
+    (D=0,    H=60in): vert= 9, c_bar= 9, wall_horz=14, li=16  [no-pipe gold]
   All other (D, H) combinations fall back to nearest-neighbour.
   ASSUMPTION: nearest-neighbour counts are approximate; confirm against
   additional gold barlists for each new (D, H) combination used on a job.
+  For no-pipe, D=0 is used as the table key.
 """
 
 from __future__ import annotations
@@ -82,13 +92,13 @@ _D89B_ROWS: list[dict] = [
     {"H":  38, "T": 10, "W": 27, "C":  6, "B": 21, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#4", "d_p": 12},  # 3'-2"
     {"H":  41, "T": 10, "W": 30, "C":  6, "B": 24, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#4", "d_p": 12},  # 3'-5"
     {"H":  44, "T": 10, "W": 30, "C":  6, "B": 24, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p": 12},  # 3'-8"
-    {"H":  47, "T": 10, "W": 30, "C":  6, "B": 24, "F": 12, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p": 12},  # 3'-11"
+    {"H":  47, "T": 10, "W": 30, "C":  6, "B": 24, "F": 14, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p": 12},  # 3'-11"  confirmed D89B
     {"H":  50, "T": 10, "W": 36, "C":  9, "B": 27, "F": 14, "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p": 12},  # 4'-2"
-    {"H":  56, "T": 10, "W": 36, "C":  9, "B": 27, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#5", "d_p":  9},  # 4'-8"
-    {"H":  59, "T": 10, "W": 39, "C":  9, "B": 30, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#5", "d_p":  9},  # 4'-11"
+    {"H":  56, "T": 10, "W": 36, "C":  9, "B": 27, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#5", "d_p":  9},  # 4'-8"  confirmed D89B
+    {"H":  59, "T": 10, "W": 39, "C":  9, "B": 30, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#5", "d_p":  9},  # 4'-11" confirmed D89B
     {"H":  62, "T": 10, "W": 45, "C": 12, "B": 33, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#5", "d_p":  9},  # 5'-2"
     {"H":  65, "T": 10, "W": 48, "C": 12, "B": 36, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#5", "d_p":  9},  # 5'-5"
-    {"H":  68, "T": 10, "W": 50, "C": 12, "B": 38, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#6", "d_p":  9},  # 5'-8"
+    {"H":  68, "T": 10, "W": 50, "C": 12, "B": 38, "F": 14, "c_s": "#5", "c_p": 12, "d_s": "#6", "d_p": 12},  # 5'-8"  confirmed D89B
     {"H":  71, "T": 12, "W": 50, "C": 12, "B": 38, "F": 14, "c_s": "#5", "c_p":  9, "d_s": "#6", "d_p":  9},  # 5'-11"
     {"H":  74, "T": 12, "W": 54, "C": 12, "B": 42, "F": 14, "c_s": "#5", "c_p":  9, "d_s": "#6", "d_p":  9},  # 6'-2"
     {"H":  77, "T": 12, "W": 57, "C": 15, "B": 42, "F": 14, "c_s": "#5", "c_p":  9, "d_s": "#6", "d_p":  9},  # 6'-5"
@@ -109,9 +119,14 @@ _D89B_MAX_H = _D89B_ROWS[-1]["H"]   # 77" — table ceiling
 # Source: VistaProgram/src/caltrans_headwall.py, verified vs. gold barlists.
 # ---------------------------------------------------------------------------
 _D89A_COUNT_TABLE: dict[tuple[int, int], dict[str, int]] = {
-    # (D_in, H_in): {"vert": …, "c_bar": …, "wall_horz": …}
-    (36, 71): {"vert": 12, "c_bar": 12, "wall_horz": 22},   # ✓ confirmed
-    (48, 90): {"vert": 10, "c_bar": 14, "wall_horz": 28},   # ✓ confirmed (non-std H)
+    # (D_in, H_in): {"vert": …, "c_bar": …, "wall_horz": …, "li": …}
+    # "li" is the longitudinal footing bar count (only needed when formula fails,
+    # i.e. the no-pipe case; for pipe cases li = (H+12)//6+1 which agrees ✓).
+    (36, 71): {"vert": 12, "c_bar": 12, "wall_horz": 22, "li": 14},   # ✓ confirmed
+    (48, 90): {"vert": 10, "c_bar": 14, "wall_horz": 28, "li": 18},   # ✓ confirmed (non-std H)
+    # No-pipe entry: D=0 key used when pipe_qty=0.  All counts from gold barlist
+    # (straight headwall 8ft / H=5'-0" / no pipe).
+    (0,  60): {"vert":  9, "c_bar":  9, "wall_horz": 14, "li": 16},   # ✓ confirmed no-pipe
 }
 
 # Pipe opening bar size table (grows with pipe diameter)
@@ -149,12 +164,26 @@ def _parse_dia(p: Params) -> int:
         return 24
 
 
+def _effective_D(p: "Params") -> int:
+    """
+    Return the pipe diameter to use for count-table lookups.
+    When there is no pipe (pipe_qty=0) the key D=0 is used so that the
+    no-pipe entry in _D89A_COUNT_TABLE is found exactly rather than falling
+    back to the nearest pipe-based neighbour.
+    """
+    if int(getattr(p, "pipe_qty", 0)) < 1:
+        return 0
+    return _parse_dia(p)
+
+
 def _count_lookup(D_in: int, H_in: int) -> dict[str, int]:
     """
-    Return (vert, c_bar, wall_horz) from count table.
+    Return (vert, c_bar, wall_horz, li) from count table.
     If (D_in, H_in) is not in the confirmed table, fall back to
     nearest-neighbour by Euclidean distance in (D, H) space.
     ASSUMPTION for any (D, H) pair not in the confirmed table.
+
+    For the no-pipe case pass D_in=0 (use _effective_D helper).
     """
     key = (D_in, H_in)
     if key in _D89A_COUNT_TABLE:
@@ -209,26 +238,33 @@ def rule_hw_d_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     D1 — Top invert D-bars, transverse.
 
-    qty    = L // 8   (@8" oc along L — hardcoded to 8" per VistaProgram)  ✓
-    length = B + F    (same span as TF)                                     ✓
+    qty    = L // 8         [pipe case, @8" oc, exclusive count]              ✓
+             L // 8 + 1     [no-pipe case, @8" oc, inclusive — no pipe gap]   ✓
+    length = B + F          (same span as TF)                                  ✓
     size   = d_s from D89A/D89B table
+
+    Confirmed:
+      Pipe   L=96" / D=36 / H=71: qty=96//8=12 ✓
+      No-pipe L=96" / H=60:       qty=96//8+1=13 ✓
     """
     L      = p.wall_width_ft * 12
     H      = p.wall_height_ft * 12
     case   = getattr(p, "loading_case", "I")
+    no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
     row    = _d89_by_height(H, case)
     tbl    = "D89B" if case == "II / III" else "D89A"
     d_size = row["d_s"]
-    qty    = int(L) // 8
+    qty    = int(L) // 8 + (1 if no_pipe else 0)
     length = row["B"] + row["F"]
 
-    log.step(f"{tbl} H={H:.0f}\" → d_size={d_size}  D1: {L:.0f}//8={qty} @ {fmt_inches(length)}",
+    suffix = "+1 (no-pipe, inclusive)" if no_pipe else ""
+    log.step(f"{tbl} H={H:.0f}\" → d_size={d_size}  D1: {L:.0f}//8{'='+str(qty) if not no_pipe else '+1='+str(qty)} @ {fmt_inches(length)}{suffix}",
              source="HeadwallRules")
     log.result("D1", f"{d_size} × {qty} @ {fmt_inches(length)}", source="HeadwallRules")
 
     return [BarRow(
         mark="D1", size=d_size, qty=qty, length_in=length, shape="Str",
-        notes=f"D bars @8\" oc  B+F={fmt_inches(length)}",
+        notes=f"D bars @8\" oc{'  no-pipe+1' if no_pipe else ''}  B+F={fmt_inches(length)}",
         source_rule="rule_hw_d_bars",
     )]
 
@@ -241,25 +277,52 @@ def rule_hw_long_invert(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     LI — Longitudinal footing bars.
 
-    qty    = (H_in + 12) // 6 + 1   (bars at 6" vertical spacing over H1=H+12)  ✓
-    length = L - 6                  (3" cover each end)                           ✓
+    PIPE case:
+      qty    = (H_in + 12) // 6 + 1   (bars at 6" vertical spacing over H1=H+12)  ✓
+      length = L - 6                  (3" cover each end)                           ✓
+
+    NO-PIPE case:
+      qty    = TABLE  (count-table "li" key, keyed by D=0 and H)                   ✓
+      length = L - 6  (same 3" cover each end)                                     ✓
+      Note: formula (H+12)//6+1 gives 13 for H=60 but gold says 16; cause unknown.
+            The no-pipe bar layout differs from the pipe case; count is hard-coded.
+
     size   = #4 (constant)
 
-    Confirmed: H=71 → (71+12)//6+1=14 ✓;  H=90 → (90+12)//6+1=18 ✓
+    Confirmed:
+      Pipe H=71:  (71+12)//6+1=14 ✓
+      Pipe H=90:  (90+12)//6+1=18 ✓
+      No-pipe H=60: TABLE=16 ✓
     """
-    L      = p.wall_width_ft * 12
-    H      = p.wall_height_ft * 12
-    H1     = int(H) + 12
-    qty    = H1 // 6 + 1
-    length = L - 6.0
+    L       = p.wall_width_ft * 12
+    H       = p.wall_height_ft * 12
+    no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
+    length  = L - 6.0
 
-    log.step(f"LI: H1=H+12={H1}  ⌊{H1}/6⌋+1={qty} × #4 @ {fmt_inches(length)}",
-             source="HeadwallRules")
+    if no_pipe:
+        D_eff = _effective_D(p)   # 0 for no-pipe
+        cnts  = _count_lookup(D_eff, int(H))
+        qty   = cnts.get("li", (int(H) + 12) // 6 + 1)
+        log.step(
+            f"LI no-pipe: (D=0, H={H:.0f}\") TABLE li={qty} × #4 @ {fmt_inches(length)}",
+            source="HeadwallRules",
+        )
+    else:
+        H1  = int(H) + 12
+        qty = H1 // 6 + 1
+        log.step(f"LI: H1=H+12={H1}  ⌊{H1}/6⌋+1={qty} × #4 @ {fmt_inches(length)}",
+                 source="HeadwallRules")
+
     log.result("LI", f"#4 × {qty} @ {fmt_inches(length)}", source="HeadwallRules")
 
+    if no_pipe:
+        li_notes = "Long footing  TABLE (no-pipe)"
+    else:
+        H1_str = fmt_inches(float(int(H) + 12))
+        li_notes = f'Long footing @6" oc  H1={H1_str}'
     return [BarRow(
         mark="LI", size="#4", qty=qty, length_in=length, shape="Str",
-        notes=f"Long footing @6\" oc  H1={fmt_inches(float(H1))}",
+        notes=li_notes,
         source_rule="rule_hw_long_invert",
     )]
 
@@ -350,29 +413,41 @@ def rule_hw_vert_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     VW — Vertical wall bars.
 
-    qty    = TABLE  (count table keyed by (D_in, H_in))                        ✓
-    length = ceil((H_in + 18) / 6) * 6   (rounded up to next 6" increment)    ✓
+    qty    = TABLE  [pipe case, keyed by (D_in, H_in)]                          ✓
+             L//12+1 [no-pipe case, bars @12\" oc along wall length]              ✓
+    length = ceil((H+18)/6)*6  [pipe case — VistaProgram formula]               ✓
+             H + F + 7\"        [no-pipe case — F from table, 7\"=hook]           ✓
     size   = #4 (constant)
 
     Confirmed:
-      H=71: ceil(89/6)*6=ceil(14.83)*6=15*6=90\"=7'-6\" ✓
-      H=90: ceil(108/6)*6=18*6=108\"=9'-0\" ✓
+      Pipe   H=71, D=36: qty=12 (TABLE), len=ceil(89/6)*6=90\"=7'-6\" ✓ (schoolhouse gold)
+      Pipe   H=90, D=48: qty=10 (TABLE), len=ceil(108/6)*6=108\"=9'-0\" ✓ (vista gold)
+      No-pipe H=60, F=12: qty=9=96//12+1, len=60+12+7=79\"=6'-7\" ✓ (no-pipe gold)
     """
-    L      = p.wall_width_ft * 12
-    H      = p.wall_height_ft * 12
-    D_in   = _parse_dia(p)
-    cnts   = _count_lookup(D_in, int(H))
-    qty    = cnts["vert"]
-    length = math.ceil((H + 18) / 6) * 6
+    L       = p.wall_width_ft * 12
+    H       = p.wall_height_ft * 12
+    no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
+    D_in    = _effective_D(p)
+    row     = _d89_by_height(H, getattr(p, "loading_case", "I"))
 
-    log.step(f"VW: (D={D_in}\", H={H:.0f}\") → TABLE qty={qty}  "
-             f"len=ceil(({H:.0f}+18)/6)×6={length}\"={fmt_inches(length)}",
+    if no_pipe:
+        qty = math.floor(L / 12) + 1
+        length = H + row["F"] + 7.0
+        len_formula = f"H+F+7={H:.0f}+{row['F']}+7={length:.0f}\""
+    else:
+        cnts = _count_lookup(D_in, int(H))
+        qty  = cnts["vert"]
+        length = math.ceil((H + 18) / 6) * 6
+        len_formula = f"ceil(({H:.0f}+18)/6)*6={length:.0f}\""
+
+    log.step(f"VW: (D={D_in}\", H={H:.0f}\") → {'L//12+1' if no_pipe else 'TABLE'} qty={qty}  "
+             f"len={len_formula}={fmt_inches(length)}",
              source="HeadwallRules")
     log.result("VW", f"#4 × {qty} @ {fmt_inches(length)}", source="HeadwallRules")
 
     return [BarRow(
         mark="VW", size="#4", qty=qty, length_in=length, shape="Str",
-        notes=f"Vert wall  len=ceil((H+18)/6)*6={fmt_inches(length)}",
+        notes=f"Vert wall  {len_formula}",
         source_rule="rule_hw_vert_wall",
     )]
 
@@ -385,26 +460,32 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     CB — C-bar hairpin.
 
-    qty    = TABLE  (count table keyed by (D_in, H_in))                        ✓
+    qty    = L//12+1  [no-pipe case, @12\" oc along wall length]               ✓
+             TABLE    [pipe case, count table keyed by (D_in, H_in)]           ✓
     body   = ceil((H_in + 9) / 2) * 2   (rounded up to next 2" increment)     ✓
              (= ceil((H1 - 3) / 2) * 2  where H1 = H + 12)
     leg    = T + 4   (T = wall thickness; 2\" cover each face)                 ✓
     size   = c_s from D89A/D89B table
 
     Confirmed:
+      No-pipe 8ft/H=60: qty=96//12+1=9 ✓
       H=71, T=10: body=ceil(80/2)*2=80\"=6'-8\" ✓  leg=14\"=1'-2\" ✓
       H=90, T=12: body=ceil(99/2)*2=100\"=8'-4\" ✓  leg=16\"=1'-4\" ✓
     """
     L      = p.wall_width_ft * 12
     H      = p.wall_height_ft * 12
-    D_in   = _parse_dia(p)
+    D_in   = _effective_D(p)
     case   = getattr(p, "loading_case", "I")
     row    = _d89_by_height(H, case)
-    cnts   = _count_lookup(D_in, int(H))
     tbl    = "D89B" if case == "II / III" else "D89A"
     c_size = row["c_s"]
     T      = row["T"]
-    qty    = cnts["c_bar"]
+    no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
+    if no_pipe:
+        qty = math.floor(L / 12) + 1
+    else:
+        cnts = _count_lookup(D_in, int(H))
+        qty  = cnts["c_bar"]
     body   = math.ceil((H + 9) / 2) * 2    # = ceil((H1-3)/2)*2 where H1=H+12
     leg    = float(T) + 4.0                  # 2" cover each face
     R      = 9.0
@@ -413,10 +494,10 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     log.step(
         f"{tbl} H={H:.0f}\" → c_size={c_size}  T={T}\"  "
-        f"CB body=ceil(({H:.0f}+9)/2)*2={body}\"  leg=T+4={leg}\"  stock={fmt_inches(stock)}",
+        f"CB body=ceil(({H:.0f}+9)/2)*2={body}\"  leg=T+4={leg}\"  stock={fmt_inches(stock)}  "
+        f"qty={'L//12+1' if no_pipe else 'TABLE'}={qty}",
         source="HeadwallRules",
     )
-    log.step(f"qty=(D={D_in}\", H={H:.0f}\") TABLE={qty}", source="HeadwallRules")
     log.result("CB", f"{c_size} × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
 
     return [BarRow(
@@ -435,26 +516,33 @@ def rule_hw_long_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     LW — Longitudinal wall bars.
 
-    qty    = TABLE  (count table keyed by (D_in, H_in))   ✓
-    length = L - 6  (3\" cover each end)                   ✓
+    qty    = TABLE  (count table keyed by (D_in, H_in))               ✓
+             For no-pipe use D=0 as the table key.
+    length = L - 6  [pipe case, 3\" cover each end]                    ✓
+             L - 4  [no-pipe case, 2\" cover each end]                  ✓
     size   = #4 (constant)
 
-    Confirmed: 8ft/D=36/H=71 → 22 ✓;  10ft/D=48/H=90 → 28 ✓
+    Confirmed:
+      Pipe   8ft/D=36/H=71: qty=22 len=7'-6\" ✓
+      Pipe  10ft/D=48/H=90: qty=28 len=9'-6\" ✓
+      No-pipe 8ft/H=60:     qty=14 len=7'-8\" ✓
     """
-    L      = p.wall_width_ft * 12
-    H      = p.wall_height_ft * 12
-    D_in   = _parse_dia(p)
-    cnts   = _count_lookup(D_in, int(H))
-    qty    = cnts["wall_horz"]
-    length = L - 6.0
+    L       = p.wall_width_ft * 12
+    H       = p.wall_height_ft * 12
+    no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
+    D_in    = _effective_D(p)
+    cnts    = _count_lookup(D_in, int(H))
+    qty     = cnts["wall_horz"]
+    length  = L - 4.0 if no_pipe else L - 6.0
+    cover   = "2\"" if no_pipe else "3\""
 
-    log.step(f"LW: (D={D_in}\", H={H:.0f}\") TABLE qty={qty}  len=L-6={fmt_inches(length)}",
+    log.step(f"LW: (D={D_in}\", H={H:.0f}\") TABLE qty={qty}  len=L-{'4' if no_pipe else '6'}={fmt_inches(length)} ({cover} cover ea end)",
              source="HeadwallRules")
     log.result("LW", f"#4 × {qty} @ {fmt_inches(length)}", source="HeadwallRules")
 
     return [BarRow(
         mark="LW", size="#4", qty=qty, length_in=length, shape="Str",
-        notes=f"Long wall  TABLE  len=L-6={fmt_inches(length)}",
+        notes=f"Long wall  TABLE  len=L-{'4' if no_pipe else '6'}={fmt_inches(length)}",
         source_rule="rule_hw_long_wall",
     )]
 
@@ -468,19 +556,25 @@ def rule_hw_top_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
     TW — Top-of-wall bars (#5, 3 total).
 
     qty    = 3 (constant, per D89A plan)
-    length = L - 6  (3\" cover each end)  ✓
-    """
-    L      = p.wall_width_ft * 12
-    qty    = 3
-    length = L - 6.0
+    length = L - 6  [pipe case, 3\" cover each end]    ✓
+             L - 4  [no-pipe case, 2\" cover each end]  ✓
 
-    log.step(f"TW: 3 × #5 @ {fmt_inches(length)}  (L-6={fmt_inches(length)})",
+    Confirmed:
+      Pipe   8ft: L-6=7'-6\" ✓
+      No-pipe 8ft: L-4=7'-8\" ✓
+    """
+    L       = p.wall_width_ft * 12
+    no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
+    qty     = 3
+    length  = L - 4.0 if no_pipe else L - 6.0
+
+    log.step(f"TW: 3 × #5 @ {fmt_inches(length)}  (L-{'4' if no_pipe else '6'}={fmt_inches(length)})",
              source="HeadwallRules")
     log.result("TW", f"#5 × 3 @ {fmt_inches(length)}", source="HeadwallRules")
 
     return [BarRow(
         mark="TW", size="#5", qty=qty, length_in=length, shape="Str",
-        notes="Top of wall #5 Tot 3",
+        notes=f"Top of wall #5 Tot 3  L-{'4' if no_pipe else '6'}={fmt_inches(length)}",
         source_rule="rule_hw_top_wall",
     )]
 
@@ -493,36 +587,54 @@ def rule_hw_spreaders(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     WS — Wall spreaders (mk401), U-shape.
 
-    qty    = L_ft  (one per foot of wall width)                           ✓
-    body   = round((T - 1.5) * 2) / 2   (nearest 0.5\", wall clear span) ✓
-    legs   = D_in // 6                                                    ✓
-    size   = #4
+    PIPE case:
+      qty    = L_ft  (one per foot of wall width)                            ✓
+      body   = round((T - 1.5) * 2) / 2   (nearest 0.5\", wall clear span)  ✓
+      legs   = D_in // 6                                                     ✓
+      Confirmed: T=10 D=36 → body=8.5\" legs=6\" ✓
+                 T=12 D=48 → body=10\" legs=8\" ✓
 
-    Confirmed:
-      T=10, D=36: body=8.5\"  legs=6\" ✓
-      T=12, D=48: body=10.5\"→10\"  legs=8\" ✓
+    NO-PIPE case  (every 4ft, D=0):
+      qty    = L_ft // 2   (every 4ft → 2 sets for 8ft wall → 4 bars)       ✓
+      body   = T // 2      (= 5\" for T=10\")                                 ✓
+      legs   = T // 2 - 0.5  (= 4.5\" for T=10\")                            ✓
+      Confirmed: 8ft/H=60 → qty=4, body=5\", legs=4.5\" ✓
+
+    size = #4 (both cases)
     """
-    H      = p.wall_height_ft * 12
-    D_in   = _parse_dia(p)
-    row    = _d89_by_height(H, getattr(p, "loading_case", "I"))
-    T      = row["T"]
-    qty    = int(p.wall_width_ft)
-    body   = round((T - 1.5) * 2) / 2   # nearest 0.5"
-    leg    = D_in // 6
-    deduct = bend_reduce("shape_2", "#4")
-    stock  = body + 2 * leg - deduct
+    H       = p.wall_height_ft * 12
+    no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
+    D_in    = _parse_dia(p)
+    row     = _d89_by_height(H, getattr(p, "loading_case", "I"))
+    T       = row["T"]
+    deduct  = bend_reduce("shape_2", "#4")
 
-    log.step(
-        f"WS: T={T}\" D={D_in}\"  body=round((T-1.5)*2)/2={body}\"  "
-        f"legs=D//6={leg}\"  stock={fmt_inches(stock)}  qty=L_ft={qty}",
-        source="HeadwallRules",
-    )
+    if no_pipe:
+        qty  = int(p.wall_width_ft) // 2
+        body = float(T // 2)
+        leg  = float(T // 2) - 0.5
+        log.step(
+            f"WS no-pipe: T={T}\"  body=T//2={body}\"  legs=T//2-0.5={leg}\"  "
+            f"stock={fmt_inches(body + 2*leg - deduct)}  qty=L_ft//2={qty}",
+            source="HeadwallRules",
+        )
+    else:
+        qty  = int(p.wall_width_ft)
+        body = round((T - 1.5) * 2) / 2   # nearest 0.5"
+        leg  = float(D_in // 6)
+        log.step(
+            f"WS: T={T}\" D={D_in}\"  body=round((T-1.5)*2)/2={body}\"  "
+            f"legs=D//6={leg}\"  stock={fmt_inches(body + 2*leg - deduct)}  qty=L_ft={qty}",
+            source="HeadwallRules",
+        )
+
+    stock = body + 2 * leg - deduct
     log.result("WS", f"#4 × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
 
     return [BarRow(
         mark="WS", size="#4", qty=qty, length_in=stock, shape="U",
-        leg_a_in=body, leg_b_in=float(leg), leg_c_in=float(leg),
-        notes=f"Wall spreader mk401  body={fmt_inches(body)}  legs={fmt_inches(float(leg))}",
+        leg_a_in=body, leg_b_in=leg, leg_c_in=leg,
+        notes=f"Wall spreader mk401  body={fmt_inches(body)}  legs={fmt_inches(leg)}",
         source_rule="rule_hw_spreaders",
     )]
 
@@ -535,34 +647,58 @@ def rule_hw_standees(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     ST — Mat standees (mk400), S-shape.
 
-    qty    = L_ft  (one per foot of wall width)            ✓
-    size   = #4                                            ✓
-    A      = 5.0\" (top hook, constant per both gold cases) ✓
-    leg    = D_in // 6 - 0.5  (riser/seat legs)           ✓
-    base   = 12.0\" (bottom seat, constant)                ✓
+    PIPE case:
+      qty    = L_ft  (one per foot of wall width)             ✓
+      size   = #4                                             ✓
+      A      = 5.0\" (top hook, constant per both gold cases)  ✓
+      leg    = D_in / 6 - 0.5  (riser/seat legs)             ✓
+      base   = 12.0\" (bottom seat, constant)                  ✓
+      Confirmed: D=36 → legs=5.5\" ✓;  D=48 → legs≈7\" ✓
 
-    Confirmed: D=36 → legs=5.5\" ✓;  D=48 → legs=7.5\" (≈7\" per barlist) ✓
+    NO-PIPE case:
+      qty    = L_ft  (one per foot, same as pipe)             ✓
+      size   = #5                                             ✓
+      A      = 5.0\" (top hook, constant)                      ✓
+      leg    = 5.5\" (fixed, no pipe diameter)                 ✓
+      base   = 18.0\" (larger base for solid footing mat)      ✓
+      Confirmed: 8ft/H=60 → qty=8 #5 legs=5.5\" base=18\" ✓
     """
-    D_in   = _parse_dia(p)
-    qty    = int(p.wall_width_ft)
-    seg_a  = 5.0                  # top hook
-    seg_b  = D_in / 6 - 0.5      # riser (variable with pipe size)
-    seg_c  = D_in / 6 - 0.5      # seat  (same as riser)
-    seg_d  = 12.0                 # base
-    deduct = bend_reduce("shape_3", "#4")
-    stock  = seg_a + seg_b + seg_c + seg_d - deduct
+    D_in    = _parse_dia(p)
+    no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
+    qty     = int(p.wall_width_ft)
 
-    log.step(
-        f"ST: D={D_in}\"  A=5\"  legs=D/6-0.5={seg_b:.1f}\" × 2  base=12\"  "
-        f"stock={fmt_inches(stock)}  qty=L_ft={qty}",
-        source="HeadwallRules",
-    )
-    log.result("ST", f"#4 × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
+    if no_pipe:
+        size  = "#5"
+        seg_a = 5.0
+        seg_b = 5.5    # fixed for no-pipe
+        seg_c = 5.5
+        seg_d = 18.0   # larger base for solid footing mat
+        deduct = bend_reduce("shape_3", "#5")
+        log.step(
+            f"ST no-pipe: #5  A=5\"  legs=5.5\" × 2  base=18\"  "
+            f"stock={fmt_inches(seg_a+seg_b+seg_c+seg_d-deduct)}  qty=L_ft={qty}",
+            source="HeadwallRules",
+        )
+    else:
+        size  = "#4"
+        seg_a = 5.0
+        seg_b = D_in / 6 - 0.5
+        seg_c = D_in / 6 - 0.5
+        seg_d = 12.0
+        deduct = bend_reduce("shape_3", "#4")
+        log.step(
+            f"ST: D={D_in}\"  A=5\"  legs=D/6-0.5={seg_b:.1f}\" × 2  base=12\"  "
+            f"stock={fmt_inches(seg_a+seg_b+seg_c+seg_d-deduct)}  qty=L_ft={qty}",
+            source="HeadwallRules",
+        )
+
+    stock = seg_a + seg_b + seg_c + seg_d - deduct
+    log.result("ST", f"{size} × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
 
     return [BarRow(
-        mark="ST", size="#4", qty=qty, length_in=stock, shape="S",
+        mark="ST", size=size, qty=qty, length_in=stock, shape="S",
         leg_a_in=seg_a, leg_b_in=seg_b, leg_c_in=seg_c, leg_d_in=seg_d,
-        notes=f"Mat standee mk400  A=5\"  legs={fmt_inches(seg_b)}×2  base=12\"",
+        notes=f"Mat standee mk400  A=5\"  legs={fmt_inches(seg_b)}×2  base={fmt_inches(seg_d)}",
         source_rule="rule_hw_standees",
     )]
 

@@ -12,27 +12,25 @@ Key geometry:
   LOL = length of wall (ft)
   S   = clear span of box (ft) -- used for Type E spacing
 
-Reinforcing table from D85 (Type E "TABLE OF REINFORCEMENT"):
-  H(ft) | Bar No. | Spacing | Number Each Wall
-    2   |   #4   |   12"   |   2
-    3   |   #4   |   12"   |   3
-    4   |   #4   |   12"   |   4
-    5   |   #4   |   12"   |   5
-    6   |   #4   |   12"   |   6
-    7   |   #5   |   12"   |   7
-    8   |   #5   |   12"   |   8
-    9   |   #6   |   12"   |   9
-   10   |   #6   |   12"   |  10
-   12   |   #6   |   12"   |  12
-   14   |   #8   |   12"   |  14
+TABLE OF REINFORCEMENT FOR TYPE "E" WINGWALLS (confirmed from D85 2025):
+
+  "k" BARS (primary face bars, outside face, spaced along wall height):
+  H(ft)    3    4    5    6    7    8   10   12   14
+  Bar No. #4   #4   #5   #5   #5   #5   #5   #5   #5
+  Spacing @12  @12  @12  @10   @9   @8   @7   @5   @4
+
+  "L" BARS (concentrated bars per wall, run full LOL length):
+  H(ft)    3    4    5    6    7    8   10   12   14
+  Bar No. #5   #5   #6   #6   #7   #7   #7   #7   #7
+  Each Wl  2    2    3    3    3    3    3    3    3
+
+  Note: "n" bars (inside face) match the adjacent RCB "a" bar size and spacing
+  per D85 sections — coordinated from the box culvert design.
 
 Bar marks:
-  n1  -- "n" bars (inside face horizontal)
-  n2  -- "n" bars (outside face horizontal)
-  o1  -- "o" bars (inside face longitudinal)
-  o2  -- "o" bars (outside face longitudinal)
-  L1  -- "L" bars (longitudinal, stepped section)
-  H1  -- #4 @ 12" hoops
+  k1  -- "k" bars (outside face, primary face bars from table)
+  L1  -- "L" bars (concentrated bars, total count per wall)
+  H1  -- #4 @ 12 Max hoops
   T1  -- top bars (#4 @ 9" both faces)
   T2  -- top bars (#4 @ 9" outside face)
   B1  -- footing mat transverse
@@ -46,132 +44,130 @@ from vistadetail.engine.schema import BarRow, Params
 
 
 # ---------------------------------------------------------------------------
-# D85 reinforcement table (interpolate for fractional H)
+# D85 reinforcement tables — confirmed from 2025 Standard Plan D85
 # ---------------------------------------------------------------------------
-_D85_TABLE = [
-    (2,  "#4", 12, 2),
-    (3,  "#4", 12, 3),
-    (4,  "#4", 12, 4),
-    (5,  "#4", 12, 5),
-    (6,  "#4", 12, 6),
-    (7,  "#5", 12, 7),
-    (8,  "#5", 12, 8),
-    (9,  "#6", 12, 9),
-    (10, "#6", 12, 10),
-    (12, "#6", 12, 12),
-    (14, "#8", 12, 14),
+
+# "k" bars: primary outside-face bars, spaced along wall height.
+# (H_ft, bar_size, spacing_in)
+_D85_K_TABLE: list[tuple[int, str, int]] = [
+    (3,  "#4", 12),
+    (4,  "#4", 12),
+    (5,  "#5", 12),
+    (6,  "#5", 10),
+    (7,  "#5",  9),
+    (8,  "#5",  8),
+    (10, "#5",  7),
+    (12, "#5",  5),
+    (14, "#5",  4),
+]
+
+# "L" bars: concentrated bars, fixed count per wall, run full LOL.
+# (H_ft, bar_size, count_per_wall)
+_D85_L_TABLE: list[tuple[int, str, int]] = [
+    (3,  "#5", 2),
+    (4,  "#5", 2),
+    (5,  "#6", 3),
+    (6,  "#6", 3),
+    (7,  "#7", 3),
+    (8,  "#7", 3),
+    (10, "#7", 3),
+    (12, "#7", 3),
+    (14, "#7", 3),
 ]
 
 
-def _lookup_d85(h_ft: float) -> tuple[str, int, int]:
-    """Return (bar_size, spacing_in, qty_each_wall) from D85 table."""
-    prev = _D85_TABLE[0]
-    for row in _D85_TABLE:
+def _lookup_k(h_ft: float) -> tuple[str, int]:
+    """Return (bar_size, spacing_in) for 'k' bars from D85 table."""
+    last = _D85_K_TABLE[-1]
+    for row in _D85_K_TABLE:
         if h_ft <= row[0]:
-            return row[1], row[2], row[3]
-        prev = row
-    return prev[1], prev[2], prev[3]
+            return row[1], row[2]
+        last = row
+    return last[1], last[2]
+
+
+def _lookup_l(h_ft: float) -> tuple[str, int]:
+    """Return (bar_size, count_per_wall) for 'L' bars from D85 table."""
+    last = _D85_L_TABLE[-1]
+    for row in _D85_L_TABLE:
+        if h_ft <= row[0]:
+            return row[1], row[2]
+        last = row
+    return last[1], last[2]
 
 
 def rule_d85_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """Validate geometry and log."""
-    size, spac, qty = _lookup_d85(p.wall_height_ft)
+    """Validate geometry and log key computed values."""
+    k_size, k_sp = _lookup_k(p.wall_height_ft)
+    l_size, l_cnt = _lookup_l(p.wall_height_ft)
     log.step(
-        f"D85 Geometry: H={p.wall_height_ft}ft, LOL={p.wall_length_ft}ft "
-        f"→ table: {size} @{spac}\" x{qty} each wall",
+        f"D85 Geometry: H={p.wall_height_ft}ft, LOL={p.wall_length_ft}ft  "
+        f"k-bars: {k_size}@{k_sp}\"  L-bars: {l_size}×{l_cnt}/wall",
         source="D85WingwallGeometry",
     )
     return []
 
 
-def rule_d85_n_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
+def rule_d85_k_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    'n' bars -- primary face bars from D85 table.
-    Both faces, full LOL length.
+    'k' bars — primary outside-face bars (D85 Table of Reinforcement).
+
+    Run the full LOL length along the outside wall face, spaced vertically
+    at the table spacing.  Length = LOL (+ 2'-0\" lap into box wall per D85).
+
+    qty = floor(H_in / spacing) + 1
     """
     h_ft   = p.wall_height_ft
+    h_in   = h_ft * 12
     lol_in = p.wall_length_ft * 12
-    size, spac, qty_each = _lookup_d85(h_ft)
+    lap_in = 24.0   # 2'-0" into box wall per D85 detail
+    size, spac = _lookup_k(h_ft)
+
+    qty    = math.floor(h_in / spac) + 1
+    length = lol_in + lap_in
 
     log.step(
-        f"n-bars: H={h_ft}ft → {size} @{spac}\", qty={qty_each} each face, "
-        f"len={lol_in/12:.2f}ft",
-        source="D85nBars",
+        f"k-bars ({size}@{spac}\"): H={h_ft}ft → qty=floor({h_in}/{spac})+1={qty}  "
+        f"len=LOL+2ft={length/12:.2f}ft",
+        source="D85kBars",
     )
-    log.result("n1", f"{size} x {qty_each} @ {lol_in/12:.2f}ft",
-               f"Inside face @{spac}oc", source="D85nBars")
-    log.result("n2", f"{size} x {qty_each} @ {lol_in/12:.2f}ft",
-               f"Outside face @{spac}oc", source="D85nBars")
+    log.result("k1", f"{size} x {qty} @ {length/12:.2f}ft",
+               f"Outside face k-bars @{spac}\"oc", source="D85kBars")
 
     return [
-        BarRow(mark="n1", size=size, qty=qty_each,
-               length_in=lol_in, shape="Str",
-               notes=f"Inside face @{spac}oc", source_rule="rule_d85_n_bars"),
-        BarRow(mark="n2", size=size, qty=qty_each,
-               length_in=lol_in, shape="Str",
-               notes=f"Outside face @{spac}oc", source_rule="rule_d85_n_bars"),
-    ]
-
-
-def rule_d85_o_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
-    """
-    'o' bars -- longitudinal bars running along wall height on each face.
-    Length = H (wall height) + 2ft lap into box.
-    Qty per face: 2 for H<=5, 3 for H<=9, 4 for taller.
-    """
-    h_in   = p.wall_height_ft * 12
-    lap_in = 24.0  # 2'-0" into box wall
-    length = h_in + lap_in
-
-    if p.wall_height_ft <= 5.0:
-        qty  = 2
-        size = "#4"
-    elif p.wall_height_ft <= 9.0:
-        qty  = 3
-        size = "#5"
-    else:
-        qty  = 4
-        size = "#6"
-
-    log.step(
-        f"o-bars: H={p.wall_height_ft}ft → {size} x{qty} each face, "
-        f"len={length/12:.2f}ft",
-        source="D85oBars",
-    )
-    log.result("o1", f"{size} x {qty} @ {length/12:.2f}ft",
-               "Inside long bars", source="D85oBars")
-    log.result("o2", f"{size} x {qty} @ {length/12:.2f}ft",
-               "Outside long bars", source="D85oBars")
-
-    return [
-        BarRow(mark="o1", size=size, qty=qty,
+        BarRow(mark="k1", size=size, qty=qty,
                length_in=length, shape="Str",
-               notes="Inside long bars", source_rule="rule_d85_o_bars"),
-        BarRow(mark="o2", size=size, qty=qty,
-               length_in=length, shape="Str",
-               notes="Outside long bars", source_rule="rule_d85_o_bars"),
+               notes=f"Outside face k-bars @{spac}\" oc, len incl 2'-0\" lap into box",
+               source_rule="rule_d85_k_bars"),
     ]
 
 
 def rule_d85_l_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    'L' bars at stepped section (Type E) -- inside face longitudinals
-    that continue from box into wingwall.
-    Length = LOL + 2ft (extend into box).
-    Qty = 2 (D85: 2-#5 additional bars).
+    'L' bars — concentrated bars per wall (D85 Table of Reinforcement).
+
+    Fixed count (2 or 3 per wall) from the D85 table, running the full
+    LOL length.  Length = LOL (+ 2'-0\" lap into box).
     """
+    h_ft   = p.wall_height_ft
     lol_in = p.wall_length_ft * 12
     lap_in = 24.0
+    size, cnt = _lookup_l(h_ft)
     length = lol_in + lap_in
 
-    log.step(f"L-bars: 2 #5, len={length/12:.2f}ft", source="D85lBars")
-    log.result("L1", f"#5 x 2 @ {length/12:.2f}ft",
-               "2-#5 additional at step", source="D85lBars")
+    log.step(
+        f"L-bars ({size}): H={h_ft}ft → {cnt} bars/wall  "
+        f"len=LOL+2ft={length/12:.2f}ft",
+        source="D85lBars",
+    )
+    log.result("L1", f"{size} x {cnt} @ {length/12:.2f}ft",
+               f"Concentrated L-bars, {cnt}/wall", source="D85lBars")
 
     return [
-        BarRow(mark="L1", size="#5", qty=2,
+        BarRow(mark="L1", size=size, qty=cnt,
                length_in=length, shape="Str",
-               notes="2-#5 additional at step", source_rule="rule_d85_l_bars"),
+               notes=f"Concentrated L-bars per D85 table, {cnt}/wall, len incl 2'-0\" lap",
+               source_rule="rule_d85_l_bars"),
     ]
 
 

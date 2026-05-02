@@ -1,4 +1,4 @@
-"""Template: Junction Structure (v3.0) — Caltrans CIP drainage junction box."""
+"""Template: Junction Structure (v4.0) — Caltrans D91A/D91B CIP junction structure."""
 
 from __future__ import annotations
 
@@ -13,13 +13,11 @@ class JunctionStructureTemplate(BaseTemplate):
     def __init__(self):
         super().__init__()
         self.name = "Junction Structure"
-        self.version = "3.0"
+        self.version = "4.0"
         self.description = (
-            "Caltrans CIP rectangular junction structure connecting two circular pipes. "
-            "#6 @ 6\" slab and wall reinforcement EF, 2\" cover. "
-            "Min height HB = 5'-6\". "
-            "WARNING: Design basis is an engineering assumption — no Caltrans standard "
-            "plan has been confirmed. All marks are flagged for PE review."
+            "Caltrans 2025 Standard Plan D91A/D91B — CIP Reinforced Concrete "
+            "Junction Structure. Wall/slab thicknesses and bar data from D91B table. "
+            "Min Hb = 5'-6\". Standard Hb: 5.5, 6–12 ft (square plan)."
         )
 
         self.inputs = [
@@ -32,34 +30,29 @@ class JunctionStructureTemplate(BaseTemplate):
                        group="Pipe Geometry",
                        hint="Diameter of the outlet (lower) pipe"),
             InputField("span_ft", float, label="Inside Span (ft)",
-                       min=4.0, max=20.0, default=5.0,
+                       min=4.0, max=12.0, default=5.0,
                        group="Box Geometry",
-                       hint="Clear inside dimension perpendicular to pipe flow"),
-            InputField("length_ft", float, label="Inside Length (ft)",
-                       min=4.0, max=30.0, default=6.0,
-                       group="Box Geometry",
-                       hint="Clear inside dimension along pipe flow direction"),
+                       hint="Clear inside span — D91B standard: 4' or 5' (Hb=5.5'), 6–12' (square)"),
             InputField("hb_ft", float, label="Height HB (ft)",
-                       min=5.5, max=20.0, default=5.5,
+                       min=5.5, max=12.0, default=5.5,
                        group="Box Geometry",
-                       hint="Inside height from floor to top slab soffit — 5'-6\" minimum"),
-            InputField("wall_thick_in", int, label="Wall Thickness T (in)",
-                       min=9, max=24, default=12,
-                       group="Box Geometry",
-                       hint="Uniform wall and slab thickness all sides"),
+                       hint="Inside height from floor to top slab soffit — D91B range 5'-6\" to 12'"),
+            InputField("max_earth_cover_ft", float, label="Max Earth Cover (ft)",
+                       choices=["10", "20"], default="10",
+                       group="Loading",
+                       hint="Maximum earth cover over top slab — governs D91B table row (10 or 20 ft)"),
+            InputField("num_structures", int, label="Number of Structures",
+                       min=1, max=10, default=1,
+                       group="Quantity",
+                       hint="Multiply bar list by this count"),
         ]
 
         self.rules = [
-            "rule_junction_top_slab_trans",
-            "rule_junction_top_slab_long",
-            "rule_junction_floor_trans",
-            "rule_junction_floor_long",
-            "rule_junction_long_wall_horiz",
-            "rule_junction_long_wall_vert",
-            "rule_junction_short_wall_horiz",
-            "rule_junction_short_wall_vert",
-            "rule_junction_a_bars",
             "rule_validate_junction",
+            "rule_junc_a_bars",
+            "rule_junc_e_bars",
+            "rule_junc_b_bars",
+            "rule_junc_add_bars",
         ]
 
     def evaluate_triggers(self, params: Params) -> list[str]:

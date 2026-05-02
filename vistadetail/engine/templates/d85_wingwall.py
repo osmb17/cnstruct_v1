@@ -44,8 +44,7 @@ class D85WingwallTemplate(BaseTemplate):
         self.rules = [
             "rule_d85_validate",
             "rule_d85_geometry",
-            "rule_d85_n_bars",
-            "rule_d85_o_bars",
+            "rule_d85_k_bars",
             "rule_d85_l_bars",
             "rule_d85_hoops",
             "rule_d85_top_bars",
