@@ -574,6 +574,10 @@ _HP_TAIL_PLAIN = 6.5   # C: plain tail (bottom span of S6)
 _HP_TAIL_HOOK  = 5.5   # A and G: hook tails (top extensions of S6)
 _HP_BAR_SIZE   = "#5"
 
+# Notched hoop (T14) geometry constants — confirmed by Dane Rios
+_NOTCH_GRATE_HALF_WIDTH = 18.0   # 3'-0" standard grate ÷ 2
+_NOTCH_CLEARANCE_IN     =  5.0   # clearance from grate edge to notch hoop
+
 
 def _s6_total(gut: float) -> float:
     """Total developed (stock) length for an S6 hoop.
@@ -585,6 +589,19 @@ def _s6_total(gut: float) -> float:
     """
     from vistadetail.engine.hooks import bend_reduce
     legs_sum = _HP_TAIL_HOOK + gut + _HP_TAIL_PLAIN + gut + _HP_TAIL_HOOK
+    return legs_sum - bend_reduce("shape_4", _HP_BAR_SIZE)
+
+
+def _t14_total(e: float) -> float:
+    """Stock length for T14 notched hoop (confirmed formula — Dane Rios).
+
+    T14 bar path: A(5.5\" tail) → B(=E) → C(=E-2\") → D(=E) → G(5.5\" tail)
+    Legs sum = 5.5 + E + (E-2) + E + 5.5 = 3E + 9
+    Minus shape_4 bend deduction for #5 (6.0\") = 3E + 3
+    """
+    from vistadetail.engine.hooks import bend_reduce
+    c_dim    = e - 2.0
+    legs_sum = _HP_TAIL_HOOK + e + c_dim + e + _HP_TAIL_HOOK
     return legs_sum - bend_reduce("shape_4", _HP_BAR_SIZE)
 
 
@@ -661,12 +678,14 @@ def rule_g2exp_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     y_bar = y_ext - 6.0
     x_bar = x_ext - 6.0
 
-    # ── Gut / notch dimensions (Excel formulas) ──────────────────────────
-    gut_dim = x_inside + t - (grate_ded + 5.0)       # =F4+F5-29
-    notch_dim = y_exp_ext / 2.0 - 23.0               # =(F3+2*F5)/2-23
+    # ── Gut / notch dimensions ────────────────────────────────────────────
+    gut_dim   = x_inside + t - (grate_ded + 5.0)
+    # E = Y_exp_ext/2 − grate_half_width(18") − clearance(5") per Dane Rios
+    notch_dim   = y_exp_ext / 2.0 - _NOTCH_GRATE_HALF_WIDTH - _NOTCH_CLEARANCE_IN
+    notch_c_dim = notch_dim - 2.0   # C = E − 2" (top of T14 notched hoop)
 
-    ab_bar_len_reg = x_ext - 4.5                      # =F4+2*F5-4.5
-    ab_bar_len_notch = y_exp_ext - 4.5                # =F3+2*F5-4.5
+    ab_bar_len_reg   = x_ext - 4.5
+    ab_bar_len_notch = y_exp_ext - 4.5
 
     # ── Store on p ────────────────────────────────────────────────────────
     setattr(p, "x_ext_in", x_ext)
@@ -680,6 +699,7 @@ def rule_g2exp_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     setattr(p, "x_bar", x_bar)
     setattr(p, "gut_dim", gut_dim)
     setattr(p, "notch_dim", notch_dim)
+    setattr(p, "notch_c_dim", notch_c_dim)
     setattr(p, "ab_bar_len", ab_bar_len_reg)   # for reuse by shared rules
     setattr(p, "ab_bar_len_reg", ab_bar_len_reg)
     setattr(p, "ab_bar_len_notch", ab_bar_len_notch)
@@ -827,22 +847,27 @@ def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
         ))
 
     if p.notch_dim > 0:
+        e   = p.notch_dim
+        c   = getattr(p, "notch_c_dim", e - 2.0)   # C = E − 2"
         qty_notch = math.ceil(p.x_ext_in / 5.0 * 2 * n)
-        hp2_total = _s6_total(p.notch_dim)
-        log.step(f"HP2 notch: CEIL({fmt_inches(p.x_ext_in)}/5*2*{n}) = {qty_notch}, "
-                 f"notch={fmt_inches(p.notch_dim)}, T14 stock≈2×notch+11.5\"={fmt_inches(hp2_total)}")
+        hp2_total = _t14_total(e)
+        log.step(
+            f"HP2 notch: CEIL({fmt_inches(p.x_ext_in)}/5*2*{n}) = {qty_notch}  "
+            f"E(={fmt_inches(e)}) = Y_exp/2-18\"-5\"  C=E-2\"={fmt_inches(c)}  "
+            f"T14 stock=3E+9-6={fmt_inches(hp2_total)}"
+        )
         bars.append(BarRow(
             mark="HP2", size="#5", qty=qty_notch, length_in=hp2_total,
             shape="T14",
-            leg_a_in=_HP_TAIL_HOOK,    # A = 5.5" (inside step tail)
-            leg_b_in=p.notch_dim,      # B = notch span
-            leg_c_in=_HP_TAIL_PLAIN,   # C = 6.5"
-            leg_d_in=p.notch_dim,      # D = notch span
+            leg_a_in=_HP_TAIL_HOOK,    # A = 5.5"
+            leg_b_in=e,                # B = E dim (notch depth = Y_exp/2-18"-5")
+            leg_c_in=c,                # C = E - 2" (top of notched hoop)
+            leg_d_in=e,                # D = E dim (symmetric)
             leg_g_in=_HP_TAIL_HOOK,    # G = 5.5"
-            notes="Notched Hoops @5oc, T14 bend (Vista bend chart)",
-            review_flag=(
-                "T14 leg breakdown (A–G) per Vista shop bend chart. "
-                "Verify A/B/C/D/E/F/G dimensions against bend chart at shop-drawing stage."
+            notes=(
+                f"Notched Hoops @5oc T14  "
+                f"E(={fmt_inches(e)}) = Y_exp/2-18\"(grate)-5\"(clr)  "
+                f"C = E-2\" = {fmt_inches(c)}"
             ),
             source_rule="rule_g2exp_hoops",
         ))
@@ -1028,7 +1053,9 @@ def rule_g2exptop_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     x_bar = x_ext - 6.0
 
     gut_dim          = x_inside + t - (grate_ded + 5.0)
-    notch_dim        = y_exp_ext / 2.0 - 23.0
+    # E = Y_exp_ext/2 − grate_half_width(18") − clearance(5") per Dane Rios
+    notch_dim        = y_exp_ext / 2.0 - _NOTCH_GRATE_HALF_WIDTH - _NOTCH_CLEARANCE_IN
+    notch_c_dim      = notch_dim - 2.0   # C = E − 2"
     ab_bar_len_reg   = x_ext - 4.5
     ab_bar_len_notch = y_exp_ext - 4.5
 
@@ -1043,6 +1070,7 @@ def rule_g2exptop_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     setattr(p, "x_bar",            x_bar)
     setattr(p, "gut_dim",          gut_dim)
     setattr(p, "notch_dim",        notch_dim)
+    setattr(p, "notch_c_dim",      notch_c_dim)
     setattr(p, "ab_bar_len",       ab_bar_len_reg)
     setattr(p, "ab_bar_len_reg",   ab_bar_len_reg)
     setattr(p, "ab_bar_len_notch", ab_bar_len_notch)
