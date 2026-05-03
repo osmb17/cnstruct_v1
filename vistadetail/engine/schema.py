@@ -97,6 +97,7 @@ class BarRow:
     qty: int
     length_in: float                    # always stored in inches internally
     shape: str = "Str"                  # "Str", "L", "U", "Hook"
+    bend_type: str = ""                 # Caltrans/CRSI bend type number, e.g. "2", "11"
     leg_a_in: float | None = None       # for shaped bars
     leg_b_in: float | None = None
     leg_c_in: float | None = None
@@ -142,6 +143,7 @@ class BarRow:
             self.qty,
             self.length_ft_in,
             self.shape,
+            self.bend_type,
             self.leg_a_ft_in,
             self.leg_b_ft_in,
             self.leg_c_ft_in,

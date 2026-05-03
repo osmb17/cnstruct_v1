@@ -445,9 +445,17 @@ def rule_hw_vert_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
              source="HeadwallRules")
     log.result("VW", f"#4 × {qty} @ {fmt_inches(length)}", source="HeadwallRules")
 
+    if no_pipe:
+        vw_notes = (
+            f"H(={H:.0f}\") + F(={row['F']}\") + 7\"(hook) = {fmt_inches(length)}"
+        )
+    else:
+        vw_notes = (
+            f"ceil((H(={H:.0f}\")+18)/6)×6 = {fmt_inches(length)}"
+        )
     return [BarRow(
         mark="VW", size="#4", qty=qty, length_in=length, shape="Str",
-        notes=f"Vert wall  {len_formula}",
+        notes=vw_notes,
         source_rule="rule_hw_vert_wall",
     )]
 
@@ -501,9 +509,12 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     log.result("CB", f"{c_size} × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
 
     return [BarRow(
-        mark="CB", size=c_size, qty=qty, length_in=stock, shape="C",
+        mark="CB", size=c_size, qty=qty, length_in=stock, shape="C", bend_type="11",
         leg_a_in=body, leg_b_in=float(T) + 2.0, leg_c_in=float(T) + 4.0, leg_d_in=H, leg_g_in=R,
-        notes=f"C-bar  body={fmt_inches(body)}  B=T+2={fmt_inches(float(T)+2.0)}  C=T+4={fmt_inches(float(T)+4.0)}",
+        notes=(
+            f"A(={fmt_inches(body)}) + B(=T+2={fmt_inches(float(T)+2.0)}) "
+            f"+ C(=T+4={fmt_inches(float(T)+4.0)}) = {fmt_inches(stock)}"
+        ),
         source_rule="rule_hw_c_bars",
     )]
 

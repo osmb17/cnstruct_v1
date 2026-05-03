@@ -57,10 +57,10 @@ class TestFmtInches:
 
 class TestBarRowToRow:
     def test_to_row_length(self):
-        """to_row() must return exactly 11 elements."""
+        """to_row() must return exactly 12 elements (added bend_type column)."""
         bar = BarRow(mark="H1", size="#5", qty=12, length_in=81.0)
         row = bar.to_row()
-        assert len(row) == 11
+        assert len(row) == 12
 
     def test_to_row_first_element(self):
         """First element of to_row() is the mark."""

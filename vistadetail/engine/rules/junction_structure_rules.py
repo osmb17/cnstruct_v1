@@ -184,21 +184,25 @@ def rule_junc_a_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     return [
         BarRow(
             mark="JA1", size=a_s, qty=qty_per_slab, length_in=len_top,
-            shape="C",
-            leg_a_in=leg_top, leg_b_in=leg_top, leg_c_in=body,
+            shape="U", bend_type="2",
+            leg_a_in=leg_top,    # A dim — short leg into top slab
+            leg_b_in=body,       # B dim — body spanning between walls
+            leg_g_in=leg_top,    # G dim — symmetric short leg (same as A)
             notes=(
                 f"Top slab 'a' bars @{a_sp}\" oc  EF both plan directions  "
-                f"body={fmt_inches(body)}  leg={leg_top}\""
+                f"A(={leg_top:.0f}\") + B(={fmt_inches(body)}) + G(={leg_top:.0f}\") = {fmt_inches(len_top)}"
             ),
             source_rule="rule_junc_a_bars",
         ),
         BarRow(
             mark="JA2", size=a_s, qty=qty_per_slab, length_in=len_bot,
-            shape="C",
-            leg_a_in=leg_bot, leg_b_in=leg_bot, leg_c_in=body,
+            shape="U", bend_type="2",
+            leg_a_in=leg_bot,    # A dim — short leg into bottom slab
+            leg_b_in=body,       # B dim — body spanning between walls
+            leg_g_in=leg_bot,    # G dim — symmetric short leg (same as A)
             notes=(
                 f"Bottom slab 'a' bars @{a_sp}\" oc  EF both plan directions  "
-                f"body={fmt_inches(body)}  leg={leg_bot}\""
+                f"A(={leg_bot:.0f}\") + B(={fmt_inches(body)}) + G(={leg_bot:.0f}\") = {fmt_inches(len_bot)}"
             ),
             source_rule="rule_junc_a_bars",
         ),

@@ -1801,6 +1801,7 @@ if bars is not None:
         "Mark":   b.mark,  "Size":   b.size,   "Qty":    b.qty,
         "Length": b.length_ft_in,
         "Type":   _bar_shape_svg(b.shape),
+        "Bend #": b.bend_type,
         "A":  b.leg_a_ft_in, "B":  b.leg_b_ft_in, "C":  b.leg_c_ft_in,
         "D":  b.leg_d_ft_in, "G":  b.leg_g_ft_in,
         "Notes":  b.notes, "Ref":    b.ref,    "Review": b.review_flag,
