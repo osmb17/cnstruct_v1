@@ -37,7 +37,7 @@ class G2ExpandedInletTemplate(BaseTemplate):
             InputField(
                 "y_dim_ft", float,
                 label="Y -- Exterior Width (ft)",
-                min=5.667, max=15.0, default=5.667,
+                min=5.666, max=15.0, default=5.667,
                 hint="Main box exterior Y dimension (minimum 5'-8\")",
             ),
             InputField(

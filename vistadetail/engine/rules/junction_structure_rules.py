@@ -60,9 +60,9 @@ _D91B: dict[tuple[float, int, int], dict] = {
     # Hb = 7', Span = 7'
     (7.0, 7, 10): dict(ts=8,  t=8,  bs=8,  a_s="#4", a_sp=5,  e_s="#4", e_sp=5,  b_s="#4", b_sp=5,  B=36),
     (7.0, 7, 20): dict(ts=10, t=10, bs=10, a_s="#5", a_sp=5,  e_s="#4", e_sp=5,  b_s="#4", b_sp=5,  B=33),
-    # Hb = 8', Span = 8'
-    (8.0, 8, 10): dict(ts=8,  t=8,  bs=8,  a_s="#5", a_sp=5,  e_s="#4", e_sp=6,  b_s="#4", b_sp=6,  B=35),
-    (8.0, 8, 20): dict(ts=11, t=12, bs=12, a_s="#5", a_sp=6,  e_s="#4", e_sp=5,  b_s="#4", b_sp=5,  B=39),
+    # Hb = 8', Span = 8'  (confirmed from D91B plan — a_sp/e_sp order corrected)
+    (8.0, 8, 10): dict(ts=8,  t=8,  bs=8,  a_s="#5", a_sp=6,  e_s="#4", e_sp=5,  b_s="#4", b_sp=6,  B=35),
+    (8.0, 8, 20): dict(ts=11, t=12, bs=12, a_s="#5", a_sp=6,  e_s="#4", e_sp=6,  b_s="#4", b_sp=6,  B=39),
     # Hb = 9', Span = 9'
     (9.0, 9, 10): dict(ts=9,  t=9,  bs=10, a_s="#5", a_sp=5,  e_s="#4", e_sp=5,  b_s="#4", b_sp=5,  B=42),
     (9.0, 9, 20): dict(ts=12, t=13, bs=13, a_s="#5", a_sp=5,  e_s="#5", e_sp=5,  b_s="#5", b_sp=5,  B=44),
@@ -140,8 +140,9 @@ def rule_junc_a_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
       leg_bot = max(6, bs − 3)            (into bottom slab from inside face)
       stock   = 2×leg + body − bend_reduce(shape_2, a_size)
 
-    Quantity (square structure, bars run across Span, spaced along Span):
-      qty_per_slab = floor(Span_in / a_sp) + 2
+    Quantity (square structure — "a" bars run in BOTH plan directions):
+      qty_per_dir  = floor(Span_in / a_sp) + 2   (one direction)
+      qty_per_slab = 2 × qty_per_dir              (X and Y directions)
     """
     hb_ft   = p.hb_ft
     span_ft = p.span_ft
@@ -163,11 +164,13 @@ def rule_junc_a_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     len_top = 2 * leg_top + body - deduct
     len_bot = 2 * leg_bot + body - deduct
 
-    qty_per_slab = math.floor(S_in / a_sp) + 2
+    qty_per_dir  = math.floor(S_in / a_sp) + 2   # one plan direction
+    qty_per_slab = 2 * qty_per_dir                # EF both plan directions (square in plan)
 
     log.step(
         f"JA bars ({a_s}@{a_sp}\"): body=S+2t-6={S_in:.0f}+{2*t}-6={body:.1f}\"  "
-        f"deduct={deduct}\"  qty/slab=floor({S_in:.0f}/{a_sp})+2={qty_per_slab}",
+        f"deduct={deduct}\"  qty/dir=floor({S_in:.0f}/{a_sp})+2={qty_per_dir}  "
+        f"qty/slab=2×{qty_per_dir}={qty_per_slab} (EF both plan directions)",
         source="JunctionRules",
     )
     log.step(
@@ -184,7 +187,7 @@ def rule_junc_a_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
             shape="C",
             leg_a_in=leg_top, leg_b_in=leg_top, leg_c_in=body,
             notes=(
-                f"Top slab 'a' bars @{a_sp}\" oc  "
+                f"Top slab 'a' bars @{a_sp}\" oc  EF both plan directions  "
                 f"body={fmt_inches(body)}  leg={leg_top}\""
             ),
             source_rule="rule_junc_a_bars",
@@ -194,7 +197,7 @@ def rule_junc_a_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
             shape="C",
             leg_a_in=leg_bot, leg_b_in=leg_bot, leg_c_in=body,
             notes=(
-                f"Bottom slab 'a' bars @{a_sp}\" oc  "
+                f"Bottom slab 'a' bars @{a_sp}\" oc  EF both plan directions  "
                 f"body={fmt_inches(body)}  leg={leg_bot}\""
             ),
             source_rule="rule_junc_a_bars",
@@ -312,28 +315,50 @@ def rule_junc_b_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_junc_add_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    Additional "a" bars at pipe openings — #4 @ 9", Total 3 each side.
+    Additional "a" bars at pipe openings per D91A Note 12.
 
-    Per D91A: adjacent to each circular pipe opening, 3 additional bars are
-    bundled alongside the interrupted "a" bars on each side of the opening.
-    Total = 3 bars/side × 2 sides × 2 openings (D1 + D2) = 12 bars.
+    Note 12: provide additional bars equal to half the interrupted main
+    reinforcement, one each side of the opening.
 
-    Length same as primary "a" bar body (Span + 2×t − 6").
+    For each pipe of diameter D_in, "a" bars at spacing a_sp are interrupted
+    over the pipe width:
+      interrupted_per_slab = floor(D_in / a_sp) + 1
+      add_per_side         = ceil(interrupted_per_slab / 2)
+      qty_per_opening      = add_per_side × 2 sides × 2 slabs
+
+    Total JX1 = qty(D1) + qty(D2).
+    Length = "a" bar body = Span + 2×t − 6".
     """
     hb_ft   = p.hb_ft
     span_ft = p.span_ft
     cover   = getattr(p, "max_earth_cover_ft", 10.0)
 
-    row    = _junc_lookup(hb_ft, span_ft, cover, log)
-    t      = row["t"]
-    S_in   = span_ft * 12
+    row   = _junc_lookup(hb_ft, span_ft, cover, log)
+    t     = row["t"]
+    a_sp  = row["a_sp"]
+    S_in  = span_ft * 12
 
     bar_len = S_in + 2 * t - 6.0
-    qty     = 12   # 3 each side × 2 sides × 2 pipe openings
+
+    qty = 0
+    pipe_details: list[str] = []
+    for pipe_name, D_in in [("D1", int(p.d1_in)), ("D2", int(p.d2_in))]:
+        interrupted   = math.floor(D_in / a_sp) + 1
+        add_per_side  = math.ceil(interrupted / 2)
+        qty_pipe      = add_per_side * 2 * 2   # 2 sides × 2 slabs
+        qty          += qty_pipe
+        pipe_details.append(
+            f"{pipe_name}={D_in}\" → interrupted={interrupted}  "
+            f"add/side={add_per_side}  ×2sides×2slabs={qty_pipe}"
+        )
+        log.step(
+            f"JX1 {pipe_name}: floor({D_in}/{a_sp})+1={interrupted} interrupted  "
+            f"ceil({interrupted}/2)={add_per_side}/side × 2 sides × 2 slabs = {qty_pipe}",
+            source="JunctionRules",
+        )
 
     log.step(
-        f"JX1 additional 'a' bars: body=S+2t-6={S_in:.0f}+{2*t}-6={bar_len:.1f}\"  "
-        f"qty=3/side×2sides×2openings={qty}",
+        f"JX1 body=S+2t-6={S_in:.0f}+{2*t}-6={bar_len:.1f}\"",
         source="JunctionRules",
     )
     log.result("JX1", f"#4 × {qty} @ {fmt_inches(bar_len)}", source="JunctionRules")
@@ -342,8 +367,8 @@ def rule_junc_add_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
         mark="JX1", size="#4", qty=qty, length_in=bar_len,
         shape="Str",
         notes=(
-            f"Addl 'a' bars at pipe openings — 3 each side × 2 sides × 2 openings  "
-            f"D1={p.d1_in}\"  D2={p.d2_in}\""
+            f"Addl 'a' bars at pipe openings (Note 12)  "
+            + "  |  ".join(pipe_details)
         ),
         source_rule="rule_junc_add_bars",
     )]

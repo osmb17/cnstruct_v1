@@ -612,7 +612,7 @@ def rule_g2_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="HP1", size="#5", qty=qty,
         length_in=hp_total,
-        shape="Hoop",
+        shape="S6",
         leg_a_in=_HP_TAIL_HOOK,    # A = 5.5"
         leg_b_in=p.gut_dim,        # B = gut span (variable)
         leg_c_in=_HP_TAIL_PLAIN,   # C = 6.5"

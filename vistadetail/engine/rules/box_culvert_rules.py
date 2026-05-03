@@ -48,9 +48,9 @@ log = logging.getLogger(__name__)
 #         lblf = reinforcement lb per linear foot (reference/validation only)
 #
 # Spans 4, 5: confirmed correct from D80 screenshots.
-# Spans 6, 7: carried from prior entry — verify against D80 screenshots.
+# Spans 6, 7: confirmed from D80 plan.
 # Span  8:    corrected from clean D80 screenshots.
-# Spans 10, 12, 14: unvalidated — update when screenshots are available.
+# Spans 10, 12, 14: confirmed/corrected from D80 screenshots.
 # ---------------------------------------------------------------------------
 
 _D80: dict[tuple[int, int, int], dict] = {
