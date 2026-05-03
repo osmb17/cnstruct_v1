@@ -1289,7 +1289,7 @@ class TestHeadwallD89A:
 
     def test_cb_gold(self, log):
         """CB: H=71 → c_s="#5" (D89A row H=71), qty=9 (TABLE D=0,H=71→(D=0,H=60)→c_bar=9),
-        body=ceil((71+9)/2)*2=80\", leg=T+4=14\", stock=80+28-3=105\"."""
+        body=ceil((71+9)/2)*2=80\", leg_b=T+2=12\", leg_c=T+4=14\", stock=80+28-3=105\"."""
         p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
         bars = rule_hw_c_bars(p, log)
         assert bars[0].mark == "CB"
@@ -1298,8 +1298,8 @@ class TestHeadwallD89A:
         assert bars[0].qty == 9
         assert bars[0].length_in == pytest.approx(105.0)
         assert bars[0].leg_a_in == pytest.approx(80.0)
-        assert bars[0].leg_b_in == pytest.approx(14.0)
-        assert bars[0].leg_c_in == pytest.approx(14.0)
+        assert bars[0].leg_b_in == pytest.approx(12.0)   # B = T+2 (C-2)
+        assert bars[0].leg_c_in == pytest.approx(14.0)   # C = T+4
         assert bars[0].leg_d_in == pytest.approx(71.0)
 
     def test_ws_gold(self, log):

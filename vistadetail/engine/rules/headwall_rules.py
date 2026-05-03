@@ -502,8 +502,8 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="CB", size=c_size, qty=qty, length_in=stock, shape="C",
-        leg_a_in=body, leg_b_in=leg, leg_c_in=float(T + 4), leg_d_in=H, leg_g_in=R,
-        notes=f"C-bar  body={fmt_inches(body)}  leg={fmt_inches(leg)}",
+        leg_a_in=body, leg_b_in=float(T) + 2.0, leg_c_in=float(T) + 4.0, leg_d_in=H, leg_g_in=R,
+        notes=f"C-bar  body={fmt_inches(body)}  B=T+2={fmt_inches(float(T)+2.0)}  C=T+4={fmt_inches(float(T)+4.0)}",
         source_rule="rule_hw_c_bars",
     )]
 
