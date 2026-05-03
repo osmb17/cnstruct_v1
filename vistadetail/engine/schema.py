@@ -41,11 +41,18 @@ class InputField:
     def validate(self, value: Any) -> Any:
         """Cast and validate a raw value. Raises ValueError on failure."""
         if self.choices is not None:
+            # Choices are always strings in the schema; compare string representation
             if str(value) not in self.choices:
                 raise ValueError(
                     f"{self.name}: '{value}' not in {self.choices}"
                 )
-            return str(value)
+            # Cast the string choice value to the proper dtype
+            v = self.dtype(str(value))
+            if self.min is not None and v < self.min:
+                raise ValueError(f"{self.name}: {v} < min {self.min}")
+            if self.max is not None and v > self.max:
+                raise ValueError(f"{self.name}: {v} > max {self.max}")
+            return v
 
         try:
             v = self.dtype(value)

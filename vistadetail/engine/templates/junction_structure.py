@@ -37,7 +37,7 @@ class JunctionStructureTemplate(BaseTemplate):
                        min=5.5, max=12.0, default=5.5,
                        group="Box Geometry",
                        hint="Inside height from floor to top slab soffit — D91B range 5'-6\" to 12'"),
-            InputField("max_earth_cover_ft", float, label="Max Earth Cover (ft)",
+            InputField("max_earth_cover_ft", int, label="Max Earth Cover (ft)",
                        choices=["10", "20"], default="10",
                        group="Loading",
                        hint="Maximum earth cover over top slab — governs D91B table row (10 or 20 ft)"),
