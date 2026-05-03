@@ -177,9 +177,12 @@ from vistadetail.engine.rules.d84_wingwall_rules import (
     rule_d84_validate,
     rule_d84_geometry,
     rule_d84_face_horiz,
+    rule_d84_parapet_face,
+    rule_d84_lower_face,
     rule_d84_longitudinals,
     rule_d84_top_bars,
     rule_d84_footing_mat,
+    rule_d84_box_ties,
     rule_d84_cutoff_wall,
 )
 from vistadetail.engine.rules.d85_wingwall_rules import (
@@ -362,9 +365,12 @@ RULE_REGISTRY: dict = {
     "rule_d84_validate":             rule_d84_validate,
     "rule_d84_geometry":             rule_d84_geometry,
     "rule_d84_face_horiz":           rule_d84_face_horiz,
+    "rule_d84_parapet_face":         rule_d84_parapet_face,
+    "rule_d84_lower_face":           rule_d84_lower_face,
     "rule_d84_longitudinals":        rule_d84_longitudinals,
     "rule_d84_top_bars":             rule_d84_top_bars,
     "rule_d84_footing_mat":          rule_d84_footing_mat,
+    "rule_d84_box_ties":             rule_d84_box_ties,
     "rule_d84_cutoff_wall":          rule_d84_cutoff_wall,
     # D85 Wingwall (Types D/E)
     "rule_d85_validate":             rule_d85_validate,

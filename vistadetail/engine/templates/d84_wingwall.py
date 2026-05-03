@@ -15,10 +15,12 @@ class D84WingwallTemplate(BaseTemplate):
     def __init__(self):
         super().__init__()
         self.name = "D84 Wingwall"
-        self.version = "2.0"
+        self.version = "3.0"
         self.description = (
             "Caltrans D84 -- Box Culvert Wingwall Types A/B/C. "
-            "9\" wall, footing auto (0.55×H), 2\" cover."
+            "Bars per Section A-A and End Elevation on 2025 Standard Plan D84: "
+            "#4@12 main face, #5@8 parapet face, #5@6 lower zone, "
+            "#5 Cont 4 longitudinal, #8 Tot 7 parapet, #6@4 footing, #4 Tot 3 box ties."
         )
         self.inputs = [
             InputField(
@@ -44,9 +46,12 @@ class D84WingwallTemplate(BaseTemplate):
             "rule_d84_validate",
             "rule_d84_geometry",
             "rule_d84_face_horiz",
+            "rule_d84_parapet_face",
+            "rule_d84_lower_face",
             "rule_d84_longitudinals",
             "rule_d84_top_bars",
             "rule_d84_footing_mat",
+            "rule_d84_box_ties",
             "rule_d84_cutoff_wall",
         ]
 
