@@ -153,6 +153,9 @@ from vistadetail.engine.rules.junction_structure_rules import (
     rule_junc_e_bars,
     rule_junc_b_bars,
     rule_junc_add_bars,
+    rule_junc_slab_longs,
+    rule_junc_wall_horiz,
+    rule_junc_hoops,
     rule_validate_junction,
 )
 from vistadetail.engine.rules.sound_wall_rules import (
@@ -344,6 +347,9 @@ RULE_REGISTRY: dict = {
     "rule_junc_e_bars":              rule_junc_e_bars,
     "rule_junc_b_bars":              rule_junc_b_bars,
     "rule_junc_add_bars":            rule_junc_add_bars,
+    "rule_junc_slab_longs":          rule_junc_slab_longs,
+    "rule_junc_wall_horiz":          rule_junc_wall_horiz,
+    "rule_junc_hoops":               rule_junc_hoops,
     "rule_validate_junction":        rule_validate_junction,
     # Sound Wall
     "rule_sw_wall_verticals":        rule_sw_wall_verticals,

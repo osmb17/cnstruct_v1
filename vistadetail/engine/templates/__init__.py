@@ -7,6 +7,7 @@ Add new templates here.
 from vistadetail.engine.templates.inlet_9in_wall import TEMPLATE as INLET_9IN_WALL
 from vistadetail.engine.templates.spread_footing import TEMPLATE as SPREAD_FOOTING
 from vistadetail.engine.templates.headwall import TEMPLATE as HEADWALL
+from vistadetail.engine.templates.l_headwall import TEMPLATE as L_HEADWALL
 from vistadetail.engine.templates.wing_wall import TEMPLATE as WING_WALL
 from vistadetail.engine.templates.box_culvert import TEMPLATE as BOX_CULVERT
 from vistadetail.engine.templates.retaining_wall import TEMPLATE as RETAINING_WALL
@@ -48,6 +49,7 @@ TEMPLATE_REGISTRY: dict = {
     G6_INLET.name:               G6_INLET,
     # ── Headwalls ─────────────────────────────────────────────────────────────
     HEADWALL.name:               HEADWALL,
+    L_HEADWALL.name:             L_HEADWALL,
     WING_WALL.name:              WING_WALL,
     # ── Junction & Pipe ───────────────────────────────────────────────────────
     JUNCTION_STRUCTURE.name:     JUNCTION_STRUCTURE,

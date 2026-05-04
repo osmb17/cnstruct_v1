@@ -12,6 +12,7 @@ import io
 import json
 import os
 import re
+import zipfile
 from datetime import date
 
 import pandas as pd
@@ -179,6 +180,59 @@ div[data-testid="stDownloadButton"] button {
     color: #1c3461 !important;
     border-bottom: 2px solid #1c3461 !important;
     background: transparent !important;
+}
+
+/* ── Template group selector (top-level radio = tab bar) ─────── */
+[data-testid="stRadio"]:has(> div > label:first-child) > div {
+    gap: 0 !important;
+}
+/* Group radio — bold pill buttons */
+div[data-testid="stRadio"]:first-of-type > div[role="radiogroup"] {
+    gap: 4px !important;
+    flex-wrap: wrap !important;
+}
+div[data-testid="stRadio"]:first-of-type label {
+    background: #f0f2f6 !important;
+    border-radius: 20px !important;
+    padding: 4px 14px !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    color: #4a5568 !important;
+    border: 1px solid #e2e8f0 !important;
+    cursor: pointer !important;
+}
+div[data-testid="stRadio"]:first-of-type label:has(input:checked) {
+    background: #1c3461 !important;
+    color: #ffffff !important;
+    border-color: #1c3461 !important;
+}
+div[data-testid="stRadio"]:first-of-type input[type="radio"] {
+    display: none !important;
+}
+/* Sub-template radio — lighter smaller pills */
+div[data-testid="stRadio"]:nth-of-type(2) > div[role="radiogroup"] {
+    gap: 4px !important;
+    flex-wrap: wrap !important;
+    margin-top: 2px !important;
+}
+div[data-testid="stRadio"]:nth-of-type(2) label {
+    background: #ffffff !important;
+    border-radius: 14px !important;
+    padding: 2px 11px !important;
+    font-weight: 500 !important;
+    font-size: 0.78rem !important;
+    color: #4a5568 !important;
+    border: 1px solid #d1d5db !important;
+    cursor: pointer !important;
+}
+div[data-testid="stRadio"]:nth-of-type(2) label:has(input:checked) {
+    background: #e8edf7 !important;
+    color: #1c3461 !important;
+    border-color: #1c3461 !important;
+    font-weight: 700 !important;
+}
+div[data-testid="stRadio"]:nth-of-type(2) input[type="radio"] {
+    display: none !important;
 }
 
 /* ── Expanders ───────────────────────────────────────────────── */
@@ -1235,26 +1289,62 @@ def _template_stats(template_name: str) -> str:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+# TEMPLATE GROUP MAP
+# ═════════════════════════════════════════════════════════════════════════════
+
+_GROUPS_ORDERED: list[tuple[str, list[str]]] = [
+    ("G2 Inlets",          ["G2 Inlet", "G2 Inlet Top",
+                             "G2 Expanded Inlet", "G2 Expanded Inlet Top"]),
+    ("G Inlets",           ["G1 Inlet", "G3 Inlet", "G4 Inlet", "G5 Inlet", "G6 Inlet"]),
+    ("Headwalls",          ["Straight Headwall", "L Headwall"]),
+    ("Box Culvert",        ["Box Culvert"]),
+    ("Junction Structure", ["Junction Structure"]),
+    ("Wing Walls",         ["Wing Wall", "D84 Wingwall", "D85 Wingwall"]),
+    ("Other",              [t for t in TEMPLATE_NAMES if t not in {
+        "G2 Inlet", "G2 Inlet Top", "G2 Expanded Inlet", "G2 Expanded Inlet Top",
+        "G1 Inlet", "G3 Inlet", "G4 Inlet", "G5 Inlet", "G6 Inlet",
+        "Straight Headwall", "L Headwall",
+        "Box Culvert", "Junction Structure",
+        "Wing Wall", "D84 Wingwall", "D85 Wingwall",
+    }]),
+]
+_GROUP_NAMES = [g[0] for g in _GROUPS_ORDERED]
+_GROUP_MAP   = {g[0]: g[1] for g in _GROUPS_ORDERED}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 # HEADER
 # ═════════════════════════════════════════════════════════════════════════════
 
-h1, h2 = st.columns([3, 2])
+st.markdown(
+    "<div style='display:flex;align-items:center;gap:10px;margin-bottom:6px'>"
+    "<span style='background:#1c3461;color:#fff;border-radius:7px;padding:5px 11px;"
+    "font-weight:800;font-size:1rem;letter-spacing:0.5px'>CNSTRUCT</span>"
+    "<span style='font-size:1.35rem;font-weight:700;color:#1a1d23'>Rebar Detail Generator</span>"
+    "<span style='font-size:0.75rem;color:#8a909a;margin-left:4px'>Vista Steel · v1.0</span>"
+    "</div>",
+    unsafe_allow_html=True,
+)
 
-with h1:
-    st.markdown(
-        "<div style='display:flex;align-items:center;gap:10px;margin-bottom:2px'>"
-        "<span style='background:#1c3461;color:#fff;border-radius:7px;padding:5px 11px;"
-        "font-weight:800;font-size:1rem;letter-spacing:0.5px'>CNSTRUCT</span>"
-        "<span style='font-size:1.35rem;font-weight:700;color:#1a1d23'>Rebar Detail Generator</span>"
-        "</div>"
-        "<div style='font-size:0.75rem;color:#8a909a;margin-top:2px'>Vista Steel &nbsp;·&nbsp; v1.0</div>",
-        unsafe_allow_html=True,
-    )
+# ── Group selector (top-level tabs) ──────────────────────────────────────────
+active_group = st.radio(
+    "Category", _GROUP_NAMES, horizontal=True,
+    key="template_group", label_visibility="collapsed",
+)
+templates_in_group = _GROUP_MAP[active_group]
 
-with h2:
+# ── Sub-template selector (shown when group has more than one item) ───────────
+if len(templates_in_group) == 1:
+    template_name = templates_in_group[0]
+elif active_group == "Other":
     template_name = st.selectbox(
-        "Structure Type", TEMPLATE_NAMES, key="template_select",
-        label_visibility="collapsed",
+        "Template", templates_in_group,
+        key="template_other", label_visibility="collapsed",
+    )
+else:
+    template_name = st.radio(
+        "Template", templates_in_group, horizontal=True,
+        key=f"tmpl_{active_group}", label_visibility="collapsed",
     )
 
 # Job info row (compact)
@@ -1849,6 +1939,118 @@ if bars is not None:
         )
     else:
         ex3.button("Export PDF", disabled=True, use_container_width=True, key="btn_pdf_na")
+
+    # ── Add to Project ───────────────────────────────────────────────────────
+    st.markdown("")
+    _add_col, _ = st.columns([1, 3])
+    if _add_col.button("➕ Add to Project", use_container_width=True, key="btn_add_project",
+                        type="secondary"):
+        if "project_items" not in st.session_state:
+            st.session_state.project_items = []
+        _counter = len(st.session_state.project_items) + 1
+        _label_parts = [template_name]
+        if job_name:
+            _label_parts.append(job_name)
+        if job_number:
+            _label_parts.append(f"({job_number})")
+        _label = " — ".join(_label_parts[:2])
+        if len(_label_parts) > 2:
+            _label += f" {_label_parts[2]}"
+        st.session_state.project_items.append({
+            "label":         _label,
+            "template_name": template_name,
+            "bars":          bars,
+            "pdf_bytes":     st.session_state.get("_pdf_bytes"),
+            "params_raw":    st.session_state.get("_last_params", {}),
+            "weight_lb":     barlist_total_weight_lb(bars),
+            "total_bars":    sum(b.qty for b in bars),
+            "marks":         len({b.mark for b in bars}),
+        })
+        st.toast(f"Added to project: {_label}", icon="✅")
+        st.rerun()
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PROJECT PANEL — all saved structures for this session
+# ═════════════════════════════════════════════════════════════════════════════
+
+_proj_items = st.session_state.get("project_items", [])
+if _proj_items:
+    st.markdown("---")
+    st.markdown(
+        "<div style='display:flex;align-items:center;gap:10px;margin-bottom:0.5rem'>"
+        "<div style='background:#1c3461;color:#fff;border-radius:8px;padding:5px 12px;"
+        "font-size:0.75rem;font-weight:800;letter-spacing:1.2px'>📁</div>"
+        f"<span style='font-size:1.05rem;font-weight:700;color:#1a1d23'>"
+        f"Project ({len(_proj_items)} structure{'s' if len(_proj_items) != 1 else ''})</span>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    # Action row: ZIP download + Clear
+    _pact1, _pact2, _pact3 = st.columns([2, 1, 1])
+    _total_proj_lb  = sum(it["weight_lb"] for it in _proj_items)
+    _total_proj_qty = sum(it["total_bars"] for it in _proj_items)
+    _pact1.markdown(
+        f"<span style='color:#6c737a;font-size:0.85rem'>"
+        f"{_total_proj_qty:,} total bars · {_total_proj_lb:,.1f} lb total</span>",
+        unsafe_allow_html=True,
+    )
+
+    # Build ZIP in memory
+    _zip_buf = io.BytesIO()
+    with zipfile.ZipFile(_zip_buf, "w", zipfile.ZIP_DEFLATED) as _zf:
+        for _pi, _pitem in enumerate(_proj_items):
+            if _pitem.get("pdf_bytes"):
+                _pfn = f"{_pi+1:02d}_{_pitem['template_name'].replace(' ', '_')}.pdf"
+                _zf.writestr(_pfn, _pitem["pdf_bytes"])
+    _zip_buf.seek(0)
+
+    _pact2.download_button(
+        "⬇ Download ZIP",
+        data=_zip_buf.getvalue(),
+        file_name="CNSTRUCT_Project.zip",
+        mime="application/zip",
+        use_container_width=True,
+        key="btn_proj_zip",
+    )
+    if _pact3.button("Clear Project", use_container_width=True, key="btn_proj_clear",
+                      type="secondary"):
+        st.session_state.project_items = []
+        st.rerun()
+
+    # Per-structure rows
+    for _pi, _pitem in enumerate(_proj_items):
+        _row_a, _row_b, _row_c, _row_d = st.columns([3, 1, 1, 1])
+        _row_a.markdown(
+            f"<div style='padding:6px 0'>"
+            f"<span style='font-weight:600;color:#1a1d23'>{_pi+1}. {_pitem['label']}</span> "
+            f"<span style='color:#6c737a;font-size:0.82rem'>"
+            f"· {_pitem['marks']} marks · {_pitem['total_bars']:,} bars"
+            f" · {_pitem['weight_lb']:,.1f} lb</span></div>",
+            unsafe_allow_html=True,
+        )
+        if _pitem.get("pdf_bytes"):
+            _row_b.download_button(
+                "PDF",
+                data=_pitem["pdf_bytes"],
+                file_name=f"{_pitem['template_name'].replace(' ', '_')}_barlist.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                key=f"proj_pdf_{_pi}",
+            )
+        else:
+            _row_b.button("PDF", disabled=True, use_container_width=True, key=f"proj_pdf_na_{_pi}")
+        if _row_c.button("Load", use_container_width=True, key=f"proj_load_{_pi}",
+                          help="Restore this structure's inputs and barlist"):
+            st.session_state.bars        = _pitem["bars"]
+            st.session_state._pdf_bytes  = _pitem.get("pdf_bytes")
+            st.session_state._last_params = _pitem["params_raw"]
+            st.session_state._last_template = _pitem["template_name"]
+            st.toast(f"Loaded: {_pitem['label']}", icon="📋")
+            st.rerun()
+        if _row_d.button("✕ Remove", use_container_width=True, key=f"proj_rm_{_pi}"):
+            st.session_state.project_items.pop(_pi)
+            st.rerun()
 
 # ═════════════════════════════════════════════════════════════════════════════
 # AI EXPLANATION — shown inline after generate

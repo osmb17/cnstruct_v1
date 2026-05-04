@@ -49,10 +49,13 @@ class JunctionStructureTemplate(BaseTemplate):
 
         self.rules = [
             "rule_validate_junction",
-            "rule_junc_a_bars",
-            "rule_junc_e_bars",
-            "rule_junc_b_bars",
-            "rule_junc_add_bars",
+            "rule_junc_a_bars",       # JA1/JA2 — slab transverse U-bars
+            "rule_junc_e_bars",       # JE1 — wall exterior vertical bars
+            "rule_junc_b_bars",       # JB1 — wall interior U-bars
+            "rule_junc_slab_longs",   # JD1/JL1/JL2 — longitudinal slab bars
+            "rule_junc_wall_horiz",   # JC1 — horizontal wall bars (double curtain)
+            "rule_junc_hoops",        # JMH/JPH/JME — manhole/pipe hoops + extra bars
+            "rule_junc_add_bars",     # JX1 — additional bars at pipe openings
         ]
 
     def evaluate_triggers(self, params: Params) -> list[str]:

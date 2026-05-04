@@ -115,6 +115,8 @@ PRIMARY_INPUTS: dict[str, list[str]] = {
                                 "wall_case", "shear_key"],
     "Caltrans Headwall":     ["pipe_dia_in", "wall_width_ft",
                               "wall_type", "loading_case"],
+    "L Headwall":            ["loading_case", "wall_width_ft", "wall_height_ft",
+                              "pipe_qty", "pipe_dia_in"],
     "D84 Wingwall":          ["wall_height_ft", "wall_length_ft",
                               "wall_thick_in", "footing_width_ft",
                               "cover_in", "num_structures"],
@@ -158,6 +160,7 @@ DIAGRAM_LABELS: dict[str, dict[str, str]] = {
     "Sound Wall":            {"wall_height_ft": "H", "wall_length_ft": "L"},
     "Caltrans Retaining Wall": {"design_h_ft": "H", "wall_length_ft": "L"},
     "Caltrans Headwall":     {"pipe_dia_in": "D", "wall_width_ft": "W"},
+    "L Headwall":            {"wall_width_ft": "W", "wall_height_ft": "H"},
     "D84 Wingwall":          {"wall_height_ft": "H", "wall_length_ft": "LOL"},
     "D85 Wingwall":          {"wall_height_ft": "H", "wall_length_ft": "LOL"},
 }

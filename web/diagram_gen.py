@@ -1343,122 +1343,12 @@ def _diag_pipe_encasement() -> bytes:
 
 def _diag_junction() -> bytes:
     """
-    Outline-style plan schematic matching Caltrans reference drawing.
-    D1 at top (flat semiellipse arch), box in middle, D2 at bottom.
-    Dashed lines for walls; T|Span|T labeled inside.
+    Returns the D91A plan-view reference photo for the junction structure.
+    Static image: static/junction_structure_plan.png
     """
-    length_ft = float(_LIVE_PARAMS.get("length_ft", 6.0) or 6.0)
-    span_ft   = float(_LIVE_PARAMS.get("span_ft",   5.0) or 5.0)
-    T_in      = float(_LIVE_PARAMS.get("wall_thick_in", 12) or 12)
-    T         = T_in / 12.0
-    try:
-        d1_in = int(str(_LIVE_PARAMS.get("d1_in", "36")).strip())
-    except (ValueError, TypeError):
-        d1_in = 36
-    try:
-        d2_in = int(str(_LIVE_PARAMS.get("d2_in", "48")).strip())
-    except (ValueError, TypeError):
-        d2_in = 48
-
-    d1_ft   = d1_in / 12.0
-    d2_ft   = d2_in / 12.0
-    total_w = span_ft + 2 * T
-    cx      = total_w / 2
-    # True-proportion box height (display scale limited to keep diagram readable)
-    box_h   = max(length_ft, span_ft * 0.9)
-    box_h   = min(box_h, span_ft * 2.0)
-
-    # Flat semiellipse arch heights = D × 0.13 (very flat, matches Caltrans schematic)
-    d1_h = d1_ft * 0.13
-    d2_h = d2_ft * 0.13
-
-    # Figure margins
-    half_max = max(d1_ft, d2_ft) / 2
-    left_m   = min(cx - half_max, 0) - 1.8
-    right_m  = max(cx + half_max, total_w) + 2.2
-    bot_m    = -(d2_h + 1.0)
-    top_m    = box_h + d1_h + 2.2
-
-    fig, ax = _fig(7.0, 8.5)
-    ax.set_aspect("equal")
-    ax.set_xlim(left_m, right_m)
-    ax.set_ylim(bot_m, top_m)
-
-    C = _OUTLINE
-    kw_box  = dict(color=C, lw=1.4, ls="-",  zorder=3)   # outer box walls (solid)
-    kw_wall = dict(color=C, lw=0.7, ls="--", zorder=2)   # inner wall face (dashed, lighter)
-    kw_arch = dict(color=C, lw=1.6, zorder=5)             # pipe arch symbols
-
-    # ── Outer box (solid) — vertical sides full height ────────────────────
-    ax.plot([0,       0      ], [0, box_h], **kw_box)
-    ax.plot([total_w, total_w], [0, box_h], **kw_box)
-    # Top wall with D1 opening
-    if cx - d1_ft / 2 > 0:
-        ax.plot([0, cx - d1_ft / 2],      [box_h, box_h], **kw_box)
-        ax.plot([cx + d1_ft / 2, total_w], [box_h, box_h], **kw_box)
-    else:
-        ax.plot([0, total_w], [box_h, box_h], **kw_box)
-    # Bottom wall with D2 opening
-    if cx - d2_ft / 2 > 0:
-        ax.plot([0, cx - d2_ft / 2],      [0, 0], **kw_box)
-        ax.plot([cx + d2_ft / 2, total_w], [0, 0], **kw_box)
-    else:
-        ax.plot([0, total_w], [0, 0], **kw_box)
-
-    # ── Inner wall faces (dashed, shows wall thickness T) ─────────────────
-    ax.plot([T,           T          ], [0, box_h], **kw_wall)
-    ax.plot([T + span_ft, T + span_ft], [0, box_h], **kw_wall)
-
-    # ── D1 pipe arch (flat semiellipse above box) ─────────────────────────
-    ax.add_patch(mpatches.Arc((cx, box_h), d1_ft, 2 * d1_h,
-                               theta1=0, theta2=180, **kw_arch))
-    ax.plot([cx - d1_ft / 2, cx + d1_ft / 2], [box_h, box_h],
-            color=C, lw=1.1, zorder=4)
-
-    # ── D2 pipe arch (flat semiellipse below box) ─────────────────────────
-    ax.add_patch(mpatches.Arc((cx, 0), d2_ft, 2 * d2_h,
-                               theta1=180, theta2=360, **kw_arch))
-    ax.plot([cx - d2_ft / 2, cx + d2_ft / 2], [0, 0],
-            color=C, lw=1.1, zorder=4)
-
-    # ── Dimension lines ───────────────────────────────────────────────────
-    # D1 dimension above arch
-    _ext_dim_h(ax, cx - d1_ft / 2, cx + d1_ft / 2,
-               box_h + d1_h, box_h + d1_h + 0.38, "D1")
-
-    # D2 dimension below arch — text placed below the dim line (mirrors D1 above)
-    _cx1, _cx2 = cx - d2_ft / 2, cx + d2_ft / 2
-    _obj_y, _dim_y = -(d2_h), -(d2_h + 0.55)
-    for _xp in [_cx1, _cx2]:
-        ax.plot([_xp, _xp], [_obj_y, _dim_y], color=_DIM, lw=0.4, zorder=5)
-    ax.annotate("", xy=(_cx2, _dim_y), xytext=(_cx1, _dim_y),
-                arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0,
-                                mutation_scale=10, shrinkA=0, shrinkB=0))
-    ax.text((_cx1 + _cx2) / 2, _dim_y - 0.10, _aug_label("D2"),
-            ha="center", va="top", fontsize=9, color=_LABEL, fontweight="bold",
-            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.92))
-
-    # Span inside box
-    span_y = box_h * 0.48
-    _dim_h(ax, T, T + span_ft, span_y, "Span")
-
-    # T labels in wall zones
-    ax.text(T / 2,             span_y + 0.35, "T", ha="center", va="bottom",
-            fontsize=9, color=_LABEL, fontweight="bold", zorder=6)
-    ax.text(T + span_ft + T / 2, span_y + 0.35, "T", ha="center", va="bottom",
-            fontsize=9, color=_LABEL, fontweight="bold", zorder=6)
-
-    # HB callout (upper interior)
-    ax.text(cx, box_h * 0.75, _aug_label("HB"),
-            ha="center", va="center", fontsize=7.5, color="#444",
-            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#bbb", alpha=0.9), zorder=6)
-
-    # Length dimension (right side)
-    _ext_dim_v(ax, 0, box_h, total_w, total_w + 0.8, "Length")
-
-    _axes_compass(ax, left_m + 0.3, bot_m + 0.3)
-    _title(ax, "JUNCTION STRUCTURE -- PLAN VIEW")
-    return _to_png(fig)
+    import pathlib
+    img_path = pathlib.Path(__file__).parent.parent / "static" / "junction_structure_plan.png"
+    return img_path.read_bytes()
 
 
 def _diag_dual_slab() -> bytes:
