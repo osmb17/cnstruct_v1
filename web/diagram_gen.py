@@ -750,6 +750,182 @@ def _diag_headwall() -> bytes:
     return _to_png(fig)
 
 
+def _diag_l_headwall() -> bytes:
+    """Elevation + Section for D89B 'L' headwall (heel-only footing, no toe).
+
+    Key difference from straight headwall: the footing extends only on the
+    heel (earth) side — no toe projection C.  Footing width W = T + B only.
+    """
+    L    = float(_LIVE_PARAMS.get("wall_width_ft", 8.0))
+    H    = float(_LIVE_PARAMS.get("wall_height_ft", 5.0))
+    H_in = H * 12.0
+
+    # D89A/D89B table lookup (same table as straight headwall)
+    try:
+        from vistadetail.engine.rules.headwall_rules import _D89A_ROWS
+        row = _D89A_ROWS[-1]
+        for r in _D89A_ROWS:
+            if r["H"] >= H_in - 0.1:
+                row = r
+                break
+    except Exception:
+        row = {"T": 10, "W": 64, "C": 16, "B": 48, "F": 12,
+               "c_s": "#4", "c_p": 12, "d_s": "#5", "d_p": 8}
+
+    T_in = row["T"];  B_in = row["B"];  F_in = row["F"]
+    c_sz = row["c_s"]; d_sz = row["d_s"]; d_sp = row["d_p"]
+
+    # L headwall: footing width = T + B  (no toe C)
+    W_in = T_in + B_in
+    T  = T_in / 12.0
+    B  = B_in / 12.0
+    F  = F_in / 12.0
+    W  = W_in / 12.0   # heel-only footing total width
+    cov  = 2.0 / 12.0
+    fcov = 3.0 / 12.0
+
+    s = min(4.5 / max(L, 1.0), 3.0 / max(H + F, 1.0))
+    s = max(s, 0.30)
+
+    fig, ax = _fig(w=13.0, h=6.5)
+
+    # ── FRONT ELEVATION ──────────────────────────────────────────────────
+    ex = 0.6
+    ey = 0.5 + F * s
+
+    # Footing strip
+    _rect(ax, ex, ey - F*s, L*s, F*s, fc="#b0b8c0", ec=_OUTLINE, lw=1.0)
+    # Wall body
+    _rect(ax, ex, ey, L*s, H*s)
+
+    # LW horizontal bars
+    n_lw = int(H) + 1
+    for i in range(n_lw + 1):
+        yy = ey + i * s
+        if yy > ey + H*s: break
+        ax.plot([ex + cov*s, ex + L*s - cov*s], [yy, yy],
+                color=_REBAR, lw=0.7, zorder=4)
+
+    # VW vertical bars
+    n_vw = int(L - 2*cov) + 1
+    for i in range(n_vw + 1):
+        xx = ex + cov*s + i * s
+        if xx > ex + L*s - cov*s: break
+        ax.plot([xx, xx], [ey + cov*s, ey + H*s - cov*s],
+                color=_REBAR, lw=0.7, zorder=4)
+
+    # TW dots at top
+    for frac in [0.25, 0.5, 0.75]:
+        ax.plot(ex + L*s * frac, ey + H*s - cov*s, "o",
+                color=_REBAR, ms=5, zorder=5)
+
+    # D1 dots at footing junction
+    n_d1 = math.floor(L / (d_sp / 12.0)) + 1
+    for i in range(n_d1 + 1):
+        xx = ex + i * (d_sp / 12.0) * s
+        if xx > ex + L*s: break
+        ax.plot(xx, ey, "o", color=_REBAR, ms=4, zorder=5)
+
+    # Pipe opening (circle) — centered in wall, bottom at footing top
+    pipe_d = float(_LIVE_PARAMS.get("pipe_dia_in", 24)) if isinstance(
+        _LIVE_PARAMS.get("pipe_dia_in", "24\""), (int, float)) else 24.0
+    try:
+        pipe_d = float(str(_LIVE_PARAMS.get("pipe_dia_in", "24")).replace('"', ''))
+    except Exception:
+        pipe_d = 24.0
+    pr = pipe_d / 2 / 12 * s
+    pcx = ex + L*s * 0.5
+    pcy = ey + pr + cov*s
+    if pr < H*s * 0.45:
+        circ = __import__("matplotlib.patches", fromlist=["Circle"]).Circle(
+            (pcx, pcy), pr, fill=False, ec=_OUTLINE, lw=1.2, ls="--", zorder=5)
+        ax.add_patch(circ)
+        ax.annotate(f'D={pipe_d:.0f}"', xy=(pcx, pcy),
+                    xytext=(pcx + pr + 0.2, pcy + 0.1),
+                    fontsize=6.5, color=_LABEL,
+                    arrowprops=dict(arrowstyle="->", color=_DIM, lw=0.6))
+        ax.text(pcx, ey - 0.1, "PIPE Inv", ha="center", va="top",
+                fontsize=6.5, color=_LABEL)
+
+    _ext_dim_h(ax, ex, ex + L*s, ey - F*s, ey - F*s - 0.32, "W")
+    _ext_dim_v(ax, ey, ey + H*s,  ex,  ex - 0.55, "H")
+    _dim_v(ax, ey - F*s, ey, ex - 0.55, f"F={F_in:.0f}\"", gap=0.18, fontsize=7)
+
+    ax.text(ex + L*s * 0.5, ey + H*s + 0.22, 'ELEVATION — "L" HEADWALL',
+            ha="center", va="bottom", fontsize=8, color=_LABEL, fontweight="bold")
+    ax.text(ex + L*s * 0.5, ey + H*s + 0.08,
+            f"LW/VW {c_sz}@12\"  |  TW {d_sz}  |  D1 {d_sz}@{d_sp}\"",
+            ha="center", va="top", fontsize=6.5, color=_REBAR)
+
+    # ── SECTION — "L" shape: wall stem, heel footing only ────────────────
+    gap = 1.2
+    tx  = ex + L*s + gap
+    ty  = ey
+
+    # Footing — starts at left face of wall stem, extends B to heel (right)
+    wx = tx       # left face of wall stem (no toe)
+    _rect(ax, wx, ty - F*s, W*s, F*s, fc="#b0b8c0", ec=_OUTLINE, lw=1.0)
+
+    # Earth hatching — heel side (right of wall stem)
+    earth_x = wx + T*s
+    for i in range(9):
+        ye = ty - F*s * 0.4 + i * (H*s + F*s * 0.4) / 8
+        ax.plot([earth_x + 0.04, earth_x + 0.22], [ye, ye - 0.15],
+                color=_SOIL, lw=0.8, alpha=0.7, zorder=1)
+
+    # Wall stem
+    _rect(ax, wx, ty, T*s, H*s)
+
+    # Bar dots — both faces of wall stem
+    for i in range(n_lw + 1):
+        yy = ty + i * s
+        if yy > ty + H*s: break
+        ax.plot(wx + cov*s,       yy, "o", color=_REBAR, ms=4, zorder=5)
+        ax.plot(wx + T*s - cov*s, yy, "o", color=_REBAR, ms=4, zorder=5)
+
+    # TW top dot
+    ax.plot(wx + T*s / 2, ty + H*s - cov*s, "o", color=_REBAR, ms=6, zorder=5)
+
+    # TF footing bars (heel only)
+    n_tf = math.floor(W) + 1
+    for i in range(n_tf + 1):
+        xx = wx + fcov*s + i * s
+        if xx > wx + W*s - fcov*s: break
+        ax.plot(xx, ty - F*s / 2, "o", color=_REBAR, ms=3.5, zorder=5)
+
+    # CB — L-shaped bar (heel leg + horizontal base, no toe leg)
+    cb_rx  = wx + T*s + 14.0 / 12.0 * s    # heel extension
+    cb_top = ty + H*s + 0.12
+    cb_base = ty + cov*s
+    ax.plot([wx - cov*s, wx - cov*s], [cb_top, cb_base],
+            color=_REBAR, lw=1.5, zorder=4)              # front (face) leg
+    ax.plot([wx - cov*s, cb_rx], [cb_base, cb_base],
+            color=_REBAR, lw=1.5, zorder=4)              # horizontal base
+    ax.plot([cb_rx, cb_rx], [cb_base, cb_top],
+            color=_REBAR, lw=1.5, zorder=4)              # heel leg
+    ax.text(wx - cov*s - 0.1, ty + H*s * 0.6, f'"{c_sz}" C-BAR',
+            ha="right", va="center", fontsize=6.5, color=_REBAR,
+            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.85))
+
+    # Section dimensions
+    _ext_dim_v(ax, ty, ty + H*s, wx, wx - 0.55, "H")
+    _dim_v(ax, ty - F*s, ty, wx - 0.55, f"F={F_in:.0f}\"", gap=0.18, fontsize=7)
+    _dim_h(ax, wx, wx + T*s,   ty - F*s - 0.20, f"T={T_in:.0f}\"", gap=0.12, fontsize=7)
+    _dim_h(ax, wx + T*s, wx + W*s, ty - F*s - 0.20, f"B={B_in:.0f}\"", gap=0.12, fontsize=7)
+    _ext_dim_h(ax, wx, wx + W*s, ty - F*s, ty - F*s - 0.55, "W", fontsize=8)
+
+    ax.text(wx + T*s / 2, ty + H*s + 0.22, 'SECTION — "L" HEADWALL',
+            ha="center", va="bottom", fontsize=8, color=_LABEL, fontweight="bold")
+    ax.text(wx + W*s + 0.1, ty + H*s * 0.5, "HEEL\n(EARTH)",
+            ha="left", va="center", fontsize=6.5, color=_SOIL, fontstyle="italic")
+
+    ax.set_xlim(ex - 1.4, wx + W*s + 1.5)
+    ax.set_ylim(ty - F*s - 1.0, ty + H*s + 1.0)
+    _title(ax, 'CIRCULAR PIPE CULVERT "L" HEADWALL  (D89A/D89B)')
+
+    return _to_png(fig)
+
+
 def _diag_wing_wall() -> bytes:
     """Elevation of tapered wing wall -- L length, H1 (hw), H2 (tip)."""
     L, H1, H2 = 6.0, 3.5, 0.6
@@ -1740,6 +1916,7 @@ _DIAGRAM_FN: dict[str, callable] = {
     "G2 Inlet Top":            _diag_inlet_top,
     "G2 Expanded Inlet Top":   _diag_expanded_inlet_top,
     "Straight Headwall":       _diag_headwall,
+    "L Headwall":              _diag_l_headwall,
     "Wing Wall":               _diag_wing_wall,
     "Spread Footing":          _diag_footing,
     "Box Culvert":             _diag_box_culvert,

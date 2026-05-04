@@ -206,6 +206,11 @@ div[data-testid="stRadio"]:first-of-type label:has(input:checked) {
     color: #ffffff !important;
     border-color: #1c3461 !important;
 }
+div[data-testid="stRadio"]:first-of-type label:has(input:checked) p,
+div[data-testid="stRadio"]:first-of-type label:has(input:checked) span,
+div[data-testid="stRadio"]:first-of-type label:has(input:checked) div {
+    color: #ffffff !important;
+}
 div[data-testid="stRadio"]:first-of-type input[type="radio"] {
     display: none !important;
 }
@@ -230,6 +235,11 @@ div[data-testid="stRadio"]:nth-of-type(2) label:has(input:checked) {
     color: #1c3461 !important;
     border-color: #1c3461 !important;
     font-weight: 700 !important;
+}
+div[data-testid="stRadio"]:nth-of-type(2) label:has(input:checked) p,
+div[data-testid="stRadio"]:nth-of-type(2) label:has(input:checked) span,
+div[data-testid="stRadio"]:nth-of-type(2) label:has(input:checked) div {
+    color: #1c3461 !important;
 }
 div[data-testid="stRadio"]:nth-of-type(2) input[type="radio"] {
     display: none !important;
