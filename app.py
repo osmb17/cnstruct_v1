@@ -1790,6 +1790,12 @@ with inp_col:
             name, val = _widget(_hw_pd_field, key_prefix=f"primary_{_tname}", container=c4)
             params_raw[name] = val
 
+        # Loading Case (bottom of panel)
+        _hw_lc_field = next((f for f in template.inputs if f.name == "loading_case"), None)
+        if _hw_lc_field is not None:
+            name, val = _widget(_hw_lc_field, key_prefix=f"primary_{_tname}", container=st)
+            params_raw[name] = val
+
     # ======================================================================
     # All other templates — standard primary / advanced layout
     # ======================================================================
