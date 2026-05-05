@@ -20,13 +20,6 @@ class HeadwallTemplate(BaseTemplate):
 
         self.inputs = [
             InputField(
-                "loading_case", str, label="Loading Case",
-                choices=["I", "II / III"],
-                default="I",
-                group="Design",
-                hint="Case I = D89A (higher loading); Cases II/III = D89B (lighter loading)",
-            ),
-            InputField(
                 "wall_width_ft", float, label="Wall Width (ft)",
                 min=4.0, max=30.0, default=8.0,
                 group="Geometry",
@@ -53,6 +46,13 @@ class HeadwallTemplate(BaseTemplate):
                          "60\"", "66\"", "72\""],
                 default="24\"",
                 hint="Nominal RCP pipe diameter",
+            ),
+            InputField(
+                "loading_case", str, label="Loading Case",
+                choices=["I", "II / III"],
+                default="I",
+                group="Design",
+                hint="Case I = D89A (higher loading); Cases II/III = D89B (lighter loading)",
             ),
         ]
 
