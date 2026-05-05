@@ -789,31 +789,120 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
     dtlr    = ji.get("Detailer") or ""
     today   = str(ji.get("Date") or date.today())
 
-    right_lines = []
-    if project: right_lines.append(f"<b>Project:</b> {project}")
-    if job_num: right_lines.append(f"<b>Job #:</b>   {job_num}")
-    if dtlr:    right_lines.append(f"<b>Detailer:</b> {dtlr}")
-    right_lines.append(f"<b>Date:</b> {today}")
+    # Styles for header cells
+    co_name_style = ParagraphStyle("co_name", parent=_S["Normal"],
+                                    fontName="Helvetica-Bold", fontSize=13,
+                                    textColor=_BLACK, leading=16)
+    co_info_style = ParagraphStyle("co_info", parent=_S["Normal"],
+                                    fontName="Helvetica", fontSize=7,
+                                    textColor=_BLACK, leading=10)
+    title_style   = ParagraphStyle("bl_title", parent=_S["Normal"],
+                                    fontName="Helvetica-Bold", fontSize=11,
+                                    textColor=_WHITE, leading=14,
+                                    alignment=1)  # centred
+    field_lbl     = ParagraphStyle("field_lbl", parent=_S["Normal"],
+                                    fontName="Helvetica-Bold", fontSize=6.5,
+                                    textColor=rc.HexColor("#555555"), leading=8)
+    field_val     = ParagraphStyle("field_val", parent=_S["Normal"],
+                                    fontName="Helvetica", fontSize=8.5,
+                                    textColor=_BLACK, leading=11)
 
-    left_para = Paragraph(
-        f"<font size='16'><b>VISTA STEEL</b></font><br/>"
-        f"<b>{template_name}</b>  —  Rebar Barlist",
-        hdr_title,
+    # ── Col 1: Company logo placeholder + contact info ────────────────────
+    logo_box = Table(
+        [[Paragraph("COMPANY<br/>LOGO", ParagraphStyle(
+            "logo", parent=_S["Normal"], fontName="Helvetica-Bold",
+            fontSize=8, textColor=_MID, alignment=1))]],
+        colWidths=[1.1 * inch], rowHeights=[0.55 * inch],
     )
+    logo_box.setStyle(TableStyle([
+        ("BOX",        (0, 0), (-1, -1), 1.0, _MID),
+        ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN",      (0, 0), (-1, -1), "CENTRE"),
+        ("BACKGROUND", (0, 0), (-1, -1), rc.HexColor("#f8f8f8")),
+    ]))
 
+    co_info_para = Paragraph(
+        "<b>[Company Name]</b><br/>"
+        "[Street Address]<br/>"
+        "[City, State ZIP]<br/>"
+        "Ph: [Phone]  |  [Email]",
+        co_info_style,
+    )
+    col1_inner = Table(
+        [[logo_box, co_info_para]],
+        colWidths=[1.15 * inch, 1.85 * inch],
+    )
+    col1_inner.setStyle(TableStyle([
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
+        ("TOPPADDING",    (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+
+    # ── Col 2: Centre title block ─────────────────────────────────────────
+    title_tbl = Table(
+        [[Paragraph("REINFORCING STEEL BAR LIST", title_style)],
+         [Paragraph(template_name.upper(), ParagraphStyle(
+             "tname", parent=_S["Normal"], fontName="Helvetica-Bold",
+             fontSize=8, textColor=rc.HexColor("#cccccc"), alignment=1))]],
+        colWidths=[4.5 * inch],
+        rowHeights=[0.38 * inch, 0.22 * inch],
+    )
+    title_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, -1), _BLACK),
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 6),
+        ("TOPPADDING",    (0, 0), (0, 0),   6),
+        ("BOTTOMPADDING", (0, 0), (0, 0),   2),
+        ("TOPPADDING",    (0, 1), (0, 1),   0),
+        ("BOTTOMPADDING", (0, 1), (0, 1),   6),
+    ]))
+
+    # ── Col 3: Job info grid (Project / Job # / Detailer / Date / Sheet) ──
+    def _field(label, value):
+        return [Paragraph(label, field_lbl),
+                Paragraph(value or "—", field_val)]
+
+    info_rows = [
+        _field("PROJECT",  project),
+        _field("JOB #",    job_num),
+        _field("DETAILER", dtlr),
+        _field("DATE",     today),
+        _field("SHEET",    "__ of __"),
+    ]
+    info_tbl = Table(
+        info_rows,
+        colWidths=[0.65 * inch, 2.9 * inch],
+    )
+    info_tbl.setStyle(TableStyle([
+        ("GRID",          (0, 0), (-1, -1), 0.4, _MID),
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING",    (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
+        ("BACKGROUND",    (0, 0), (0, -1),  rc.HexColor("#f0f0f0")),
+    ]))
+
+    # ── Assemble full header ──────────────────────────────────────────────
     hdr = Table(
-        [[left_para, Paragraph("<br/>".join(right_lines), n8)]],
-        colWidths=[6.5 * inch, 3.5 * inch],
-        rowHeights=[0.75 * inch],
+        [[col1_inner, title_tbl, info_tbl]],
+        colWidths=[3.0 * inch, 4.5 * inch, 3.55 * inch],
+        rowHeights=[0.72 * inch],
     )
     hdr.setStyle(TableStyle([
-        ("BOX",           (0, 0), (-1, -1), 1.0, _BLACK),
-        ("LINEAFTER",     (0, 0), (0, -1),  0.5, _MID),
+        ("BOX",           (0, 0), (-1, -1), 1.2, _BLACK),
+        ("LINEBEFORE",    (1, 0), (1, -1),  0.8, _BLACK),
+        ("LINEBEFORE",    (2, 0), (2, -1),  0.8, _BLACK),
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 10),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 10),
+        ("LEFTPADDING",   (0, 0), (0, -1),  6),
+        ("RIGHTPADDING",  (0, 0), (0, -1),  4),
+        ("LEFTPADDING",   (1, 0), (2, -1),  0),
+        ("RIGHTPADDING",  (1, 0), (1, -1),  0),
+        ("TOPPADDING",    (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
     elems.append(hdr)
     elems.append(Spacer(1, 0.1 * inch))

@@ -1527,6 +1527,181 @@ def _diag_junction() -> bytes:
     return img_path.read_bytes()
 
 
+def _diag_junction_UNUSED() -> bytes:
+    """
+    Plan-view diagram of D91A Junction Structure, redrawn in CNSTRUCT style.
+    Geometry traced line-by-line from the Caltrans D91A plan sheet.
+    """
+    import numpy as np
+    from matplotlib.patches import Polygon as MplPolygon, Ellipse
+
+    fig, ax = _fig(9.0, 8.0)
+    ax.set_xlim(-2.2, 8.5)
+    ax.set_ylim(-1.0, 8.2)
+
+    # ── Geometry ──────────────────────────────────────────────────────────────
+    BX0, BY0 = 2.2, 0.4          # main body bottom-left
+    BW,  BH  = 3.8, 6.2          # body width, height
+    BX1, BY1 = BX0 + BW, BY0 + BH
+
+    PR   = 0.80                   # pipe radius
+    PCX  = BX0 + BW * 0.50       # pipe centre x (body centre)
+    PCY  = BY0 + BH * 0.62       # pipe centre y
+
+    # Lateral leg — 38° pointing upper-left
+    LAT_ANGLE = 38.0
+    LAT_W     = 1.55              # leg full width (matches pipe diameter)
+    LAT_LEN   = 2.05
+    LAT_CX    = BX0
+    LAT_CY    = PCY
+    ang_r     = math.radians(LAT_ANGLE)
+    cos_a, sin_a = math.cos(ang_r), math.sin(ang_r)
+    perp_x, perp_y = -sin_a, cos_a   # unit vector perpendicular to leg axis
+    hw = LAT_W / 2
+
+    far_cx = LAT_CX - LAT_LEN * cos_a
+    far_cy = LAT_CY + LAT_LEN * sin_a
+
+    leg_pts = np.array([
+        [LAT_CX + hw * perp_x, LAT_CY + hw * perp_y],
+        [far_cx  + hw * perp_x, far_cy  + hw * perp_y],
+        [far_cx  - hw * perp_x, far_cy  - hw * perp_y],
+        [LAT_CX - hw * perp_x, LAT_CY - hw * perp_y],
+    ])
+
+    # ── Draw lateral leg ──────────────────────────────────────────────────────
+    leg_patch = MplPolygon(leg_pts, closed=True,
+                           facecolor=_CONCRETE, edgecolor=_OUTLINE,
+                           lw=1.8, zorder=2)
+    ax.add_patch(leg_patch)
+
+    # Pipe circular cross-section at far end of lateral leg
+    pipe_end = plt.Circle((far_cx, far_cy), PR,
+                           facecolor="white", edgecolor=_OUTLINE,
+                           lw=1.4, zorder=3)
+    ax.add_patch(pipe_end)
+    # Inner dashed ring (wall thickness suggestion)
+    pipe_end_in = plt.Circle((far_cx, far_cy), PR * 0.72,
+                              facecolor="none", edgecolor=_DIM,
+                              lw=0.6, ls="--", zorder=4)
+    ax.add_patch(pipe_end_in)
+
+    # Dashed centre-line along lateral leg axis
+    ax.plot([LAT_CX, far_cx], [LAT_CY, far_cy],
+            color=_DIM, lw=0.7, ls=(0, (6, 3)), zorder=5)
+
+    # ── Draw main body on top (covers leg junction) ───────────────────────────
+    body_patch = mpatches.Rectangle((BX0, BY0), BW, BH,
+                                    facecolor=_CONCRETE, edgecolor=_OUTLINE,
+                                    lw=2.0, zorder=3)
+    ax.add_patch(body_patch)
+
+    # Pipe hole (cut-out)
+    pipe_hole = plt.Circle((PCX, PCY), PR,
+                            facecolor="white", edgecolor=_OUTLINE,
+                            lw=1.5, zorder=5)
+    ax.add_patch(pipe_hole)
+
+    # Pipe hoop ring (D bar — dashed circle outside pipe OD)
+    pipe_hoop = plt.Circle((PCX, PCY), PR + 0.10,
+                            facecolor="none", edgecolor=_OUTLINE,
+                            lw=0.9, ls="--", zorder=5)
+    ax.add_patch(pipe_hoop)
+
+    # ── Centre-lines ──────────────────────────────────────────────────────────
+    dash_style = (0, (7, 3))
+    ax.plot([PCX, PCX], [BY0 - 0.2, BY1 + 0.2],
+            color=_DIM, lw=0.7, ls=dash_style, zorder=6)
+    ax.plot([BX0 - 0.2, BX1 + 0.2], [PCY, PCY],
+            color=_DIM, lw=0.7, ls=dash_style, zorder=6)
+
+    # ── Rebar dots ───────────────────────────────────────────────────────────
+    def _dot(x, y):
+        ax.plot(x, y, "o", ms=4.5, color=_REBAR, zorder=7)
+
+    # A bars — top and bottom faces
+    for ax_x in [BX0 + 0.22, PCX + 0.22]:
+        _dot(ax_x, BY1 - 0.16)
+        _dot(ax_x, BY0 + 0.16)
+
+    # E bars — corners top and bottom
+    for ex in [BX0 + 0.16, BX1 - 0.16]:
+        _dot(ex, BY1 - 0.16)
+        _dot(ex, BY0 + 0.16)
+
+    # B bars — lateral leg near and far ends
+    for frac in [0.18, 0.82]:
+        bx = LAT_CX * (1 - frac) + far_cx * frac
+        by = LAT_CY * (1 - frac) + far_cy * frac
+        _dot(bx + hw * 0.75 * perp_x, by + hw * 0.75 * perp_y)
+        _dot(bx - hw * 0.75 * perp_x, by - hw * 0.75 * perp_y)
+
+    # C bars — left and right sides of body
+    for cy in [BY0 + BH * 0.27, BY0 + BH * 0.73]:
+        _dot(BX0 + 0.16, cy)
+        _dot(BX1 - 0.16, cy)
+
+    # D bars — pipe hoop positions
+    _dot(PCX - PR - 0.10, PCY)
+    _dot(PCX, PCY + PR + 0.10)
+
+    # ── Leader callouts ───────────────────────────────────────────────────────
+    _lbl_kw = dict(fontsize=8.5, color=_LABEL, fontweight="bold", zorder=9,
+                   bbox=dict(boxstyle="circle,pad=0.28", fc="white",
+                             ec=_OUTLINE, lw=1.1))
+
+    def _leader(tx, ty, lx, ly, label):
+        ax.annotate("", xy=(lx, ly), xytext=(tx, ty),
+                    arrowprops=dict(arrowstyle="-", color=_DIM, lw=0.9), zorder=8)
+        ax.text(tx, ty, label, ha="center", va="center", **_lbl_kw)
+
+    # E and A — top face (left-to-right: E, A, A, E)
+    _leader(BX0 + 0.16, BY1 + 0.60, BX0 + 0.16, BY1 - 0.16, "E")
+    _leader(BX0 + 0.55, BY1 + 0.60, BX0 + 0.22, BY1 - 0.16, "A")
+    _leader(PCX + 0.22, BY1 + 0.60, PCX + 0.22, BY1 - 0.16, "A")
+    _leader(BX1 - 0.16, BY1 + 0.60, BX1 - 0.16, BY1 - 0.16, "E")
+
+    # E and A — bottom face
+    _leader(BX0 + 0.16, BY0 - 0.58, BX0 + 0.16, BY0 + 0.16, "E")
+    _leader(BX0 + 0.50, BY0 - 0.58, BX0 + 0.22, BY0 + 0.16, "A")
+
+    # B — lateral leg (near body, and near far end)
+    near_top_x = LAT_CX + hw * perp_x
+    near_top_y = LAT_CY + hw * perp_y
+    _leader(near_top_x - 0.45, near_top_y + 0.55, near_top_x, near_top_y, "B")
+    far_bot_x = far_cx - hw * perp_x
+    far_bot_y = far_cy - hw * perp_y
+    _leader(far_bot_x - 0.60, far_bot_y - 0.25, far_bot_x, far_bot_y, "B")
+
+    # C — sides of body
+    _leader(BX0 - 0.85, BY0 + BH * 0.73, BX0 + 0.16, BY0 + BH * 0.73, "C")
+    _leader(BX1 + 0.85, BY0 + BH * 0.27, BX1 - 0.16, BY0 + BH * 0.27, "C")
+
+    # D — pipe hoop (two callouts)
+    _leader(PCX + PR + 1.0, PCY + 0.70,  PCX, PCY + PR + 0.10, "D")
+    _leader(PCX - PR - 1.0, PCY - 0.50,  PCX - PR - 0.10, PCY, "D")
+
+    # ── Note text ─────────────────────────────────────────────────────────────
+    note_x = BX0 - 0.35
+    note_y = BY0 + BH * 0.28
+    ax.text(note_x, note_y,
+            "REINFORCEMENT SAME\nAS THE OPPOSITE\nWALL AT BOTH SIDES\nOF THE OPENING",
+            fontsize=6.5, color=_DIM, va="center", ha="right", linespacing=1.45)
+    ax.annotate("", xy=(BX0, PCY - 0.40), xytext=(note_x + 0.05, note_y + 0.25),
+                arrowprops=dict(arrowstyle="-", color=_DIM, lw=0.7), zorder=8)
+
+    # ── Dimensions ────────────────────────────────────────────────────────────
+    _ext_dim_h(ax, BX0, BX1, BY0, BY0 - 0.72, "Span")
+    _ext_dim_v(ax, BY0, BY1, BX1, BX1 + 0.95, "HB")
+
+    # ── Title & compass ───────────────────────────────────────────────────────
+    _title(ax, "JUNCTION STRUCTURE — PLAN VIEW (D91A/D91B)")
+    _subtitle(ax, "Caltrans standard plan — reinforcement layout")
+    _axes_compass(ax, -2.0, -0.7)
+
+    return _to_png(fig)
+
+
 def _diag_dual_slab() -> bytes:
     """Plan view of dual slab -- Slab A and Slab B side by side."""
     La, Wa = 5.0, 3.0
