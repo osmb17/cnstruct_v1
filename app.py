@@ -492,7 +492,10 @@ def _widget(f, key_prefix="", container=None):
         if f.name.endswith("_ft"):
             dv = float(f.default) if f.default is not None else 0.0
             dv_str = _format_ft_in(dv)
-            return f.name, target.text_input(label, value=dv_str, key=key,
+            # Seed session state ONLY on first render — never overwrite user input
+            if key not in st.session_state:
+                st.session_state[key] = dv_str
+            return f.name, target.text_input(label, key=key,
                                              help=hint,
                                              placeholder="e.g. 5'-6\"")
         lo  = float(f.min) if f.min is not None else 0.0
@@ -546,6 +549,104 @@ def _make_xml(bars, template_name, job_info=None) -> str:
     return parseString(tostring(root, encoding="unicode")).toprettyxml(indent="  ")
 
 
+def _make_xlsx(bars, template_name, job_info=None) -> bytes:
+    """
+    Generate a formatted Excel (.xlsx) barlist.
+
+    Columns: Mark | Size | Qty | Length | Shape | Bend # | A | B | C | D | G | Notes
+    Row 1:   job header block (Project, Job #, Detailer, Date)
+    Row 3+:  barlist data with Vista Steel–blue header row.
+    """
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Barlist"
+
+    ji = job_info or {}
+    BLUE  = "1C3461"
+    WHITE = "FFFFFF"
+    LGRAY = "F2F4F7"
+
+    # ── Header block (rows 1–2) ──────────────────────────────────────────────
+    header_font = Font(bold=True, color=WHITE, size=11)
+    header_fill = PatternFill("solid", fgColor=BLUE)
+    hdr_fields = [
+        ("Template", template_name),
+        ("Project",  ji.get("Project", "")),
+        ("Job #",    ji.get("Job #", "")),
+        ("Detailer", ji.get("Detailer", "")),
+        ("Date",     str(ji.get("Date", ""))),
+    ]
+    for col, (label, value) in enumerate(hdr_fields, start=1):
+        lc = ws.cell(row=1, column=col, value=label)
+        lc.font = header_font
+        lc.fill = header_fill
+        lc.alignment = Alignment(horizontal="center")
+        vc = ws.cell(row=2, column=col, value=value)
+        vc.alignment = Alignment(horizontal="center")
+        vc.font = Font(size=10)
+
+    # ── Column headers (row 4) ───────────────────────────────────────────────
+    COLS = ["Mark", "Size", "Qty", "Length", "Shape", "Bend #",
+            "A", "B", "C", "D", "G", "Notes"]
+    COL_WIDTHS = [8, 7, 6, 10, 8, 8, 8, 8, 8, 8, 8, 40]
+
+    col_font  = Font(bold=True, color=WHITE, size=10)
+    col_fill  = PatternFill("solid", fgColor=BLUE)
+    thin      = Side(style="thin", color="CCCCCC")
+    cell_border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    for ci, (col_name, col_w) in enumerate(zip(COLS, COL_WIDTHS), start=1):
+        c = ws.cell(row=4, column=ci, value=col_name)
+        c.font  = col_font
+        c.fill  = col_fill
+        c.alignment = Alignment(horizontal="center")
+        c.border = cell_border
+        ws.column_dimensions[get_column_letter(ci)].width = col_w
+
+    # ── Bar rows (starting row 5) ────────────────────────────────────────────
+    def _opt_in(v):
+        if v is None:
+            return ""
+        return f'{v:.3f}"'.rstrip("0").rstrip(".")  # e.g. 12" or 12.5"
+
+    for ri, b in enumerate(bars, start=5):
+        fill = PatternFill("solid", fgColor=LGRAY) if ri % 2 == 0 else None
+        row_data = [
+            b.mark,
+            b.size,
+            b.qty,
+            b.length_ft_in,
+            b.shape or "",
+            _bend_num(b),
+            _opt_in(b.leg_a_in),
+            _opt_in(b.leg_b_in),
+            _opt_in(b.leg_c_in),
+            _opt_in(b.leg_d_in),
+            _opt_in(b.leg_g_in),
+            b.notes or "",
+        ]
+        for ci, val in enumerate(row_data, start=1):
+            c = ws.cell(row=ri, column=ci, value=val)
+            c.font   = Font(size=10)
+            c.border = cell_border
+            c.alignment = Alignment(horizontal="center" if ci < 12 else "left",
+                                    wrap_text=(ci == 12))
+            if fill:
+                c.fill = fill
+
+    ws.row_dimensions[4].height = 16
+    ws.freeze_panes = "A5"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.getvalue()
+
+
 def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
               params_raw=None, template=None) -> bytes:
     """
@@ -564,7 +665,7 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
     from reportlab.platypus import (
-        Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+        Image as RLImage, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
     )
     from reportlab.graphics.shapes import (
         Drawing, Line, Rect, Circle, String as GStr,
@@ -1040,36 +1141,77 @@ def _make_pdf(bars, template_name, job_info=None,          # noqa: C901
     elems.append(bar_tbl)
     elems.append(Spacer(1, 0.15 * inch))
 
-    # ── Weight summary (bottom) ───────────────────────────────────────────
+    # ── Material Takeoff (bottom) ─────────────────────────────────────────
     weight_lb = barlist_total_weight_lb(bars)
-    _sz_wt: dict = _dd(float)
+    _sz_qty: dict = _dd(int)
+    _sz_lf:  dict = _dd(float)
+    _sz_wt:  dict = _dd(float)
     for _b in bars:
-        _sz_wt[_b.size] += _WLBFT.get(_b.size, 0.0) * (_b.length_in / 12.0) * _b.qty
-    _sorted_sz = sorted(_sz_wt.keys(), key=lambda s: int(s.lstrip("#")))
+        _sz_qty[_b.size] += _b.qty
+        _sz_lf[_b.size]  += (_b.length_in / 12.0) * _b.qty
+        _sz_wt[_b.size]  += _WLBFT.get(_b.size, 0.0) * (_b.length_in / 12.0) * _b.qty
+    _sorted_sz   = sorted(_sz_wt.keys(), key=lambda s: int(s.lstrip("#")))
+    _total_qty   = sum(_sz_qty.values())
+    _total_lf    = sum(_sz_lf.values())
 
-    wt_rows = [[Paragraph("<b>Size</b>", b8w), Paragraph("<b>Weight (lb)</b>", b8w)]]
-    for _s in _sorted_sz:
-        wt_rows.append([_s, f"{_sz_wt[_s]:,.1f}"])
-    wt_rows.append([Paragraph("<b>TOTAL</b>", b8),
-                    Paragraph(f"<b>{weight_lb:,.1f}</b>", b8)])
-
-    wt_tbl = Table(wt_rows, colWidths=[0.9 * inch, 1.2 * inch])
-    wt_style = [
-        ("BACKGROUND",    (0,  0), (-1,  0), _BLACK),
-        ("TEXTCOLOR",     (0,  0), (-1,  0), _WHITE),
-        ("FONTSIZE",      (0,  0), (-1, -1), 8),
-        ("GRID",          (0,  0), (-1, -1), 0.4, _MID),
-        ("VALIGN",        (0,  0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",    (0,  0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0,  0), (-1, -1), 2),
-        ("LEFTPADDING",   (0,  0), (-1, -1), 4),
-        ("BOX",           (0, -1), (-1, -1), 1.0, _BLACK),
+    wt_rows = [
+        # Section heading row (spans all 5 cols)
+        [Paragraph("MATERIAL TAKEOFF", b8w), "", "", "", ""],
+        # Column headers
+        [
+            Paragraph("<b>Size</b>",        b8w),
+            Paragraph("<b>Qty (bars)</b>",  b8w),
+            Paragraph("<b>Lin. Ft</b>",     b8w),
+            Paragraph("<b>Weight (lb)</b>", b8w),
+            Paragraph("<b>Tons</b>",        b8w),
+        ],
     ]
-    for i in range(1, len(wt_rows) - 1):
+    for _s in _sorted_sz:
+        wt_rows.append([
+            Paragraph(_s, n8),
+            Paragraph(f"{_sz_qty[_s]:,}", n8),
+            Paragraph(f"{_sz_lf[_s]:,.1f}", n8),
+            Paragraph(f"{_sz_wt[_s]:,.1f}", n8),
+            Paragraph(f"{_sz_wt[_s] / 2000:,.4f}", n8),
+        ])
+    wt_rows.append([
+        Paragraph("<b>TOTAL</b>",                      b8),
+        Paragraph(f"<b>{_total_qty:,}</b>",            b8),
+        Paragraph(f"<b>{_total_lf:,.1f}</b>",          b8),
+        Paragraph(f"<b>{weight_lb:,.1f}</b>",          b8),
+        Paragraph(f"<b>{weight_lb / 2000:,.4f}</b>",   b8),
+    ])
+
+    wt_tbl = Table(wt_rows, colWidths=[0.75*inch, 1.0*inch, 1.0*inch, 1.2*inch, 0.9*inch])
+    n_data = len(wt_rows) - 2   # exclude section header + col header rows
+    wt_style = [
+        # Section title row (row 0) — spans all cols
+        ("SPAN",          (0,  0), (-1,  0)),
+        ("BACKGROUND",    (0,  0), (-1,  0), rc.HexColor("#333333")),
+        ("TEXTCOLOR",     (0,  0), (-1,  0), _WHITE),
+        ("TOPPADDING",    (0,  0), (-1,  0), 4),
+        ("BOTTOMPADDING", (0,  0), (-1,  0), 4),
+        ("LEFTPADDING",   (0,  0), (-1,  0), 8),
+        # Column header row (row 1)
+        ("BACKGROUND",    (0,  1), (-1,  1), _BLACK),
+        ("TEXTCOLOR",     (0,  1), (-1,  1), _WHITE),
+        # All rows
+        ("FONTSIZE",      (0,  0), (-1, -1), 8),
+        ("GRID",          (0,  1), (-1, -1), 0.4, _MID),
+        ("VALIGN",        (0,  0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING",    (0,  1), (-1, -1), 2),
+        ("BOTTOMPADDING", (0,  1), (-1, -1), 2),
+        ("LEFTPADDING",   (0,  1), (-1, -1), 4),
+        ("RIGHTPADDING",  (0,  0), (-1, -1), 4),
+        ("BOX",           (0, -1), (-1, -1), 1.0, _BLACK),
+        ("ALIGN",         (1,  2), (-1, -1), "RIGHT"),
+    ]
+    # Alternating stripes on data rows (start at row 2)
+    for i in range(2, 2 + n_data):
         if i % 2 == 0:
             wt_style.append(("BACKGROUND", (0, i), (-1, i), _STRIPE))
     wt_tbl.setStyle(TableStyle(wt_style))
-    elems.append(wt_tbl)
+    elems.append(KeepTogether(wt_tbl))
 
     doc.build(elems)
     return buf.getvalue()
@@ -1093,6 +1235,34 @@ SHAPE_SYMBOLS: dict[str, str] = {
     "Hoop": "⊐",       # inlet hoop — C-shape, closed left, open right
     "Hook": "└",       # single 90-deg hook
 }
+
+# ── Shape → SCS bend-type number (Steel Computer Services "Typical Bar Bends") ─
+# Source: SCS bar-bend reference chart.
+# Used as default Bend # when a BarRow does not have an explicit bend_type set.
+_SHAPE_BEND_DEFAULT: dict[str, str] = {
+    "Str":    "1",    # Type 1  — straight bar (standard hooks)
+    "L":      "8",    # Type 8  — L-bar, 90° hook one end
+    "Hook":   "8",    # Type 8  — same as L-bar
+    "U":      "2",    # Type 2  — U-bar / stirrup
+    "C":      "11",   # Type 11 — C-bar / hairpin
+    "S":      "14",   # Type 14 — S-standee
+    "Rng":    "10",   # Type 10 — full circular ring
+    "Hoop":   "10",   # Type 10 — also a ring form
+    "Rect":   "T1",   # Type T1 — closed rectangular hoop
+    "S6":     "S6",   # Type S6 — rectangular hoop variant (special series)
+    "T14":    "T14",  # Type T14— notched rectangular hoop (G2 expanded inlet)
+    "Spiral": "SP1",  # SP1     — spiral / coil
+}
+
+
+def _bend_num(bar) -> str:
+    """Return the Bend # to display for a bar.
+    Explicit bend_type on the BarRow takes priority; otherwise fall back to
+    the shape-based default from the SCS Typical Bar Bends chart."""
+    explicit = (bar.bend_type or "").strip()
+    if explicit:
+        return explicit
+    return _SHAPE_BEND_DEFAULT.get((bar.shape or "").strip(), "")
 
 
 def _bar_shape_svg(shape: str) -> str:
@@ -1491,6 +1661,13 @@ if generate_btn:
         else:
             params_raw[f.name] = f.default
 
+    # ── Carry synthetic h1_ft (headwall) into params_raw ─────────────────
+    _h1_ss_key = f"primary_{template.name}__h1_ft"
+    if _h1_ss_key in st.session_state and st.session_state[_h1_ss_key]:
+        _h1_parsed = _parse_ft_in(str(st.session_state[_h1_ss_key]))
+        if _h1_parsed is not None:
+            params_raw["h1_ft"] = _h1_parsed
+
     # ── Parse ft-in text values to floats ────────────────────────────────
     _ft_errors = _parse_ft_params(template, params_raw)
 
@@ -1638,17 +1815,19 @@ with inp_col:
         _t_field = next(f for f in template.inputs if f.name == "wall_thick_in")
         _x_def   = float(_x_field.default) if _x_field.default is not None else 5.5
         _int_def = max(0, _x_def - 2 * 9 / 12.0)
+        if _ext_wk not in st.session_state:
+            st.session_state[_ext_wk] = _format_ft_in(_x_def)
+        if _int_wk not in st.session_state:
+            st.session_state[_int_wk] = _format_ft_in(_int_def)
 
         c1, c2 = st.columns(2)
         with c1:
             _ev = st.text_input("X Exterior", key=_ext_wk,
-                                value=_format_ft_in(_x_def),
                                 help="Exterior face-to-face width",
                                 placeholder="e.g. 5'-6\"")
             params_raw["x_dim_ft"] = _ev
         with c2:
             st.text_input("X Interior", key=_int_wk,
-                          value=_format_ft_in(_int_def),
                           help="Interior clear width = Exterior - 2T",
                           placeholder="e.g. 4'-0\"")
 
@@ -1707,10 +1886,11 @@ with inp_col:
             _xef = _x_def
         st.session_state[_int_wk] = _format_ft_in(max(0, _xef - 2 * _cur_t / 12.0))
 
+        if _ext_wk not in st.session_state:
+            st.session_state[_ext_wk] = _format_ft_in(_x_def)
         c1, c2 = st.columns(2)
         with c1:
             _ev = st.text_input("X Exterior", key=_ext_wk,
-                                value=_format_ft_in(_x_def),
                                 help="Exterior face-to-face width",
                                 placeholder='e.g. 5\'-8"')
             params_raw["x_dim_ft"] = _ev
@@ -1733,13 +1913,14 @@ with inp_col:
             _yef = _y_def
         st.session_state[_yi_wk] = _format_ft_in(max(0, _yef - 2 * _cur_t / 12.0))
 
+        if _ye_wk not in st.session_state:
+            st.session_state[_ye_wk] = _format_ft_in(_y_def)
         c3, c4 = st.columns(2)
         with c3:
             st.text_input("Y Interior", key=_yi_wk,
                           help=f"Y Exterior \u2212 2\u00d7{_cur_t}\" \u2014 updates with wall thickness")
         with c4:
             _yv = st.text_input("Y Exterior", key=_ye_wk,
-                                value=_format_ft_in(_y_def),
                                 help="Exterior depth (same as inlet below)",
                                 placeholder='e.g. 5\'-0"')
             params_raw["y_dim_ft"] = _yv
@@ -1778,10 +1959,11 @@ with inp_col:
             _xef = _x_def
         st.session_state[_int_wk] = _format_ft_in(max(0, _xef - 2 * _cur_t / 12.0))
 
+        if _ext_wk not in st.session_state:
+            st.session_state[_ext_wk] = _format_ft_in(_x_def)
         c1, c2 = st.columns(2)
         with c1:
             _ev = st.text_input("X Exterior", key=_ext_wk,
-                                value=_format_ft_in(_x_def),
                                 help="Exterior face-to-face width",
                                 placeholder='e.g. 5\'-8"')
             params_raw["x_dim_ft"] = _ev
@@ -1827,28 +2009,30 @@ with inp_col:
             params_raw[name] = val
         with c2:
             # H1 — editable, minimum = H + 1'-0" per Caltrans D89A
-            _h1_key     = f"primary_{_tname}__h1_ft"
-            _h_prev_key = f"_hw_h1_prev__{_tname}"
+            _h1_key = f"primary_{_tname}__h1_ft"
+            # Compute floor from the current H widget value
+            _h_raw_ss = st.session_state.get(_hw_h_key)
             try:
-                _h_raw = st.session_state.get(_hw_h_key, str(_hw_h_field.default or "5'-0\""))
-                _h_ft  = _parse_ft_in(str(_h_raw)) if isinstance(_h_raw, str) else float(_h_raw or 0)
+                _h_ft = _parse_ft_in(str(_h_raw_ss)) if _h_raw_ss else float(_hw_h_field.default or 5.0)
+                if _h_ft is None:
+                    _h_ft = float(_hw_h_field.default or 5.0)
             except Exception:
                 _h_ft = float(_hw_h_field.default or 5.0)
             _h1_floor     = _h_ft + 1.0
             _h1_floor_str = _format_ft_in(_h1_floor)
 
-            # When H changes, bump H1 up to the new floor if it would go below
-            if st.session_state.get(_h_prev_key) != _h_ft:
-                _cur = st.session_state.get(_h1_key)
-                _cur_ft = None
-                if _cur is not None:
-                    try:
-                        _cur_ft = _parse_ft_in(str(_cur))
-                    except Exception:
-                        pass
-                if _cur_ft is None or _cur_ft < _h1_floor:
+            # Always ensure H1 ≥ floor: seed on first visit, bump up if H increased
+            _cur_h1 = st.session_state.get(_h1_key)
+            if _cur_h1 is None:
+                # First render: initialise to the minimum floor
+                st.session_state[_h1_key] = _h1_floor_str
+            else:
+                try:
+                    _cur_h1_ft = _parse_ft_in(str(_cur_h1))
+                    if _cur_h1_ft is None or _cur_h1_ft < _h1_floor - 0.001:
+                        st.session_state[_h1_key] = _h1_floor_str
+                except Exception:
                     st.session_state[_h1_key] = _h1_floor_str
-                st.session_state[_h_prev_key] = _h_ft
 
             _h1_raw = st.text_input(
                 "H1 (min = H + 1'-0\")",
@@ -1864,7 +2048,7 @@ with inp_col:
                 _h1_ft_val = _parse_ft_in(str(_h1_raw)) if _h1_raw else _h1_floor
             except Exception:
                 _h1_ft_val = _h1_floor
-            if _h1_ft_val < _h1_floor:
+            if _h1_ft_val is None or _h1_ft_val < _h1_floor - 0.001:
                 st.caption(f"Minimum H1 = {_h1_floor_str} — clamped.")
                 _h1_ft_val = _h1_floor
             params_raw["h1_ft"] = _h1_ft_val
@@ -1879,11 +2063,29 @@ with inp_col:
             name, val = _widget(_hw_pd_field, key_prefix=f"primary_{_tname}", container=c4)
             params_raw[name] = val
 
-        # Loading Case (bottom of panel)
+        # Loading Case (bottom of panel) + height-limit notice
         _hw_lc_field = next((f for f in template.inputs if f.name == "loading_case"), None)
         if _hw_lc_field is not None:
             name, val = _widget(_hw_lc_field, key_prefix=f"primary_{_tname}", container=st)
             params_raw[name] = val
+
+            # Show the applicable Caltrans standard plan max height for selected case
+            _hw_h_in = _h_ft * 12 if "_h_ft" in dir() else 60.0
+            if val == "D89B":
+                _hw_max_str = "6'-5\" (D89B)"
+                _hw_max_in  = 77
+            else:
+                _hw_max_str = "6'-11\" (D89A)"
+                _hw_max_in  = 83
+            if _hw_h_in > _hw_max_in:
+                st.warning(
+                    f"⚠ H = {_format_ft_in(_h_ft)} exceeds the standard Caltrans plan max "
+                    f"of {_hw_max_str}. "
+                    "Walls taller than this limit require a retaining wall detail "
+                    "(B3-1A / B3-1B / B3-1C)."
+                )
+            else:
+                st.caption(f"Standard plan max for this loading case: {_hw_max_str}")
 
     # ======================================================================
     # All other templates — standard primary / advanced layout
@@ -1996,7 +2198,7 @@ if bars is not None:
         "Mark":   b.mark,  "Size":   b.size,   "Qty":    b.qty,
         "Length": b.length_ft_in,
         "Type":   _bar_shape_svg(b.shape),
-        "Bend #": b.bend_type,
+        "Bend #": _bend_num(b),
         "A":  b.leg_a_ft_in, "B":  b.leg_b_ft_in, "C":  b.leg_c_ft_in,
         "D":  b.leg_d_ft_in, "G":  b.leg_g_ft_in,
         "Notes":  b.notes, "Ref":    b.ref,    "Review": b.review_flag,
@@ -2019,7 +2221,7 @@ if bars is not None:
     )
 
     # ── Export buttons (below barlist) ───────────────────────────────────────
-    ex1, ex2, ex3, _pad = st.columns([1, 1, 1, 3])
+    ex1, ex2, ex3, ex4, _pad = st.columns([1, 1, 1, 1, 2])
     ji = {"Project": job_name, "Job #": job_number,
           "Detailer": detailer, "Date": str(run_date)}
     ex1.download_button(
@@ -2034,16 +2236,23 @@ if bars is not None:
         file_name=f"{template_name.replace(' ','_')}_barlist.xml",
         mime="application/xml", use_container_width=True, key="btn_xml",
     )
+    ex3.download_button(
+        "Export Excel",
+        data=_make_xlsx(bars, template_name, ji),
+        file_name=f"{template_name.replace(' ','_')}_barlist.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True, key="btn_xlsx",
+    )
     _pdf_bytes = st.session_state.get("_pdf_bytes")
     if _pdf_bytes:
-        ex3.download_button(
+        ex4.download_button(
             "Export PDF",
             data=_pdf_bytes,
             file_name=f"{template_name.replace(' ','_')}_barlist.pdf",
             mime="application/pdf", use_container_width=True, key="btn_pdf",
         )
     else:
-        ex3.button("Export PDF", disabled=True, use_container_width=True, key="btn_pdf_na")
+        ex4.button("Export PDF", disabled=True, use_container_width=True, key="btn_pdf_na")
 
     # ── Add to Project ───────────────────────────────────────────────────────
     st.markdown("")
@@ -2156,6 +2365,170 @@ if _proj_items:
         if _row_d.button("✕ Remove", use_container_width=True, key=f"proj_rm_{_pi}"):
             st.session_state.project_items.pop(_pi)
             st.rerun()
+
+    # ── Bar mark conflict checker ─────────────────────────────────────────────
+    if len(_proj_items) >= 2:
+        from collections import defaultdict as _cdd
+        _mark_structs: dict = _cdd(list)
+        for _ci, _citem in enumerate(_proj_items):
+            for _cb in _citem.get("bars", []):
+                _mark_structs[_cb.mark].append(f"{_ci + 1}. {_citem['label']}")
+        _conflicts = {mk: lbs for mk, lbs in _mark_structs.items() if len(lbs) > 1}
+        if _conflicts:
+            st.markdown(
+                "<div style='margin-top:1.0rem;margin-bottom:0.3rem;"
+                "font-size:0.78rem;font-weight:800;letter-spacing:1.1px;"
+                "color:#c0392b;text-transform:uppercase'>⚠ Bar Mark Conflicts</div>",
+                unsafe_allow_html=True,
+            )
+            _conflict_lines = []
+            for _mk in sorted(_conflicts):
+                _structs_str = " & ".join(_conflicts[_mk])
+                _conflict_lines.append(
+                    f"**{_mk}** appears in {_structs_str}"
+                )
+            st.warning(
+                "These bar marks are shared by multiple structures — rename before combining into a single submittal:\n\n"
+                + "\n\n".join(_conflict_lines)
+            )
+        else:
+            st.success("✓ No bar mark conflicts across structures.", icon=None)
+
+    # ── Compare two structures (diff) ────────────────────────────────────────
+    if len(_proj_items) >= 2:
+        st.markdown(
+            "<div style='margin-top:1.1rem;margin-bottom:0.3rem;"
+            "font-size:0.78rem;font-weight:800;letter-spacing:1.1px;"
+            "color:#1c3461;text-transform:uppercase'>Compare Structures</div>",
+            unsafe_allow_html=True,
+        )
+        _diff_options = [f"{i+1}. {it['label']}" for i, it in enumerate(_proj_items)]
+        _dc1, _dc2, _dc3 = st.columns([2, 2, 1])
+        _diff_a = _dc1.selectbox("Structure A", _diff_options,
+                                  index=0, key="diff_sel_a", label_visibility="collapsed")
+        _diff_b = _dc2.selectbox("Structure B", _diff_options,
+                                  index=1, key="diff_sel_b", label_visibility="collapsed")
+
+        if _dc3.button("Compare", key="btn_run_diff", use_container_width=True):
+            _ia = _diff_options.index(_diff_a)
+            _ib = _diff_options.index(_diff_b)
+            if _ia == _ib:
+                st.warning("Select two different structures to compare.")
+            else:
+                _ba_dict = {b.mark: b for b in _proj_items[_ia]["bars"]}
+                _bb_dict = {b.mark: b for b in _proj_items[_ib]["bars"]}
+                _all_marks = sorted(set(_ba_dict) | set(_bb_dict))
+                _diff_rows = []
+                for _mk in _all_marks:
+                    _ba = _ba_dict.get(_mk)
+                    _bb = _bb_dict.get(_mk)
+                    if _ba and not _bb:
+                        _diff_rows.append({
+                            "Mark": _mk, "Status": "Removed",
+                            "A — Size": _ba.size, "A — Qty": _ba.qty,
+                            "A — Length": _ba.length_ft_in,
+                            "B — Size": "—", "B — Qty": "—", "B — Length": "—",
+                        })
+                    elif _bb and not _ba:
+                        _diff_rows.append({
+                            "Mark": _mk, "Status": "Added",
+                            "A — Size": "—", "A — Qty": "—", "A — Length": "—",
+                            "B — Size": _bb.size, "B — Qty": _bb.qty,
+                            "B — Length": _bb.length_ft_in,
+                        })
+                    else:
+                        _changed = (
+                            _ba.size != _bb.size
+                            or _ba.qty != _bb.qty
+                            or abs(_ba.length_in - _bb.length_in) > 0.1
+                        )
+                        _diff_rows.append({
+                            "Mark": _mk,
+                            "Status": "Modified" if _changed else "Unchanged",
+                            "A — Size": _ba.size, "A — Qty": _ba.qty,
+                            "A — Length": _ba.length_ft_in,
+                            "B — Size": _bb.size, "B — Qty": _bb.qty,
+                            "B — Length": _bb.length_ft_in,
+                        })
+                st.session_state["_diff_result"] = {
+                    "rows": _diff_rows,
+                    "label_a": _diff_a,
+                    "label_b": _diff_b,
+                }
+
+        # Display last diff result
+        _diff_res = st.session_state.get("_diff_result")
+        if _diff_res:
+            import pandas as _pd_diff
+
+            _STATUS_COLOR = {
+                "Added":     "#d4edda",   # green
+                "Removed":   "#f8d7da",   # red
+                "Modified":  "#fff3cd",   # yellow
+                "Unchanged": "#ffffff",   # white
+            }
+
+            _df_diff = _pd_diff.DataFrame(_diff_res["rows"]).set_index("Mark")
+
+            def _color_row(row):
+                bg = _STATUS_COLOR.get(row["Status"], "#fff")
+                return [f"background-color:{bg}"] * len(row)
+
+            _styled = _df_diff.style.apply(_color_row, axis=1)
+
+            st.caption(
+                f"**{_diff_res['label_a']}**  vs  **{_diff_res['label_b']}**  —  "
+                f"{sum(1 for r in _diff_res['rows'] if r['Status']=='Added')} added · "
+                f"{sum(1 for r in _diff_res['rows'] if r['Status']=='Removed')} removed · "
+                f"{sum(1 for r in _diff_res['rows'] if r['Status']=='Modified')} modified"
+            )
+            st.dataframe(_styled, use_container_width=True,
+                         height=min(38 * len(_diff_res["rows"]) + 40, 420))
+
+    # ── Aggregate material takeoff across all project structures ──────────────
+    from vistadetail.engine.hooks import BAR_WEIGHT_LB_FT as _PROJ_WLBFT
+    from collections import defaultdict as _pdd
+    _agg_qty: dict = _pdd(int)
+    _agg_lf:  dict = _pdd(float)
+    _agg_wt:  dict = _pdd(float)
+    for _pit in _proj_items:
+        for _pb in _pit.get("bars", []):
+            _agg_qty[_pb.size] += _pb.qty
+            _agg_lf[_pb.size]  += (_pb.length_in / 12.0) * _pb.qty
+            _agg_wt[_pb.size]  += _PROJ_WLBFT.get(_pb.size, 0.0) * (_pb.length_in / 12.0) * _pb.qty
+
+    if _agg_qty:
+        st.markdown(
+            "<div style='margin-top:1.2rem;margin-bottom:0.4rem;"
+            "font-size:0.78rem;font-weight:800;letter-spacing:1.1px;"
+            "color:#1c3461;text-transform:uppercase'>Material Takeoff — All Structures</div>",
+            unsafe_allow_html=True,
+        )
+        _agg_sizes  = sorted(_agg_qty.keys(), key=lambda s: int(s.lstrip("#")))
+        _agg_rows   = []
+        for _sz in _agg_sizes:
+            _agg_rows.append({
+                "Size":        _sz,
+                "Qty (bars)":  f"{_agg_qty[_sz]:,}",
+                "Lin. Ft":     f"{_agg_lf[_sz]:,.1f}",
+                "Weight (lb)": f"{_agg_wt[_sz]:,.1f}",
+                "Tons":        f"{_agg_wt[_sz] / 2000:,.4f}",
+            })
+        _tot_lb = sum(_agg_wt.values())
+        _agg_rows.append({
+            "Size":        "TOTAL",
+            "Qty (bars)":  f"{sum(_agg_qty.values()):,}",
+            "Lin. Ft":     f"{sum(_agg_lf.values()):,.1f}",
+            "Weight (lb)": f"{_tot_lb:,.1f}",
+            "Tons":        f"{_tot_lb / 2000:,.4f}",
+        })
+        import pandas as _pd
+        _agg_df = _pd.DataFrame(_agg_rows).set_index("Size")
+        st.dataframe(
+            _agg_df,
+            use_container_width=True,
+            height=min(36 * (len(_agg_rows) + 1) + 38, 400),
+        )
 
 # ═════════════════════════════════════════════════════════════════════════════
 # AI EXPLANATION — shown inline after generate

@@ -106,8 +106,9 @@ _D89B_ROWS: list[dict] = [
 
 _COVER_STEM = 2.0   # wall face cover (in)
 
-_D89A_MAX_H = _D89A_ROWS[-1]["H"]   # 90" (non-standard) — practical ceiling
-_D89B_MAX_H = _D89B_ROWS[-1]["H"]   # 77" — table ceiling
+_D89A_STD_MAX_H = 83   # Standard Caltrans D89A plan max (6'-11")
+_D89A_MAX_H = _D89A_ROWS[-1]["H"]   # 90" (non-standard Vista Oak Valley) — hard ceiling
+_D89B_MAX_H = _D89B_ROWS[-1]["H"]   # 77" (6'-5") — standard D89B table ceiling
 
 
 # ---------------------------------------------------------------------------
@@ -146,9 +147,9 @@ _PIPE_OPEN_SIZE: dict[tuple[int, int], str] = {
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _d89_by_height(h_in: float, case: str = "I") -> dict:
-    """Return first D89A (Case I) or D89B (Cases II/III) row whose H >= h_in."""
-    table = _D89B_ROWS if case == "II / III" else _D89A_ROWS
+def _d89_by_height(h_in: float, case: str = "D89A") -> dict:
+    """Return first D89A or D89B row whose H >= h_in."""
+    table = _D89B_ROWS if case == "D89B" else _D89A_ROWS
     for row in table:
         if row["H"] >= h_in:
             return row
@@ -215,7 +216,7 @@ def rule_hw_trans_footing(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     L   = p.wall_width_ft * 12
     H   = p.wall_height_ft * 12
-    row = _d89_by_height(H, getattr(p, "loading_case", "I"))
+    row = _d89_by_height(H, getattr(p, "loading_case", "D89A"))
     qty    = math.floor(L / 12) + 1
     length = row["B"] + row["F"]
 
@@ -249,10 +250,10 @@ def rule_hw_d_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     L      = p.wall_width_ft * 12
     H      = p.wall_height_ft * 12
-    case   = getattr(p, "loading_case", "I")
+    case   = getattr(p, "loading_case", "D89A")
     no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
     row    = _d89_by_height(H, case)
-    tbl    = "D89B" if case == "II / III" else "D89A"
+    tbl    = "D89B" if case == "D89B" else "D89A"
     d_size = row["d_s"]
     qty    = int(L) // 8 + (1 if no_pipe else 0)
     length = row["B"] + row["F"]
@@ -389,7 +390,7 @@ def rule_hw_pipe_opening(p: Params, log: ReasoningLogger) -> list[BarRow]:
     L_ft   = int(p.wall_width_ft)
     H      = p.wall_height_ft * 12
     D_in   = _parse_dia(p)
-    row    = _d89_by_height(H, getattr(p, "loading_case", "I"))
+    row    = _d89_by_height(H, getattr(p, "loading_case", "D89A"))
     length = row["B"] + row["F"]
     size   = _pipe_open_size(D_in, int(H))
     qty    = L_ft
@@ -428,7 +429,7 @@ def rule_hw_vert_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
     H       = p.wall_height_ft * 12
     no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
     D_in    = _effective_D(p)
-    row     = _d89_by_height(H, getattr(p, "loading_case", "I"))
+    row     = _d89_by_height(H, getattr(p, "loading_case", "D89A"))
 
     if no_pipe:
         qty = math.floor(L / 12) + 1
@@ -483,9 +484,9 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     L      = p.wall_width_ft * 12
     H      = p.wall_height_ft * 12
     D_in   = _effective_D(p)
-    case   = getattr(p, "loading_case", "I")
+    case   = getattr(p, "loading_case", "D89A")
     row    = _d89_by_height(H, case)
-    tbl    = "D89B" if case == "II / III" else "D89A"
+    tbl    = "D89B" if case == "D89B" else "D89A"
     c_size = row["c_s"]
     T      = row["T"]
     no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
@@ -616,7 +617,7 @@ def rule_hw_spreaders(p: Params, log: ReasoningLogger) -> list[BarRow]:
     H       = p.wall_height_ft * 12
     no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
     D_in    = _parse_dia(p)
-    row     = _d89_by_height(H, getattr(p, "loading_case", "I"))
+    row     = _d89_by_height(H, getattr(p, "loading_case", "D89A"))
     T       = row["T"]
     deduct  = bend_reduce("shape_2", "#4")
 
@@ -720,25 +721,40 @@ def rule_hw_standees(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_validate_headwall(p: Params, log: ReasoningLogger) -> list[BarRow]:
     H    = p.wall_height_ft * 12
-    case = getattr(p, "loading_case", "I")
-    if case == "II / III":
+    case = getattr(p, "loading_case", "D89A")
+    if case == "D89B":
         if H > _D89B_MAX_H:
             log.warn(
-                f"Wall height {fmt_inches(H)} exceeds D89B table max {fmt_inches(_D89B_MAX_H)} — "
-                "clamped to last table row; verify with project engineer for taller walls.",
+                f"Wall height {fmt_inches(H)} exceeds D89B standard plan max "
+                f"{fmt_inches(_D89B_MAX_H)} (6'-5\") — "
+                "clamped to last table row. Walls taller than 6'-5\" require "
+                "a retaining wall detail (B3-1A/B3-1B/B3-1C); verify with project engineer.",
                 source="HeadwallRules",
             )
         else:
-            log.ok(f"Wall height {fmt_inches(H)} within D89B table  [Caltrans D89B]",
-                   source="HeadwallRules")
+            log.ok(
+                f"Wall height {fmt_inches(H)} within D89B standard plan range (max 6'-5\")",
+                source="HeadwallRules",
+            )
     else:
         if H > _D89A_MAX_H:
             log.warn(
-                f"Wall height {fmt_inches(H)} exceeds D89A table max {fmt_inches(_D89A_MAX_H)} — "
-                "clamped to last table row; verify with project engineer for taller walls.",
+                f"Wall height {fmt_inches(H)} exceeds D89A non-standard limit "
+                f"{fmt_inches(_D89A_MAX_H)} — clamped; use retaining wall detail.",
+                source="HeadwallRules",
+            )
+        elif H > _D89A_STD_MAX_H:
+            log.warn(
+                f"Wall height {fmt_inches(H)} exceeds D89A standard plan max "
+                f"{fmt_inches(_D89A_STD_MAX_H)} (6'-11\") — "
+                "using non-standard Vista dimension row (H=7'-6\"); "
+                "confirm with project engineer. For walls > 6'-11\" consider "
+                "retaining wall detail (B3-1A/B3-1B/B3-1C).",
                 source="HeadwallRules",
             )
         else:
-            log.ok(f"Wall height {fmt_inches(H)} within D89A table  [Caltrans D89A]",
-                   source="HeadwallRules")
+            log.ok(
+                f"Wall height {fmt_inches(H)} within D89A standard plan range (max 6'-11\")",
+                source="HeadwallRules",
+            )
     return []

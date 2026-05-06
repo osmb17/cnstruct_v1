@@ -22,10 +22,10 @@ class LHeadwallTemplate(BaseTemplate):
         self.inputs = [
             InputField(
                 "loading_case", str, label="Loading Case",
-                choices=["I", "II / III"],
-                default="I",
+                choices=["D89A", "D89B"],
+                default="D89A",
                 group="Design",
-                hint="Case I = D89A (higher loading); Cases II/III = D89B (lighter loading)",
+                hint="D89A = higher loading (Case I); D89B = lighter loading (Cases II/III)",
             ),
             InputField(
                 "wall_width_ft", float, label="Wall Width (ft)",
@@ -81,8 +81,8 @@ class LHeadwallTemplate(BaseTemplate):
     def evaluate_triggers(self, params: Params) -> list[str]:
         triggers: list[str] = []
         H = params.wall_height_ft * 12
-        case = getattr(params, "loading_case", "I")
-        max_h = 77 if case == "II / III" else 83
+        case = getattr(params, "loading_case", "D89A")
+        max_h = 77 if case == "D89B" else 83
         if H > max_h:
             triggers.append("height_exceeds_d89_table")
         return triggers

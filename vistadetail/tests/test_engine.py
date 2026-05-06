@@ -1409,7 +1409,7 @@ class TestHeadwallHeightRounding:
     ])
     def test_rounding_d1_and_vw(self, log, h_ft):
         """D1 = B+F and VW = H_input+F+7 after rounding up to the next table row."""
-        row = _d89_by_height(h_ft * 12, "I")
+        row = _d89_by_height(h_ft * 12, "D89A")
         p   = _hw_params(wall_width_ft=8.0, wall_height_ft=h_ft)
         d1  = rule_hw_d_bars(p, log)
         vw  = rule_hw_vert_wall(p, log)
