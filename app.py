@@ -1558,27 +1558,19 @@ def _template_stats(template_name: str) -> str:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# TEMPLATE GROUP MAP
+# TEMPLATE ORDER — preferred display order for the dropdown
 # ═════════════════════════════════════════════════════════════════════════════
 
-_GROUPS_ORDERED: list[tuple[str, list[str]]] = [
-    ("G2 Inlets",          ["G2 Inlet", "G2 Inlet Top",
-                             "G2 Expanded Inlet", "G2 Expanded Inlet Top"]),
-    ("G Inlets",           ["G1 Inlet", "G3 Inlet", "G4 Inlet", "G5 Inlet", "G6 Inlet"]),
-    ("Headwalls",          ["Straight Headwall", "L Headwall"]),
-    ("Box Culvert",        ["Box Culvert"]),
-    ("Junction Structure", ["Junction Structure"]),
-    ("Wing Walls",         ["Wing Wall", "D84 Wingwall", "D85 Wingwall"]),
-    ("Other",              [t for t in TEMPLATE_NAMES if t not in {
-        "G2 Inlet", "G2 Inlet Top", "G2 Expanded Inlet", "G2 Expanded Inlet Top",
-        "G1 Inlet", "G3 Inlet", "G4 Inlet", "G5 Inlet", "G6 Inlet",
-        "Straight Headwall", "L Headwall",
-        "Box Culvert", "Junction Structure",
-        "Wing Wall", "D84 Wingwall", "D85 Wingwall",
-    }]),
+_PREFERRED_ORDER = [
+    "Straight Headwall", "L Headwall",
+    "G2 Inlet", "G2 Inlet Top", "G2 Expanded Inlet", "G2 Expanded Inlet Top",
+    "G1 Inlet", "G3 Inlet", "G4 Inlet", "G5 Inlet", "G6 Inlet",
+    "Box Culvert", "Junction Structure",
+    "Wing Wall", "D84 Wingwall", "D85 Wingwall",
 ]
-_GROUP_NAMES = [g[0] for g in _GROUPS_ORDERED]
-_GROUP_MAP   = {g[0]: g[1] for g in _GROUPS_ORDERED}
+_ORDERED_TEMPLATES = _PREFERRED_ORDER + [
+    t for t in TEMPLATE_NAMES if t not in _PREFERRED_ORDER
+]
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1595,26 +1587,11 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ── Group selector (top-level tabs) ──────────────────────────────────────────
-active_group = st.radio(
-    "Category", _GROUP_NAMES, horizontal=True,
-    key="template_group", label_visibility="collapsed",
+# ── Structure type selector ───────────────────────────────────────────────────
+template_name = st.selectbox(
+    "Structure Type", _ORDERED_TEMPLATES,
+    key="template_select", label_visibility="collapsed",
 )
-templates_in_group = _GROUP_MAP[active_group]
-
-# ── Sub-template selector (shown when group has more than one item) ───────────
-if len(templates_in_group) == 1:
-    template_name = templates_in_group[0]
-elif active_group == "Other":
-    template_name = st.selectbox(
-        "Template", templates_in_group,
-        key="template_other", label_visibility="collapsed",
-    )
-else:
-    template_name = st.radio(
-        "Template", templates_in_group, horizontal=True,
-        key=f"tmpl_{active_group}", label_visibility="collapsed",
-    )
 
 # Job info row (compact)
 j1, j2, j3, j4 = st.columns(4)
@@ -1634,12 +1611,8 @@ template = TEMPLATE_REGISTRY[template_name]
 st.markdown("---")
 
 # ═════════════════════════════════════════════════════════════════════════════
-# STATE
+# STATE  — bars captured AFTER generate block so new results are available
 # ═════════════════════════════════════════════════════════════════════════════
-
-bars      = st.session_state.get("bars")
-log_lines = st.session_state.get("log_lines", [])
-warnings  = st.session_state.get("warnings", [])
 
 generate_btn = st.session_state.pop("_gen_bottom", False)
 
@@ -1734,21 +1707,14 @@ if generate_btn:
     # AI explanation disabled (paused to save API usage — re-enable when needed)
     # if st.session_state.get("bars") and _api_key_available():
     #     with st.spinner("AI is explaining the barlist…"):
-    #         try:
-    #             chunks = []
-    #             for chunk in asst.explain_barlist_stream(
-    #                 template_name=template_name,
-    #                 params_raw=params_raw,
-    #                 bars=st.session_state.bars,
-    #                 warnings=st.session_state.warnings,
-    #                 log_lines=st.session_state.get("log_lines"),
-    #             ):
-    #                 chunks.append(chunk)
-    #             st.session_state.explanation = "".join(chunks)
-    #         except Exception:
-    #             st.session_state.explanation = None
+    #         ...
 
-    st.rerun()   # always rerun — prevents stale bars from rendering on error
+# Capture state AFTER generate block so newly-generated bars are visible
+# in the same render pass (avoids the mid-script st.rerun() that was clearing
+# text-input widget states via Streamlit's widget GC).
+bars      = st.session_state.get("bars")
+log_lines = st.session_state.get("log_lines", [])
+warnings  = st.session_state.get("warnings", [])
 
 st.markdown("---")
 

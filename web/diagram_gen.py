@@ -223,8 +223,36 @@ def _diag_g2_inlet() -> bytes:
     T = 0.50
     IX, IY = OX - 2 * T, OY - 2 * T
 
-    l1_w = IX * 0.45
-    grate_w = IX - l1_w
+    # ── Live params: Y exterior label (rounded to nearest 6") ──────────────
+    _y_ext_ft_live = float(_LIVE_PARAMS.get("_y_ext_ft", 0))
+    if _y_ext_ft_live > 0:
+        _y_ext_in_raw = _y_ext_ft_live * 12.0
+        _y_ext_in_6   = math.ceil(_y_ext_in_raw / 6) * 6   # round UP to nearest 6"
+        _y_ft = int(_y_ext_in_6 // 12)
+        _y_ri = int(_y_ext_in_6 % 12)
+        _y_str = f"{_y_ft}'-{_y_ri}\"" if _y_ri else f"{_y_ft}'-0\""
+        _y_label = f"Y\n{_y_str}"
+    else:
+        _y_label = "Y"
+
+    # ── Live params: L1 from actual inputs ─────────────────────────────────
+    _x_ft_live  = float(_LIVE_PARAMS.get("x_dim_ft", OX))
+    _t_in_live  = float(_LIVE_PARAMS.get("wall_thick_in", T * 12))
+    _gt_live    = str(_LIVE_PARAMS.get("grate_type", "Type 24"))
+    _grate_ded  = {"Type 24": 24.0, "Type 18": 18.0}.get(_gt_live, 24.0)
+    _int_x_live = _x_ft_live * 12.0 - 2 * _t_in_live
+    if _int_x_live > 0:
+        _l1_in   = max(0.0, _int_x_live - _grate_ded)
+        _l1_w    = (_l1_in / _int_x_live) * IX
+        _l1_ft   = int(_l1_in // 12)
+        _l1_ri   = int(_l1_in % 12)
+        _l1_str  = f"{_l1_ft}'-{_l1_ri}\"" if _l1_ri else f"{_l1_ft}'-0\""
+        _l1_label = f"L1\n{_l1_str}"
+    else:
+        _l1_in   = IX * 0.45 * 12  # fallback static
+        _l1_w    = IX * 0.45
+        _l1_label = "L1"
+    grate_w = IX - _l1_w
 
     fig, ax = _fig(9.0, 7.5)
     ax.set_xlim(-2.5, OX + 3.2)
@@ -235,26 +263,30 @@ def _diag_g2_inlet() -> bytes:
     _rect(ax, T, T, IX, IY, fc="white", ec=_OUTLINE, lw=1.5)
 
     # L1 shaded area (left interior)
-    _rect(ax, T, T, l1_w, IY, fc="#c8c8c8", ec=_OUTLINE, lw=0.5)
+    _rect(ax, T, T, _l1_w, IY, fc="#c8c8c8", ec=_OUTLINE, lw=0.5)
     for yy in [T, T + IY]:
-        ax.plot([T, T + l1_w], [yy, yy], color=_OUTLINE, lw=0.8, ls="--", zorder=3)
+        ax.plot([T, T + _l1_w], [yy, yy], color=_OUTLINE, lw=0.8, ls="--", zorder=3)
 
     # Grate area (right interior -- vertical bar hatching)
-    gx = T + l1_w
+    gx = T + _l1_w
     _rect(ax, gx, T, grate_w, IY, fc="white", ec=_OUTLINE, lw=1.2)
     n_grate = 12
     for i in range(n_grate):
         bx = gx + grate_w * (i + 1) / (n_grate + 1)
         ax.plot([bx, bx], [T + 0.08, T + IY - 0.08], color=_OUTLINE, lw=0.7, zorder=3)
 
-    # L1 dimension (inside shaded area)
-    _dim_h(ax, T, T + l1_w, T + IY * 0.5, "L1", gap=0.15, fontsize=9)
+    # L1 dimension (inside shaded area — label computed from live params)
+    _dim_h(ax, T, T + _l1_w, T + IY * 0.5, _l1_label, gap=0.15, fontsize=9)
 
     # -- X dimension (outer, top) --
     _ext_dim_h(ax, 0, OX, OY, OY + 0.8, "X")
 
-    # -- Y dimension (outer, left) --
-    _ext_dim_v(ax, 0, OY, 0, -0.9, "Y")
+    # -- Y dimension (outer, left) — label placed OUTSIDE the arrows --
+    _ext_dim_v(ax, 0, OY, 0, -0.9, "")   # draw extension lines + arrow, no label
+    ax.text(-0.9 - 0.15, OY / 2, _y_label,
+            ha="right", va="center", fontsize=9,
+            color=_LABEL, fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.92))
 
     # -- Inside Y dimension (right) --
     _ext_dim_v(ax, T, T + IY, OX, OX + 1.1, "Inside Y\nDimension")

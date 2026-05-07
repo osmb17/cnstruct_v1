@@ -509,12 +509,19 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     )
     log.result("CB", f"{c_size} × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
 
+    # Type 11 (C-bar) dimensions per SCS bar-bend chart:
+    #   B = inner leg (inside face, T+2)
+    #   C = body/span (along wall height, ≈ H+9 rounded)
+    #   D = outer leg (outside face, T+4)
+    #   G = wall opening (inside face-to-face = T)
+    _leg_b = float(T) + 2.0
+    _leg_d = float(T) + 4.0
     return [BarRow(
         mark="CB", size=c_size, qty=qty, length_in=stock, shape="C", bend_type="11",
-        leg_a_in=body, leg_b_in=float(T) + 2.0, leg_c_in=float(T) + 4.0, leg_d_in=H, leg_g_in=R,
+        leg_a_in=None, leg_b_in=_leg_b, leg_c_in=body, leg_d_in=_leg_d, leg_g_in=float(T),
         notes=(
-            f"A(={fmt_inches(body)}) + B(=T+2={fmt_inches(float(T)+2.0)}) "
-            f"+ C(=T+4={fmt_inches(float(T)+4.0)}) = {fmt_inches(stock)}"
+            f"B(=T+2={fmt_inches(_leg_b)}) + C(={fmt_inches(body)}) "
+            f"+ D(=T+4={fmt_inches(_leg_d)}) = {fmt_inches(stock)}"
         ),
         source_rule="rule_hw_c_bars",
     )]
