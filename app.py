@@ -1562,9 +1562,9 @@ def _template_stats(template_name: str) -> str:
 # ═════════════════════════════════════════════════════════════════════════════
 
 _PREFERRED_ORDER = [
-    "Straight Headwall", "L Headwall",
     "G2 Inlet", "G2 Inlet Top", "G2 Expanded Inlet", "G2 Expanded Inlet Top",
     "G1 Inlet", "G3 Inlet", "G4 Inlet", "G5 Inlet", "G6 Inlet",
+    "Straight Headwall", "L Headwall",
     "Box Culvert", "Junction Structure",
     "Wing Wall", "D84 Wingwall", "D85 Wingwall",
 ]
