@@ -129,3 +129,68 @@ def load_run(run_id: int) -> dict:
 def delete_run(run_id: int) -> None:
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("DELETE FROM runs WHERE id = ?", (run_id,))
+
+
+# ── Presets ────────────────────────────────────────────────────────────────────
+
+def init_presets() -> None:
+    """Create the presets table if it doesn't exist."""
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS presets (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                structure_type  TEXT NOT NULL,
+                name            TEXT NOT NULL,
+                params_json     TEXT NOT NULL,
+                created_at      TEXT NOT NULL
+            )
+            """
+        )
+
+
+def save_preset(structure_type: str, name: str, params: dict) -> int:
+    """Save a named input preset. Returns the new row id."""
+    init_presets()
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.execute(
+            """INSERT INTO presets (structure_type, name, params_json, created_at)
+               VALUES (?, ?, ?, ?)""",
+            (
+                structure_type,
+                name,
+                json.dumps(params),
+                datetime.now().strftime("%Y-%m-%d %H:%M"),
+            ),
+        )
+        return cur.lastrowid
+
+
+def list_presets(structure_type: str) -> list[dict]:
+    """Return all presets for a given structure type, newest first."""
+    init_presets()
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute(
+            "SELECT id, name, created_at FROM presets WHERE structure_type = ? ORDER BY id DESC",
+            (structure_type,),
+        ).fetchall()
+    return [{"id": r[0], "name": r[1], "created_at": r[2]} for r in rows]
+
+
+def load_preset_params(preset_id: int) -> dict:
+    """Return the params dict for a preset by id."""
+    init_presets()
+    with sqlite3.connect(DB_PATH) as conn:
+        row = conn.execute(
+            "SELECT params_json FROM presets WHERE id = ?", (preset_id,)
+        ).fetchone()
+    if row is None:
+        return {}
+    return json.loads(row[0])
+
+
+def delete_preset(preset_id: int) -> None:
+    """Delete a preset by id."""
+    init_presets()
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("DELETE FROM presets WHERE id = ?", (preset_id,))
