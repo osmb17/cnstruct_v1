@@ -401,6 +401,12 @@ def _diag_expanded_inlet() -> bytes:
                gap=0.12, fontsize=7.5)
 
 
+    # ── X exterior dimension (top of box) ─────────────────────────────────
+    _ext_dim_h(ax, 0, OX, OY, OY + 1.5, "X", fontsize=9)
+
+    # ── Y exterior dimension (right side of box) ───────────────────────────
+    _ext_dim_v(ax, 0, OY, OX, OX + 2.5, "Y", fontsize=9)
+
     # ── Annotation: 2'-11 3/8" left side (vertical) ───────────────────────
     _ext_dim_v(ax, T, OY - T, 0, -2.1, "")
     ax.text(-2.7, OY / 2,
@@ -576,6 +582,12 @@ def _diag_expanded_inlet_top() -> bytes:
         _dim_v(ax, T, grate_y, rl_x, "L\u2082", gap=0.12, fontsize=7.5)
         _dim_v(ax, grate_y + grate_h, OY - T, rl_x, "L\u2082", gap=0.12, fontsize=7.5)
 
+
+    # ── X exterior dimension (top of box) ───────────────────────────────────────
+    _ext_dim_h(ax, 0, OX, OY, OY + 1.5, "X", fontsize=9)
+
+    # ── Y exterior dimension (right side, inboard of H arrow) ─────────────
+    _ext_dim_v(ax, 0, OY, OX, OX + 2.0, "Y", fontsize=9)
     # ── Clearance annotations ─────────────────────────────────────────────
     _ext_dim_v(ax, T, OY - T, 0, -2.1, "")
     ax.text(-2.7, OY / 2,
@@ -586,8 +598,8 @@ def _diag_expanded_inlet_top() -> bytes:
             "2\u2019-11\u215b\u201d Min OR Pipe Penetration Diameter + 3\u201d Min (90\u201d Max)",
             ha="center", va="top", fontsize=6.5, color=_DIM)
 
-    # ── H arrow (far right, clear of bar-mark F circle) ───────────────────
-    hx = OX + 3.0
+    # ── H arrow (pushed right to clear Y label) ───────────────────
+    hx = OX + 4.0
     ax.annotate("", xy=(hx, 0), xytext=(hx, H_rep),
                 arrowprops=dict(arrowstyle="<->", color=_DIM, lw=1.0, mutation_scale=9))
     h_label = _fmt_dim_value("wall_height_ft", H)

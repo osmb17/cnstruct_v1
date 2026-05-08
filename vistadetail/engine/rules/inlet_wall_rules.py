@@ -684,8 +684,9 @@ def rule_g2exp_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     notch_dim   = y_exp_ext / 2.0 - _NOTCH_GRATE_HALF_WIDTH - _NOTCH_CLEARANCE_IN
     notch_c_dim = notch_dim - 2.0   # C = E − 2" (top of T14 notched hoop)
 
-    ab_bar_len_reg   = x_ext - 4.5
-    ab_bar_len_notch = y_exp_ext - 4.5
+    # B leg = interior clear span + 1.5" (extends just past inside face for anchorage)
+    ab_bar_len_reg   = x_inside + 1.5 + 2 * _AB_TAIL_IN   # B = x_inside+1.5, tails each side
+    ab_bar_len_notch = y_exp_inside + 1.5 + 2 * _AB_TAIL_IN
 
     # ── Store on p ────────────────────────────────────────────────────────
     setattr(p, "x_ext_in", x_ext)
@@ -732,28 +733,33 @@ def rule_g2exp_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
       V1: ROUNDUP((X_bar*2 + Y_bar + 6*T) / 5, 0)
       V2: ROUNDUP((Y_bar + 2*T) / 5, 0)
 
-    V1 gets a 12" (1 ft) L-bend at the top: after the first pour the bar is
-    bent horizontally to support the hoops and top deck.  Total = h_adj + 12".
-    V2 (grate side) is a straight bar.  Total = h_adj.
+    V1 gets a 12" top L-bend (bent over hoops after first pour) PLUS an extra
+    12" on the main body = h_adj + 24" total.
+    V2 (grate side) gets a 12" (1 ft) L-tail at the bottom.  Total = h_adj + 12".
     """
-    t = p.t_in
-    v1_ext = 12.0   # 1 ft top extension on V1 for bending over hoops
+    t      = p.t_in
+    v1_ext = 12.0   # top horizontal bend
+    v1_extra = 12.0 # extra foot on main body
 
     qty_v1 = math.ceil((p.x_bar * 2 + p.y_bar + 6 * t) / 5.0)
     qty_v2 = math.ceil((p.y_bar + 2 * t) / 5.0)
 
-    log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}*2 + {fmt_inches(p.y_bar)} + 6*{t:.0f})/ 5) = {qty_v1}, "
-             f"len={fmt_inches(p.h_adj + v1_ext)} (h_adj + 12\" top bend)")
+    v1_body = p.h_adj + v1_extra   # main vertical body (h_adj + 1'-0" extra)
+    v1_len  = v1_body + v1_ext     # + 1'-0" top bend
+
+    log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}*2 + {fmt_inches(p.y_bar)} + 6*{t:.0f})/5) = {qty_v1}, "
+             f"body={fmt_inches(v1_body)} (h_adj+12\"), top bend=12\", total={fmt_inches(v1_len)}")
     log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + 2*{t:.0f})/5) = {qty_v2}, "
-             f"len={fmt_inches(p.h_adj)} (h_adj, straight)")
+             f"len={fmt_inches(p.h_adj + 12.0)} (h_adj + 12\" L-tail)")
 
     return [
-        BarRow(mark="V1", size="#5", qty=qty_v1, length_in=p.h_adj + v1_ext,
-               shape="L", leg_a_in=p.h_adj, leg_b_in=v1_ext,
-               notes="Verticals @5oc, 1ft top bend for hoops",
+        BarRow(mark="V1", size="#5", qty=qty_v1, length_in=v1_len,
+               shape="L", leg_a_in=v1_body, leg_b_in=v1_ext,
+               notes="Verticals @5oc, 1ft extra body + 1ft top bend for hoops",
                source_rule="rule_g2exp_verticals"),
-        BarRow(mark="V2", size="#5", qty=qty_v2, length_in=p.h_adj,
-               shape="Str", notes="Verticals Grate Side @5oc",
+        BarRow(mark="V2", size="#5", qty=qty_v2, length_in=p.h_adj + 12.0,
+               shape="L", leg_a_in=p.h_adj, leg_b_in=12.0,
+               notes="Verticals Grate Side @5oc, 1ft L-tail",
                source_rule="rule_g2exp_verticals"),
     ]
 
@@ -847,27 +853,29 @@ def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
         ))
 
     if p.notch_dim > 0:
-        e   = p.notch_dim
-        c   = getattr(p, "notch_c_dim", e - 2.0)   # C = E − 2"
+        e   = p.notch_dim                              # E = notch depth (variable)
+        c   = getattr(p, "notch_c_dim", e - 2.0)      # C = E − 2" (top notch span)
         qty_notch = math.ceil(p.x_ext_in / 5.0 * 2 * n)
         hp2_total = _t14_total(e)
+        # T14 fixed legs: B=4", D=8", F=6", G=5"
+        # Display mapping (A,B,C,D,G columns): A=B=4, B=C=E-2, C=D=8, D=E, G=5
         log.step(
             f"HP2 notch: CEIL({fmt_inches(p.x_ext_in)}/5*2*{n}) = {qty_notch}  "
             f"E(={fmt_inches(e)}) = Y_exp/2-18\"-5\"  C=E-2\"={fmt_inches(c)}  "
-            f"T14 stock=3E+9-6={fmt_inches(hp2_total)}"
+            f"T14 fixed: B=4\" D=8\" F=6\" G=5\"  stock=3E+3={fmt_inches(hp2_total)}"
         )
         bars.append(BarRow(
             mark="HP2", size="#5", qty=qty_notch, length_in=hp2_total,
             shape="T14",
-            leg_a_in=_HP_TAIL_HOOK,    # A = 5.5"
-            leg_b_in=e,                # B = E dim (notch depth = Y_exp/2-18"-5")
-            leg_c_in=c,                # C = E - 2" (top of notched hoop)
-            leg_d_in=e,                # D = E dim (symmetric)
-            leg_g_in=_HP_TAIL_HOOK,    # G = 5.5"
+            leg_a_in=4.0,   # T14 B = 4" (fixed bottom step)
+            leg_b_in=c,     # T14 C = E-2" (top notch span)
+            leg_c_in=8.0,   # T14 D = 8" (fixed side)
+            leg_d_in=e,     # T14 E = notch depth (variable)
+            leg_g_in=5.0,   # T14 G = 5" (fixed end)
             notes=(
                 f"Notched Hoops @5oc T14  "
-                f"E(={fmt_inches(e)}) = Y_exp/2-18\"(grate)-5\"(clr)  "
-                f"C = E-2\" = {fmt_inches(c)}"
+                f"B=4\"(fixed)  C=E-2\"={fmt_inches(c)}  D=8\"(fixed)  "
+                f"E={fmt_inches(e)}(Y_exp/2-18\"-5\")  F=6\"(fixed)  G=5\"(fixed)"
             ),
             source_rule="rule_g2exp_hoops",
         ))
@@ -1031,9 +1039,8 @@ def rule_g2exptop_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     t = float(getattr(p, "wall_thick_in", 9.0))
     log.step(f"T = {t:.0f}\"")
 
-    y_ext     = 5.0 * 12.0   # 60"
-    y_exp_ext = 8.0 * 12.0   # 96"
-    setattr(p, "y_dim_ft",      y_ext / 12.0)
+    y_ext     = getattr(p, "y_dim_ft", 5.0) * 12.0   # user input, default 5'-0"
+    y_exp_ext = 8.0 * 12.0                           # 96" — fixed per D73A
     setattr(p, "y_expanded_ft", y_exp_ext / 12.0)
 
     x_inside      = x_ext - 2 * t
@@ -1056,8 +1063,9 @@ def rule_g2exptop_geometry(p: Params, log: ReasoningLogger) -> list[BarRow]:
     # E = Y_exp_ext/2 − grate_half_width(18") − clearance(5") per Dane Rios
     notch_dim        = y_exp_ext / 2.0 - _NOTCH_GRATE_HALF_WIDTH - _NOTCH_CLEARANCE_IN
     notch_c_dim      = notch_dim - 2.0   # C = E − 2"
-    ab_bar_len_reg   = x_ext - 4.5
-    ab_bar_len_notch = y_exp_ext - 4.5
+    # B leg = interior clear span + 1.5" (extends just past inside face for anchorage)
+    ab_bar_len_reg   = x_inside + 1.5 + 2 * _AB_TAIL_IN
+    ab_bar_len_notch = y_exp_inside + 1.5 + 2 * _AB_TAIL_IN
 
     setattr(p, "x_ext_in",         x_ext)
     setattr(p, "y_ext_in",         y_ext)
@@ -1098,7 +1106,7 @@ def rule_g2exptop_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     Same T-based qty as rule_g2exp_verticals, but bar length uses
     vert_height (30\") instead of h_adj (full wall height).
-    V1 gets a 12\" top bend; V2 is straight.
+    V1 gets a 12\" top bend; V2 gets a 12\" L-tail.
     """
     t      = p.t_in
     v1_ext = 12.0
@@ -1107,12 +1115,12 @@ def rule_g2exptop_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     qty_v2 = math.ceil((p.y_bar + 2 * t) / 5.0)
 
     v1_len = p.vert_height + v1_ext
-    v2_len = p.vert_height
+    v2_len = p.vert_height + 12.0
 
     log.step(f"V1: CEIL(({fmt_inches(p.x_bar)}*2 + {fmt_inches(p.y_bar)} + 6*{t:.0f})/5) = {qty_v1}, "
              f"len={fmt_inches(v1_len)} (vert_height + 12\" top bend)")
     log.step(f"V2: CEIL(({fmt_inches(p.y_bar)} + 2*{t:.0f})/5) = {qty_v2}, "
-             f"len={fmt_inches(v2_len)} (vert_height, straight)")
+             f"len={fmt_inches(v2_len)} (vert_height + 12\" L-tail)")
 
     return [
         BarRow(mark="V1", size="#5", qty=qty_v1, length_in=v1_len,
@@ -1120,6 +1128,7 @@ def rule_g2exptop_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
                notes="Verticals @5oc, 1ft top bend for hoops",
                source_rule="rule_g2exptop_verticals"),
         BarRow(mark="V2", size="#5", qty=qty_v2, length_in=v2_len,
-               shape="Str", notes="Verticals Grate Side @5oc",
+               shape="L", leg_a_in=p.vert_height, leg_b_in=12.0,
+               notes="Verticals Grate Side @5oc, 1ft L-tail",
                source_rule="rule_g2exptop_verticals"),
     ]

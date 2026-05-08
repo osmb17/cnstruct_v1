@@ -35,7 +35,13 @@ class G2ExpandedInletTopTemplate(BaseTemplate):
                 "x_dim_ft", float,
                 label="X -- Exterior Width (ft)",
                 min=2.5, max=30.0, default=5.667,
-                hint="Exterior face-to-face width. Interior X = X − 2×T.",
+                hint="Exterior face-to-face width in plan. Interior X = X − 2×T.",
+            ),
+            InputField(
+                "y_dim_ft", float,
+                label="Y -- Exterior Width (ft)",
+                min=5.666, max=15.0, default=5.667,
+                hint="Main box exterior Y dimension (minimum 5'-8\")",
             ),
             InputField(
                 "wall_thick_in", int,
