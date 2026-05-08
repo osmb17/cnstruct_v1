@@ -467,93 +467,62 @@ def rule_hw_vert_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    CB — C-bar hairpin (Type 11).
+    CB — C-bar hairpin.
 
-    qty    = L//12+1  [no-pipe case, @c_p\" oc along wall length]              ✓
+    qty    = L//12+1  [no-pipe case, @12\" oc along wall length]               ✓
              TABLE    [pipe case, count table keyed by (D_in, H_in)]           ✓
     body   = ceil((H_in + 9) / 2) * 2   (rounded up to next 2" increment)     ✓
              (= ceil((H1 - 3) / 2) * 2  where H1 = H + 12)
+    leg    = T + 4   (T = wall thickness; 2\" cover each face)                 ✓
     size   = c_s from D89A/D89B table
 
-    Caltrans Type 11 dimension labels (Dane convention):
-      D = body (long straight span along wall height)
-      B = top leg
-      C = bottom leg
-      R = bend radius (9\")
-
-    PIPE case (symmetric hairpin):
-      B = C = T + 3   (3\" cover each face — Dane D89A confirmed)               ✓
-      stock = D + 2*(T+3) - deduct
-
-    NO-PIPE case (asymmetric J-bar — Dane D89B confirmed):
-      B = 3\"          (fixed top hook, short)                                   ✓
-      C = F + 3\"      (footing development leg — F from D89A/D89B table)       ✓
-      stock = D + B + C - deduct
-      NOTE: body formula gives D=ceil((H+9)/2)*2, which may differ ±1\" from
-      field practice; confirm against gold for each new no-pipe height.
-
-    Spacing c_p from D89A/D89B table (e.g. @9\" o.c. for H≥80\").
-
     Confirmed:
-      Pipe  8ft/D=36/H=71: body=80\", leg=T+3=13\", stock=103\" (D89A gold)    ✓
-      Pipe  H=83,   T=12:  body=92\", leg=T+3=15\" (Dane confirmed)            ✓
-      No-pipe 8ft/H=35, F=12: B=3\", C=15\", D≈44\", @12oc (D89B Dane gold)    ✓
+      No-pipe 8ft/H=60: qty=96//12+1=9 ✓
+      H=71, T=10: body=ceil(80/2)*2=80\"=6'-8\" ✓  leg=14\"=1'-2\" ✓
+      H=90, T=12: body=ceil(99/2)*2=100\"=8'-4\" ✓  leg=16\"=1'-4\" ✓
     """
-    L       = p.wall_width_ft * 12
-    H       = p.wall_height_ft * 12
-    D_in    = _effective_D(p)
-    case    = getattr(p, "loading_case", "D89A")
-    row     = _d89_by_height(H, case)
-    tbl     = "D89B" if case == "D89B" else "D89A"
-    c_size  = row["c_s"]
-    c_spc   = row["c_p"]   # spacing from table (e.g. 9" for H=83)
-    T       = row["T"]
-    F       = float(row["F"])
+    L      = p.wall_width_ft * 12
+    H      = p.wall_height_ft * 12
+    D_in   = _effective_D(p)
+    case   = getattr(p, "loading_case", "D89A")
+    row    = _d89_by_height(H, case)
+    tbl    = "D89B" if case == "D89B" else "D89A"
+    c_size = row["c_s"]
+    T      = row["T"]
     no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
-    body    = math.ceil((H + 9) / 2) * 2    # = ceil((H1-3)/2)*2 where H1=H+12
-    R       = 9.0
-    deduct  = bend_reduce("shape_2", c_size)
-
     if no_pipe:
-        qty   = math.floor(L / 12) + 1
-        B_leg = 3.0            # fixed top hook
-        C_leg = F + 3.0        # footing development leg — 3" cover below footing top
-        stock = body + B_leg + C_leg - deduct
-        log.step(
-            f"{tbl} H={H:.0f}\" → c_size={c_size}  F={F:.0f}\"  @{c_spc}\" oc  "
-            f"CB no-pipe J-bar: D(body)={body}\"  B(hook)=3\"  C(=F+3)={C_leg}\"  "
-            f"R={R}\"  stock={fmt_inches(stock)}  qty=L//12+1={qty}",
-            source="HeadwallRules",
-        )
-        notes = (
-            f"D(={fmt_inches(body)}) + B(=3\" hook) "
-            f"+ C(=F+3={fmt_inches(C_leg)}) + R(={fmt_inches(R)})  @{c_spc}\" oc"
-        )
+        qty = math.floor(L / 12) + 1
     else:
-        cnts  = _count_lookup(D_in, int(H))
-        qty   = cnts["c_bar"]
-        leg   = float(T) + 3.0   # 3" cover each face — symmetric
-        B_leg = leg
-        C_leg = leg
-        stock = body + 2 * leg - deduct
-        log.step(
-            f"{tbl} H={H:.0f}\" → c_size={c_size}  T={T}\"  @{c_spc}\" oc  "
-            f"CB pipe hairpin: D(body)={body}\"  B=C(legs)=T+3={leg}\"  "
-            f"R={R}\"  stock={fmt_inches(stock)}  qty=TABLE={qty}",
-            source="HeadwallRules",
-        )
-        notes = (
-            f"D(={fmt_inches(body)}) + B(=T+3={fmt_inches(B_leg)}) "
-            f"+ C(=T+3={fmt_inches(C_leg)}) + R(={fmt_inches(R)})  @{c_spc}\" oc"
-        )
+        cnts = _count_lookup(D_in, int(H))
+        qty  = cnts["c_bar"]
+    body   = math.ceil((H + 9) / 2) * 2    # = ceil((H1-3)/2)*2 where H1=H+12
+    leg    = float(T) + 4.0                  # 2" cover each face
+    R      = 9.0
+    deduct = bend_reduce("shape_2", c_size)
+    stock  = body + 2 * leg - deduct
 
-    log.result("CB", f"{c_size} × {qty} @ {fmt_inches(stock)}  @{c_spc}\" oc",
-               source="HeadwallRules")
+    log.step(
+        f"{tbl} H={H:.0f}\" → c_size={c_size}  T={T}\"  "
+        f"CB body=ceil(({H:.0f}+9)/2)*2={body}\"  leg=T+4={leg}\"  stock={fmt_inches(stock)}  "
+        f"qty={'L//12+1' if no_pipe else 'TABLE'}={qty}",
+        source="HeadwallRules",
+    )
+    log.result("CB", f"{c_size} × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
 
+    # Type 11 (C-bar) dimensions per SCS bar-bend chart:
+    #   B = inner leg (inside face, T+2)
+    #   C = body/span (along wall height, ≈ H+9 rounded)
+    #   D = outer leg (outside face, T+4)
+    #   G = wall opening (inside face-to-face = T)
+    _leg_b = float(T) + 2.0
+    _leg_d = float(T) + 4.0
     return [BarRow(
         mark="CB", size=c_size, qty=qty, length_in=stock, shape="C", bend_type="11",
-        leg_a_in=None, leg_b_in=B_leg, leg_c_in=C_leg, leg_d_in=body, leg_g_in=R,
-        notes=notes,
+        leg_a_in=None, leg_b_in=_leg_b, leg_c_in=body, leg_d_in=_leg_d, leg_g_in=float(T),
+        notes=(
+            f"B(=T+2={fmt_inches(_leg_b)}) + C(={fmt_inches(body)}) "
+            f"+ D(=T+4={fmt_inches(_leg_d)}) = {fmt_inches(stock)}"
+        ),
         source_rule="rule_hw_c_bars",
     )]
 
@@ -635,7 +604,7 @@ def rule_hw_top_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_hw_spreaders(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    WS — Wall spreaders (mk401), Type 27 shape.
+    WS — Wall spreaders (mk401), U-shape.
 
     PIPE case:
       qty    = L_ft  (one per foot of wall width)                            ✓
@@ -644,74 +613,49 @@ def rule_hw_spreaders(p: Params, log: ReasoningLogger) -> list[BarRow]:
       Confirmed: T=10 D=36 → body=8.5\" legs=6\" ✓
                  T=12 D=48 → body=10\" legs=8\" ✓
 
-    NO-PIPE case — 5-segment Type 27 bar (Dane confirmed D89A/D89B gold):
-      B = F = 18\"     (outer/footing legs — constant for both T=10 and T=12)  ✓
-      C = E = T - 5\"  (inner seat legs — T=12→7\", T=10→5\")                  ✓
-      D     = 5\"      (center span — constant)                                ✓
-      stock = B + C + D + E + F − deduct(shape_4)
-
-      qty D89A = L // 12 + 1   (same interval as TF footing bars)             ✓
-      qty D89B = floor(L/18) + 1                                              ✓
-
-      Confirmed:
-        D89A H=6'-11\" T=12 L=8': B=F=18\", C=E=7\", D=5\", qty=9  (Dane gold) ✓
-        D89B H=2'-11\" T=10 L=8': B=F=18\", C=E=5\", D=5\", qty=6  (Dane gold) ✓
+    NO-PIPE case  (every 4ft, D=0):
+      qty    = L_ft // 2   (every 4ft → 2 sets for 8ft wall → 4 bars)       ✓
+      body   = T // 2      (= 5\" for T=10\")                                 ✓
+      legs   = T // 2 - 0.5  (= 4.5\" for T=10\")                            ✓
+      Confirmed: 8ft/H=60 → qty=4, body=5\", legs=4.5\" ✓
 
     size = #4 (both cases)
     """
     H       = p.wall_height_ft * 12
     no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
     D_in    = _parse_dia(p)
-    case    = getattr(p, "loading_case", "D89A")
-    row     = _d89_by_height(H, case)
+    row     = _d89_by_height(H, getattr(p, "loading_case", "D89A"))
     T       = row["T"]
-    L       = p.wall_width_ft * 12
+    deduct  = bend_reduce("shape_2", "#4")
 
     if no_pipe:
-        B_leg  = 18.0           # constant outer/footing leg
-        C_leg  = float(T) - 5.0 # inner seat leg (T=12→7, T=10→5)
-        D_span = 5.0            # center span, constant
-        deduct = bend_reduce("shape_4", "#4")
-        stock  = B_leg + C_leg + D_span + C_leg + B_leg - deduct
-        if case == "D89B":
-            qty = math.floor(L / 18) + 1
-        else:
-            qty = int(L) // 12 + 1
+        qty  = int(p.wall_width_ft) // 2
+        body = float(T // 2)
+        leg  = float(T // 2) - 0.5
         log.step(
-            f"WS no-pipe ({case}): T={T}\"  B=F=18\"  C=E=T-5={C_leg}\"  D=5\"  "
-            f"stock={fmt_inches(stock)}  qty=L//{12 if case!='D89B' else 18}+1={qty}",
+            f"WS no-pipe: T={T}\"  body=T//2={body}\"  legs=T//2-0.5={leg}\"  "
+            f"stock={fmt_inches(body + 2*leg - deduct)}  qty=L_ft//2={qty}",
             source="HeadwallRules",
         )
-        log.result("WS", f"#4 × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
-        return [BarRow(
-            mark="WS", size="#4", qty=qty, length_in=stock, shape="U",
-            leg_a_in=None, leg_b_in=B_leg, leg_c_in=C_leg,
-            leg_d_in=D_span, leg_g_in=C_leg,
-            notes=(
-                f"B(={fmt_inches(B_leg)}) + C(=T-5={fmt_inches(C_leg)}) "
-                f"+ D(={fmt_inches(D_span)}) + E(={fmt_inches(C_leg)}) "
-                f"+ F(={fmt_inches(B_leg)})  [sym]  mk401"
-            ),
-            source_rule="rule_hw_spreaders",
-        )]
     else:
-        deduct = bend_reduce("shape_2", "#4")
-        qty    = int(p.wall_width_ft)
-        body   = round((T - 1.5) * 2) / 2   # nearest 0.5"
-        leg    = float(D_in // 6)
-        stock  = body + 2 * leg - deduct
+        qty  = int(p.wall_width_ft)
+        body = round((T - 1.5) * 2) / 2   # nearest 0.5"
+        leg  = float(D_in // 6)
         log.step(
             f"WS: T={T}\" D={D_in}\"  body=round((T-1.5)*2)/2={body}\"  "
-            f"legs=D//6={leg}\"  stock={fmt_inches(stock)}  qty=L_ft={qty}",
+            f"legs=D//6={leg}\"  stock={fmt_inches(body + 2*leg - deduct)}  qty=L_ft={qty}",
             source="HeadwallRules",
         )
-        log.result("WS", f"#4 × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
-        return [BarRow(
-            mark="WS", size="#4", qty=qty, length_in=stock, shape="U",
-            leg_a_in=body, leg_b_in=leg, leg_c_in=leg,
-            notes=f"Wall spreader mk401  body={fmt_inches(body)}  legs={fmt_inches(leg)}",
-            source_rule="rule_hw_spreaders",
-        )]
+
+    stock = body + 2 * leg - deduct
+    log.result("WS", f"#4 × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
+
+    return [BarRow(
+        mark="WS", size="#4", qty=qty, length_in=stock, shape="U",
+        leg_a_in=body, leg_b_in=leg, leg_c_in=leg,
+        notes=f"Wall spreader mk401  body={fmt_inches(body)}  legs={fmt_inches(leg)}",
+        source_rule="rule_hw_spreaders",
+    )]
 
 
 # ---------------------------------------------------------------------------
@@ -725,55 +669,44 @@ def rule_hw_standees(p: Params, log: ReasoningLogger) -> list[BarRow]:
     PIPE case:
       qty    = L_ft  (one per foot of wall width)             ✓
       size   = #4                                             ✓
-      B=F    = 5.0\" (top hook, constant per both gold cases)  ✓
-      C=E    = D_in / 6 - 0.5  (riser/seat legs)             ✓
-      D      = 12.0\" (base)                                   ✓
-      Confirmed: D=36 → C=E=5.5\" ✓;  D=48 → C=E≈7.5\" ✓
+      A      = 5.0\" (top hook, constant per both gold cases)  ✓
+      leg    = D_in / 6 - 0.5  (riser/seat legs)             ✓
+      base   = 12.0\" (bottom seat, constant)                  ✓
+      Confirmed: D=36 → legs=5.5\" ✓;  D=48 → legs≈7\" ✓
 
-    NO-PIPE case — Dane D89A/D89B confirmed:
-      qty    = floor(L/18) + 1  (@18\" oc)                                   ✓
-      size   = #4  (not #5 — Dane confirmed for both D89A T=12 and D89B T=10) ✓
-      B = F  = T/2 + (0.5\" if T>10 else 0\")                                 ✓
-               T=12 → 6.5\",  T=10 → 5\"
-      C = E  = 6.0\" (constant for both T=10 and T=12)                        ✓
-      D      = 18.0\" (base — same as prior confirmed value; verify with more gold)
-      stock  = B + C + D + E - deduct(shape_3, #4)
-
-      Confirmed:
-        D89A H=6'-11\" T=12 L=8': B=F=6.5\", C=E=6\", qty=6  (Dane gold) ✓
-        D89B H=2'-11\" T=10 L=8': B=F=5\",   C=E=6\", qty=6  (Dane gold) ✓
+    NO-PIPE case:
+      qty    = L_ft  (one per foot, same as pipe)             ✓
+      size   = #5                                             ✓
+      A      = 5.0\" (top hook, constant)                      ✓
+      leg    = 5.5\" (fixed, no pipe diameter)                 ✓
+      base   = 18.0\" (larger base for solid footing mat)      ✓
+      Confirmed: 8ft/H=60 → qty=8 #5 legs=5.5\" base=18\" ✓
     """
     D_in    = _parse_dia(p)
     no_pipe = int(getattr(p, "pipe_qty", 0)) < 1
-    H       = p.wall_height_ft * 12
-    L       = p.wall_width_ft * 12
-    row     = _d89_by_height(H, getattr(p, "loading_case", "D89A"))
-    T       = row["T"]
+    qty     = int(p.wall_width_ft)
 
     if no_pipe:
-        size   = "#4"
-        qty    = math.floor(L / 18) + 1
-        seg_a  = float(T) / 2 + (0.5 if T > 10 else 0.0)   # B=F top hook
-        seg_b  = 6.0    # C=E legs (constant)
-        seg_c  = 6.0    # E
-        seg_d  = 18.0   # D base
-        deduct = bend_reduce("shape_3", "#4")
+        size  = "#5"
+        seg_a = 5.0
+        seg_b = 5.5    # fixed for no-pipe
+        seg_c = 5.5
+        seg_d = 18.0   # larger base for solid footing mat
+        deduct = bend_reduce("shape_3", "#5")
         log.step(
-            f"ST no-pipe: #4  T={T}\"  B=F=T/2{'+(0.5)' if T>10 else ''}={seg_a}\"  "
-            f"C=E=6\"  base=18\"  stock={fmt_inches(seg_a+seg_b+seg_c+seg_d-deduct)}  "
-            f"qty=⌊L/18⌋+1={qty}",
+            f"ST no-pipe: #5  A=5\"  legs=5.5\" × 2  base=18\"  "
+            f"stock={fmt_inches(seg_a+seg_b+seg_c+seg_d-deduct)}  qty=L_ft={qty}",
             source="HeadwallRules",
         )
     else:
-        size   = "#4"
-        qty    = int(p.wall_width_ft)
-        seg_a  = 5.0
-        seg_b  = D_in / 6 - 0.5
-        seg_c  = D_in / 6 - 0.5
-        seg_d  = 12.0
+        size  = "#4"
+        seg_a = 5.0
+        seg_b = D_in / 6 - 0.5
+        seg_c = D_in / 6 - 0.5
+        seg_d = 12.0
         deduct = bend_reduce("shape_3", "#4")
         log.step(
-            f"ST: D={D_in}\"  B=F=5\"  C=E=D/6-0.5={seg_b:.1f}\"  base=12\"  "
+            f"ST: D={D_in}\"  A=5\"  legs=D/6-0.5={seg_b:.1f}\" × 2  base=12\"  "
             f"stock={fmt_inches(seg_a+seg_b+seg_c+seg_d-deduct)}  qty=L_ft={qty}",
             source="HeadwallRules",
         )
@@ -781,20 +714,10 @@ def rule_hw_standees(p: Params, log: ReasoningLogger) -> list[BarRow]:
     stock = seg_a + seg_b + seg_c + seg_d - deduct
     log.result("ST", f"{size} × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
 
-    # Caltrans standee dimension labels (B, C, D, E, F — 5-segment symmetric):
-    #   B = top leg (same as F, symmetric other end)
-    #   C = riser / seat leg (same as E)
-    #   D = base / bottom seat
-    #   E = riser / seat leg (mirror of C)
-    #   F = top leg (mirror of B)
     return [BarRow(
         mark="ST", size=size, qty=qty, length_in=stock, shape="S",
-        leg_a_in=None, leg_b_in=seg_a, leg_c_in=seg_b, leg_d_in=seg_d, leg_g_in=seg_c,
-        notes=(
-            f"B(={fmt_inches(seg_a)}) + C(={fmt_inches(seg_b)}) "
-            f"+ D(={fmt_inches(seg_d)}) + E(={fmt_inches(seg_c)}) "
-            f"+ F(={fmt_inches(seg_a)})  [sym]  base={fmt_inches(seg_d)}"
-        ),
+        leg_a_in=seg_a, leg_b_in=seg_b, leg_c_in=seg_c, leg_d_in=seg_d,
+        notes=f"Mat standee mk400  A=5\"  legs={fmt_inches(seg_b)}×2  base={fmt_inches(seg_d)}",
         source_rule="rule_hw_standees",
     )]
 

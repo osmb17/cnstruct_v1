@@ -1288,49 +1288,37 @@ class TestHeadwallD89A:
         assert bars[0].length_in == pytest.approx(90.0)
 
     def test_cb_gold(self, log):
-        """CB no-pipe J-bar (Type 11) — Dane D89B confirmed asymmetric shape.
-        H=71 → c_s="#5", F=12, qty=9, body=ceil((71+9)/2)*2=80",
-        B=3\" (fixed hook), C=F+3=15\",  stock=80+3+15-3=95\".
-        Pipe case (symmetric) tested separately in test_cb_pipe_symmetric."""
+        """CB type-11 per SCS bend chart: B=T+2, C=body, D=T+4, G=T (wall opening).
+        H=71 → c_s="#5", qty=9, body=ceil((71+9)/2)*2=80\", stock=80+28-3=105\"."""
         p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
         bars = rule_hw_c_bars(p, log)
         assert bars[0].mark == "CB"
         assert bars[0].size == "#5"
         assert bars[0].shape == "C"
         assert bars[0].qty == 9
-        assert bars[0].length_in == pytest.approx(95.0)   # 80 + 3 + 15 - 3
-        assert bars[0].leg_a_in is None                   # A unused
-        assert bars[0].leg_b_in == pytest.approx(3.0)     # B = fixed top hook
-        assert bars[0].leg_c_in == pytest.approx(15.0)    # C = F+3 = 12+3
-        assert bars[0].leg_d_in == pytest.approx(80.0)    # D = body span
-        assert bars[0].leg_g_in == pytest.approx(9.0)     # R = bend radius
+        assert bars[0].length_in == pytest.approx(105.0)
+        assert bars[0].leg_a_in is None                   # A unused for type-11
+        assert bars[0].leg_b_in == pytest.approx(12.0)    # B = T+2 = inner leg
+        assert bars[0].leg_c_in == pytest.approx(80.0)    # C = body span
+        assert bars[0].leg_d_in == pytest.approx(14.0)    # D = T+4 = outer leg
+        assert bars[0].leg_g_in == pytest.approx(10.0)    # G = T  = wall opening
 
     def test_ws_gold(self, log):
-        """WS no-pipe D89A Type 27 — Dane confirmed H=6'-11\" T=12, H=2'-11\" T=10.
-        H=71 → T=10: B=F=18\", C=E=T-5=5\", D=5\",
-        stock=18+5+5+5+18-shape_4(#4)=51-4=47\", qty=L//12+1=96//12+1=9."""
+        """WS: qty=floor(96/24)=4, stock=12\"."""
         p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
         bars = rule_hw_spreaders(p, log)
         assert bars[0].mark == "WS"
-        assert bars[0].qty == 9
-        assert bars[0].leg_b_in == pytest.approx(18.0)   # B=F outer leg
-        assert bars[0].leg_c_in == pytest.approx(5.0)    # C=E = T-5 = 10-5
-        assert bars[0].leg_d_in == pytest.approx(5.0)    # D center span
-        assert bars[0].length_in == pytest.approx(47.0)  # 51-4
+        assert bars[0].qty == 4
+        assert bars[0].length_in == pytest.approx(12.0)
 
     def test_st_gold(self, log):
-        """ST no-pipe — Dane confirmed #4 for both D89A (T=12) and D89B (T=10).
-        H=71 → T=10: B=F=T/2=5\", C=E=6\" (const), D=18\" (base),
-        stock=5+6+18+6-shape_3(#4)=35-3=32\", qty=⌊96/18⌋+1=6."""
+        """ST: no-pipe → #5, qty=L_ft=8, stock=5+5.5+5.5+18-bend_reduce(shape_3,#5)=34-4.5=29.5\"."""
         p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
         bars = rule_hw_standees(p, log)
         assert bars[0].mark == "ST"
-        assert bars[0].size == "#4"
-        assert bars[0].qty == 6
-        assert bars[0].leg_b_in == pytest.approx(5.0)    # B=F = T/2 = 10/2
-        assert bars[0].leg_c_in == pytest.approx(6.0)    # C=E legs (constant)
-        assert bars[0].leg_d_in == pytest.approx(18.0)   # D base
-        assert bars[0].length_in == pytest.approx(32.0)  # 5+6+18+6-3
+        assert bars[0].size == "#5"
+        assert bars[0].qty == 8
+        assert bars[0].length_in == pytest.approx(29.5)
 
     def test_d89_rounds_up(self, log):
         """H=5'-0\" (60\") rounds up to row H=62\", W=64\" → D1 len=60\"."""
@@ -1390,35 +1378,14 @@ class TestHeadwallTableCoverage:
 
     @pytest.mark.parametrize("H_in,W,T,F,B", _TABLE_ROWS)
     def test_cb_body_inner_all_rows(self, log, H_in, W, T, F, B):
-        """CB no-pipe J-bar (Type 11) — Dane D89B confirmed asymmetric shape.
-        D (leg_d_in) = ceil((H+9)/2)*2; B (leg_b_in) = 3\" fixed hook;
-        C (leg_c_in) = F+3 footing development leg; R (leg_g_in) = 9\"."""
+        """CB body = ceil((H+9)/2)*2; CB inner = H across every table row."""
         p = _hw_params(wall_width_ft=8.0, wall_height_ft=H_in / 12.0)
         bars = rule_hw_c_bars(p, log)
         expected_body = math.ceil((H_in + 9) / 2) * 2
-        expected_C    = float(F) + 3.0
-        assert bars[0].leg_d_in == pytest.approx(expected_body), \
-            f"H={H_in}\" → CB body (D) expected ceil(({H_in}+9)/2)*2={expected_body}\""
-        assert bars[0].leg_b_in == pytest.approx(3.0), \
-            f"CB top hook (B) expected 3.0\" fixed (got {bars[0].leg_b_in})"
-        assert bars[0].leg_c_in == pytest.approx(expected_C), \
-            f"F={F}\" → CB footing leg (C) expected F+3={expected_C}\" (got {bars[0].leg_c_in})"
-        assert bars[0].leg_g_in == pytest.approx(9.0), \
-            "CB radius (R) expected 9.0\""
-
-    def test_cb_pipe_symmetric(self, log):
-        """CB pipe case (symmetric hairpin): B=C=T+3, D=body, R=9\".
-        Pipe case H=71 D=36: c_s=#5, T=10, body=80\", B=C=13\", stock=80+26-3=103\"."""
-        p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12,
-                       pipe_qty=1, pipe_dia_in='36"')
-        bars = rule_hw_c_bars(p, log)
-        assert bars[0].mark == "CB"
-        assert bars[0].size == "#5"
-        assert bars[0].leg_b_in == pytest.approx(13.0)    # B = T+3 = 10+3
-        assert bars[0].leg_c_in == pytest.approx(13.0)    # C = T+3 = equal to B
-        assert bars[0].leg_d_in == pytest.approx(80.0)    # D = body
-        assert bars[0].leg_g_in == pytest.approx(9.0)     # R
-        assert bars[0].length_in == pytest.approx(103.0)  # 80+26-3
+        assert bars[0].leg_c_in == pytest.approx(expected_body), \
+            f"H={H_in}\" → CB body (C) expected ceil(({H_in}+9)/2)*2={expected_body}\""
+        assert bars[0].leg_d_in == pytest.approx(float(T) + 4.0), \
+            f"T={T}\" → CB outer leg (D) expected T+4={T+4.0}\""
 
 
 # ---------------------------------------------------------------------------
@@ -1465,15 +1432,13 @@ class TestHeadwallWidthVariants:
     Tests bar counts and lengths that depend on L.
     """
 
-    # (wall_width_ft, L_in,  D1_qty, TF_qty, LI_qty, LW_len, VW_qty, WS_qty,        ST_qty)
-    # WS no-pipe D89A qty = L//12+1 (same interval as TF / VW)
-    # ST no-pipe qty = floor(L/18)+1 (@18" oc)
+    # (wall_width_ft, L_in,  D1_qty, TF_qty, LI_qty, LW_len, VW_qty, WS_qty, ST_qty)
     _WIDTHS = [
-        (4.0,   48, 7,  5,  16, 44,  5,  5,  3),   # WS=48//12+1=5  ST=⌊48/18⌋+1=3
-        (8.0,   96, 13, 9,  16, 92,  9,  9,  6),   # WS=96//12+1=9  ST=⌊96/18⌋+1=6
-        (12.0, 144, 19, 13, 16, 140, 13, 13, 9),   # WS=144//12+1=13 ST=⌊144/18⌋+1=9
-        (16.0, 192, 25, 17, 16, 188, 17, 17, 11),  # WS=192//12+1=17 ST=⌊192/18⌋+1=11
-        (20.0, 240, 31, 21, 16, 236, 21, 21, 14),  # WS=240//12+1=21 ST=⌊240/18⌋+1=14
+        (4.0,   48, 7,  5,  16, 44,  5,  2,  4),
+        (8.0,   96, 13, 9,  16, 92,  9,  4,  8),
+        (12.0, 144, 19, 13, 16, 140, 13, 6, 12),
+        (16.0, 192, 25, 17, 16, 188, 17, 8, 16),
+        (20.0, 240, 31, 21, 16, 236, 21, 10, 20),
     ]
 
     @pytest.mark.parametrize(

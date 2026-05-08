@@ -401,12 +401,6 @@ def _diag_expanded_inlet() -> bytes:
                gap=0.12, fontsize=7.5)
 
 
-    # ── X exterior dimension (top of box) ─────────────────────────────────
-    _ext_dim_h(ax, 0, OX, OY, OY + 1.5, "X", fontsize=9)
-
-    # ── Y exterior dimension (right side of box) ───────────────────────────
-    _ext_dim_v(ax, 0, OY, OX, OX + 2.5, "Y", fontsize=9)
-
     # ── Annotation: 2'-11 3/8" left side (vertical) ───────────────────────
     _ext_dim_v(ax, T, OY - T, 0, -2.1, "")
     ax.text(-2.7, OY / 2,
