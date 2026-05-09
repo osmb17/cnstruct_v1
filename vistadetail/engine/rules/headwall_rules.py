@@ -364,7 +364,7 @@ def rule_hw_pipe_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
                source="HeadwallRules")
 
     return [BarRow(
-        mark="PH", size="#6", qty=qty, length_in=length, shape="Rng",
+        mark="600", size="#6", qty=qty, length_in=length, shape="Rng",
         notes=f"Pipe hoop mk600  OD={fmt_inches(float(OD_in))}  lap=3'-0\"",
         source_rule="rule_hw_pipe_hoops",
     )]
@@ -663,7 +663,7 @@ def rule_hw_spreaders(p: Params, log: ReasoningLogger) -> list[BarRow]:
         )
         log.result("WS", f"#4 × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
         return [BarRow(
-            mark="WS", size="#4", qty=qty, length_in=stock, shape="U",
+            mark="401", size="#4", qty=qty, length_in=stock, shape="U",
             leg_a_in=None, leg_b_in=B_leg, leg_c_in=C_leg, leg_d_in=D_span, leg_g_in=C_leg,
             notes="Wall spreader mk401",
             source_rule="rule_hw_spreaders",
@@ -681,7 +681,7 @@ def rule_hw_spreaders(p: Params, log: ReasoningLogger) -> list[BarRow]:
         )
         log.result("WS", f"#4 × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
         return [BarRow(
-            mark="WS", size="#4", qty=qty, length_in=stock, shape="U",
+            mark="401", size="#4", qty=qty, length_in=stock, shape="U",
             leg_a_in=body, leg_b_in=leg, leg_c_in=leg,
             notes="Wall spreader mk401",
             source_rule="rule_hw_spreaders",
@@ -742,7 +742,7 @@ def rule_hw_standees(p: Params, log: ReasoningLogger) -> list[BarRow]:
         )
         log.result("ST", f"#4 × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
         return [BarRow(
-            mark="ST", size="#4", qty=qty, length_in=stock, shape="S",
+            mark="400", size="#4", qty=qty, length_in=stock, shape="S",
             leg_a_in=None, leg_b_in=B_leg, leg_c_in=C_leg, leg_d_in=D_span, leg_g_in=C_leg,
             notes="Mat standee mk400",
             source_rule="rule_hw_standees",
@@ -762,7 +762,7 @@ def rule_hw_standees(p: Params, log: ReasoningLogger) -> list[BarRow]:
         )
         log.result("ST", f"#4 × {qty} @ {fmt_inches(stock)}", source="HeadwallRules")
         return [BarRow(
-            mark="ST", size="#4", qty=qty, length_in=stock, shape="S",
+            mark="400", size="#4", qty=qty, length_in=stock, shape="S",
             leg_a_in=None, leg_b_in=B_leg, leg_c_in=C_leg, leg_d_in=D_span, leg_g_in=C_leg,
             notes="Mat standee mk400",
             source_rule="rule_hw_standees",

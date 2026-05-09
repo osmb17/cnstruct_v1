@@ -1311,7 +1311,7 @@ class TestHeadwallD89A:
         stock=18+5+5+5+18-shape_4(#4)=51-4=47\", qty=L//12+1=96//12+1=9."""
         p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
         bars = rule_hw_spreaders(p, log)
-        assert bars[0].mark == "WS"
+        assert bars[0].mark == "401"
         assert bars[0].qty == 9
         assert bars[0].leg_b_in == pytest.approx(18.0)   # B=F outer leg
         assert bars[0].leg_c_in == pytest.approx(5.0)    # C=E = T-5 = 10-5
@@ -1324,7 +1324,7 @@ class TestHeadwallD89A:
         stock=5+6+18+6-shape_3(#4)=35-3=32\", qty=⌊96/18⌋+1=6."""
         p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
         bars = rule_hw_standees(p, log)
-        assert bars[0].mark == "ST"
+        assert bars[0].mark == "400"
         assert bars[0].size == "#4"
         assert bars[0].qty == 6
         assert bars[0].leg_b_in == pytest.approx(5.0)    # B=F = T/2 = 10/2
@@ -1532,7 +1532,7 @@ class TestHeadwallEndToEnd:
         from vistadetail.engine.templates.headwall import TEMPLATE as HW
         bars = generate_barlist(HW, params, log, call_ai=False)
         marks = {b.mark for b in bars}
-        for mark in ("D1", "TF", "LI", "LW", "TW", "VW", "CB", "WS", "ST"):
+        for mark in ("D1", "TF", "LI", "LW", "TW", "VW", "CB", "401", "400"):
             assert mark in marks, \
                 f"Mark {mark} missing from barlist h={h_ft:.2f} w={w_ft}"
 
