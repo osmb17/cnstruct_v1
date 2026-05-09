@@ -13,25 +13,64 @@ from pathlib import Path
 DB_PATH = Path(__file__).parent / "cnstruct_history.db"
 
 
+def _reset_db() -> None:
+    """Delete the corrupted database file and recreate from scratch."""
+    try:
+        DB_PATH.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def _create_tables(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS runs (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp       TEXT    NOT NULL,
+            template_name   TEXT    NOT NULL,
+            job_name        TEXT    DEFAULT '',
+            job_number      TEXT    DEFAULT '',
+            detailer        TEXT    DEFAULT '',
+            params_json     TEXT    NOT NULL,
+            bars_json       TEXT    NOT NULL,
+            total_weight_lb REAL    DEFAULT 0,
+            total_cost_usd  REAL    DEFAULT 0
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS presets (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            structure_type  TEXT NOT NULL,
+            name            TEXT NOT NULL,
+            params_json     TEXT NOT NULL,
+            created_at      TEXT NOT NULL
+        )
+        """
+    )
+
+
+def _connect() -> sqlite3.Connection:
+    """Open a connection, auto-recovering if the database is malformed."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        # Quick integrity check — raises OperationalError if malformed
+        conn.execute("SELECT name FROM sqlite_master LIMIT 1").fetchone()
+        return conn
+    except sqlite3.DatabaseError:
+        conn.close()
+        _reset_db()
+        conn = sqlite3.connect(DB_PATH)
+        _create_tables(conn)
+        conn.commit()
+        return conn
+
+
 def init_db() -> None:
     """Create the runs table if it doesn't exist."""
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS runs (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp       TEXT    NOT NULL,
-                template_name   TEXT    NOT NULL,
-                job_name        TEXT    DEFAULT '',
-                job_number      TEXT    DEFAULT '',
-                detailer        TEXT    DEFAULT '',
-                params_json     TEXT    NOT NULL,
-                bars_json       TEXT    NOT NULL,
-                total_weight_lb REAL    DEFAULT 0,
-                total_cost_usd  REAL    DEFAULT 0
-            )
-            """
-        )
+    with _connect() as conn:
+        _create_tables(conn)
 
 
 def save_run(
@@ -62,7 +101,7 @@ def save_run(
         }
         for b in bars
     ]
-    with sqlite3.connect(DB_PATH) as conn:
+    with _connect() as conn:
         cur = conn.execute(
             """INSERT INTO runs
                (timestamp, template_name, job_name, job_number, detailer,
@@ -89,7 +128,7 @@ def list_runs(limit: int = 200) -> list[dict]:
         "id", "timestamp", "template_name", "job_name",
         "job_number", "detailer", "total_weight_lb", "total_cost_usd",
     ]
-    with sqlite3.connect(DB_PATH) as conn:
+    with _connect() as conn:
         rows = conn.execute(
             f"SELECT {', '.join(cols)} FROM runs ORDER BY id DESC LIMIT ?",
             (limit,),
@@ -99,7 +138,7 @@ def list_runs(limit: int = 200) -> list[dict]:
 
 def load_run(run_id: int) -> dict:
     """Load a full run by id. Returns a dict with bars (BarRow list) and metadata."""
-    with sqlite3.connect(DB_PATH) as conn:
+    with _connect() as conn:
         row = conn.execute(
             """SELECT template_name, job_name, job_number, detailer,
                       params_json, bars_json, total_weight_lb, total_cost_usd, timestamp
@@ -127,32 +166,21 @@ def load_run(run_id: int) -> dict:
 
 
 def delete_run(run_id: int) -> None:
-    with sqlite3.connect(DB_PATH) as conn:
+    with _connect() as conn:
         conn.execute("DELETE FROM runs WHERE id = ?", (run_id,))
 
 
 # ── Presets ────────────────────────────────────────────────────────────────────
 
 def init_presets() -> None:
-    """Create the presets table if it doesn't exist."""
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS presets (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                structure_type  TEXT NOT NULL,
-                name            TEXT NOT NULL,
-                params_json     TEXT NOT NULL,
-                created_at      TEXT NOT NULL
-            )
-            """
-        )
+    """Create the presets table if it doesn't exist (no-op: handled by init_db)."""
+    init_db()
 
 
 def save_preset(structure_type: str, name: str, params: dict) -> int:
     """Save a named input preset. Returns the new row id."""
     init_presets()
-    with sqlite3.connect(DB_PATH) as conn:
+    with _connect() as conn:
         cur = conn.execute(
             """INSERT INTO presets (structure_type, name, params_json, created_at)
                VALUES (?, ?, ?, ?)""",
@@ -169,7 +197,7 @@ def save_preset(structure_type: str, name: str, params: dict) -> int:
 def list_presets(structure_type: str) -> list[dict]:
     """Return all presets for a given structure type, newest first."""
     init_presets()
-    with sqlite3.connect(DB_PATH) as conn:
+    with _connect() as conn:
         rows = conn.execute(
             "SELECT id, name, created_at FROM presets WHERE structure_type = ? ORDER BY id DESC",
             (structure_type,),
@@ -180,7 +208,7 @@ def list_presets(structure_type: str) -> list[dict]:
 def load_preset_params(preset_id: int) -> dict:
     """Return the params dict for a preset by id."""
     init_presets()
-    with sqlite3.connect(DB_PATH) as conn:
+    with _connect() as conn:
         row = conn.execute(
             "SELECT params_json FROM presets WHERE id = ?", (preset_id,)
         ).fetchone()
@@ -192,5 +220,5 @@ def load_preset_params(preset_id: int) -> dict:
 def delete_preset(preset_id: int) -> None:
     """Delete a preset by id."""
     init_presets()
-    with sqlite3.connect(DB_PATH) as conn:
+    with _connect() as conn:
         conn.execute("DELETE FROM presets WHERE id = ?", (preset_id,))
