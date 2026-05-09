@@ -84,7 +84,10 @@ def generate_barlist(
     # ── 3. Merge identical rows ──────────────────────────────────────────
     all_bars = _merge_identical(all_bars)
 
-    # ── 3b. Populate Ref column from source_rule lookup ──────────────────
+    # ── 3b. Assign numeric marks to bent bars (400-series, 500-series…) ──
+    _apply_numeric_marks(all_bars)
+
+    # ── 3c. Populate Ref column from source_rule lookup ──────────────────
     _apply_refs(all_bars)
 
     # ── 4. Apply learned adjustments (Feature A) ─────────────────────────
@@ -265,6 +268,35 @@ _REF_MAP: dict[str, str] = {
     "rule_junction_floor_short":      "Caltrans D91 — floor transverse bars",
     "rule_validate_junction":         "Caltrans D91 — junction structure validation",
 }
+
+
+def _apply_numeric_marks(bars: list[BarRow]) -> None:
+    """
+    Assign sequential numeric marks to all non-straight bars, in list order.
+
+    Bar size drives the hundreds digit: #4 → 400-series, #5 → 500-series, etc.
+    Within each size, bars are numbered 0, 1, 2… in the order they appear in
+    the barlist (top to bottom as the estimator sees them).
+
+    Straight bars (shape == "Str") keep their original letter marks unchanged.
+
+    Examples:
+      First #4 bent bar  → mark="400"
+      Second #4 bent bar → mark="401"
+      First #5 bent bar  → mark="500"
+      First #6 bent bar  → mark="600"
+    """
+    counters: dict[int, int] = {}
+    for bar in bars:
+        if bar.shape == "Str":
+            continue
+        try:
+            size_num = int(bar.size.lstrip("#"))
+        except (ValueError, AttributeError):
+            continue   # unrecognised size — leave mark unchanged
+        n = counters.get(size_num, 0)
+        bar.mark = str(size_num * 100 + n)
+        counters[size_num] = n + 1
 
 
 def _apply_refs(bars: list[BarRow]) -> None:

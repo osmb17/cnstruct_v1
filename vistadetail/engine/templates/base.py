@@ -31,6 +31,7 @@ class BaseTemplate(ABC):
     # Rule function names in evaluation order (registered in RULE_REGISTRY)
     rules: list[str] = field(default_factory=list)
 
+
     def parse_and_validate(self, raw: dict) -> Params:
         """
         Validate and coerce a dict of raw user inputs.
