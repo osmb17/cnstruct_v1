@@ -317,13 +317,16 @@ def _inlet_defaults() -> dict:
 
 class TestGenerateInletBarlist:
     def test_returns_expected_marks(self, log):
-        """Default inlet params should produce the full G2 Inlet mark set."""
+        """Default inlet: straight bars keep letter marks; all bent bars get numeric marks."""
         bars = generate_barlist(INLET_TEMPLATE, _inlet_defaults(), log, call_ai=False)
         marks = {b.mark for b in bars}
-        assert marks == {
-            "A1", "B1", "BM1", "BM2", "H1", "H2", "H3", "H4",
-            "HP1", "RA1", "V1", "V2",
-        }
+        # Straight bars always keep their names
+        for m in ("BM1", "BM2", "V2"):
+            assert m in marks, f"Straight mark {m} missing"
+        # All non-straight bars must be numeric
+        for b in bars:
+            if b.shape != "Str":
+                assert b.mark.isdigit(), f"Non-straight bar '{b.mark}' not numbered"
 
     def test_returns_12_barrow_objects(self, log):
         bars = generate_barlist(INLET_TEMPLATE, _inlet_defaults(), log, call_ai=False)
@@ -343,14 +346,18 @@ class TestGenerateInletBarlist:
             generate_barlist(INLET_TEMPLATE, bad_params, log, call_ai=False)
 
     def test_corner_bars_no_excludes_C1(self, log):
-        """With corner_bars='no', C1 should not be produced."""
+        """With corner_bars='no', no extra corner bar rows should appear."""
         params = _inlet_defaults()
         params["corner_bars"] = "no"
         bars = generate_barlist(INLET_TEMPLATE, params, log, call_ai=False)
         marks = {b.mark for b in bars}
-        assert "C1" not in marks
-        assert "H1" in marks
-        assert "V1" in marks
+        # Straight bars still present
+        assert "BM1" in marks
+        assert "V2" in marks
+        # All non-straight bars numeric (no leftover letter marks like C1)
+        for b in bars:
+            if b.shape != "Str":
+                assert b.mark.isdigit(), f"Non-straight bar '{b.mark}' not numbered"
 
 
 class TestRefMapCoverage:
@@ -722,19 +729,19 @@ class TestCageHoopsConfinement:
 
 class TestGenerateCageBarlist:
     def test_standard_cage_returns_V1_H1(self, log):
-        """No confinement → exactly V1, H1."""
+        """No confinement → V1 (straight) + one #4 hoop (400)."""
         bars = generate_barlist(CAGE_TEMPLATE, CAGE_TEMPLATE.input_defaults(),
                                 log, call_ai=False)
         marks = {b.mark for b in bars}
-        assert marks == {"V1", "H1"}
+        assert marks == {"V1", "400"}
 
     def test_confinement_cage_returns_V1_H1_H2(self, log):
-        """With confinement → V1, H1, H2."""
+        """With confinement → V1 + two #4 hoops (400, 401)."""
         params = CAGE_TEMPLATE.input_defaults()
         params["has_confinement_zone"] = 1.0
         bars = generate_barlist(CAGE_TEMPLATE, params, log, call_ai=False)
         marks = {b.mark for b in bars}
-        assert marks == {"V1", "H1", "H2"}
+        assert marks == {"V1", "400", "401"}
 
     def test_all_bars_have_ref(self, log):
         """All cage bars must have a non-empty ref (ACI / SDC clause)."""
@@ -757,8 +764,8 @@ class TestGenerateCageBarlist:
         bar_map = {b.mark: b for b in bars}
         assert bar_map["V1"].qty == 4
         assert bar_map["V1"].length_in == pytest.approx(66.0)
-        assert bar_map["H1"].qty == 4
-        assert bar_map["H1"].length_in == pytest.approx(_math.pi * 30 + 36, abs=0.01)
+        assert bar_map["400"].qty == 4       # H1 → 400 (first #4 hoop)
+        assert bar_map["400"].length_in == pytest.approx(_math.pi * 30 + 36, abs=0.01)
 
 
 # ===========================================================================
@@ -1086,21 +1093,21 @@ import math as _m3
 
 class TestPipeEncasement:
     def test_hoop_length_formula(self, log):
-        """E1 hoop length = 2(W-2c) + 2(H-2c)."""
+        """Hoop length = 2(W-2c) + 2(H-2c). E1→500 (first #5 bent bar)."""
         params = PE_TEMPLATE.input_defaults()
         params.update({"encasement_width_in": 44.0, "encasement_height_in": 44.0,
                         "cover_in": 2.0})
         bars = generate_barlist(PE_TEMPLATE, params, log, call_ai=False)
-        e1 = next(b for b in bars if b.mark == "E1")
+        e1 = next(b for b in bars if b.mark == "500")   # E1 → 500 (#5 Rect)
         expected = 2 * (44.0 - 4.0) + 2 * (44.0 - 4.0)   # = 160 in
         assert e1.length_in == pytest.approx(expected)
 
     def test_hoop_qty_formula(self, log):
-        """E1 qty = floor(length_in / spacing)."""
+        """Hoop qty = floor(length_in / spacing). E1→500."""
         params = PE_TEMPLATE.input_defaults()
         params.update({"encasement_length_ft": 234.0, "hoop_spacing_in": 9.0})
         bars = generate_barlist(PE_TEMPLATE, params, log, call_ai=False)
-        e1 = next(b for b in bars if b.mark == "E1")
+        e1 = next(b for b in bars if b.mark == "500")
         expected = _m3.floor(234.0 * 12 / 9.0)
         assert e1.qty == expected
 
@@ -1108,7 +1115,7 @@ class TestPipeEncasement:
         bars = generate_barlist(PE_TEMPLATE, PE_TEMPLATE.input_defaults(),
                                 log, call_ai=False)
         marks = {b.mark for b in bars}
-        assert {"E1", "E2"}.issubset(marks)
+        assert {"500", "E2"}.issubset(marks)   # E1→500 (#5 bent), E2 straight
 
     def test_all_bars_have_ref(self, log):
         bars = generate_barlist(PE_TEMPLATE, PE_TEMPLATE.input_defaults(),
@@ -1132,7 +1139,7 @@ class TestPipeEncasement:
         }
         bars = generate_barlist(PE_TEMPLATE, params, log, call_ai=False)
         bar_map = {b.mark: b for b in bars}
-        assert bar_map["E1"].qty == _m3.floor(2808 / 9)
+        assert bar_map["500"].qty == _m3.floor(2808 / 9)   # E1 → 500 (#5 bent)
         assert bar_map["E2"].qty == 48          # 12 positions x 4 pieces (spliced run)
         assert bar_map["E2"].length_in == 720.0 # 60ft stock bar per piece
 
