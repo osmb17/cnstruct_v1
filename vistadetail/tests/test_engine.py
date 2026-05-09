@@ -1989,3 +1989,364 @@ class TestBoxCulvertGoldRCB8x6x20:
         """WS1 top tab = 4\" (0'-4\" on top)."""
         bars = rule_bc_well_spreaders(p, log)
         assert bars[0].leg_a_in == pytest.approx(4.0)
+
+
+# ===========================================================================
+# 17. G2 Expanded Inlet — Dane-confirmed formulas (D73A)
+# ===========================================================================
+
+from vistadetail.engine.rules.inlet_wall_rules import (
+    rule_g2exp_geometry,
+    rule_g2exp_verticals,
+    rule_g2exp_ab_bars,
+    rule_g2exp_hoops,
+    rule_g2exptop_geometry,
+    rule_g2exptop_verticals,
+)
+from vistadetail.engine.templates.g2_expanded_inlet import TEMPLATE as G2EXP_TEMPLATE
+from vistadetail.engine.templates.g2_expanded_inlet_top import TEMPLATE as G2EXPTOP_TEMPLATE
+
+
+def _g2exp_params(**overrides):
+    """Build Params for G2 Expanded Inlet with geometry pre-run."""
+    defaults = G2EXP_TEMPLATE.input_defaults()
+    defaults.update(overrides)
+    p = G2EXP_TEMPLATE.parse_and_validate(defaults)
+    from vistadetail.engine.reasoning_logger import ReasoningLogger
+    rule_g2exp_geometry(p, ReasoningLogger(sheet=None))
+    return p
+
+
+def _g2exptop_params(**overrides):
+    """Build Params for G2 Expanded Inlet Top with geometry pre-run."""
+    defaults = G2EXPTOP_TEMPLATE.input_defaults()
+    defaults.update(overrides)
+    p = G2EXPTOP_TEMPLATE.parse_and_validate(defaults)
+    from vistadetail.engine.reasoning_logger import ReasoningLogger
+    rule_g2exptop_geometry(p, ReasoningLogger(sheet=None))
+    return p
+
+
+# ---------------------------------------------------------------------------
+# Geometry — X=Y=5'-8"  T=9  H=5'-0"
+# ---------------------------------------------------------------------------
+
+class TestG2ExpInletGeometry:
+    """
+    Dane-confirmed geometry for X=Y=5'-8\" (68\"), T=9\", H=5'-0\".
+
+    x_inside = y_inside = 68 - 2*9 = 50\"
+    y_exp_ext = 96\" (8'-0\", fixed per D73A)
+    y_exp_inside = 96 - 2*9 = 78\"
+    h_adj = H_in + 2*T - 2*cover = 60 + 18 - 14 = 64\"  (5'-4\")
+    gut_dim = x_inside - T + cover = 50 - 9 + 3 = ... = 30\"  (2'-6\", confirmed)
+    notch_dim (E) = 96/2 - 18 - 5 = 25\"  (2'-1\")
+    notch_c_dim (C) = E - 2\" = 23\"  (1'-11\")
+    ab_bar_len = x_inside + 1.5 + 2*8 = 50 + 1.5 + 16 = 67.5\"
+    ab_bar_len_notch = y_exp_inside + 1.5 + 2*8 = 78 + 1.5 + 16 = 95.5\"
+    """
+
+    @pytest.fixture
+    def p(self):
+        return _g2exp_params(x_dim_ft=68/12, y_dim_ft=68/12,
+                             wall_height_ft=5.0, wall_thick_in=9,
+                             grate_type="Type 24", num_structures=1)
+
+    def test_x_y_ext(self, p):
+        assert p.x_ext_in == pytest.approx(68.0)
+        assert p.y_ext_in == pytest.approx(68.0)
+
+    def test_x_y_inside(self, p):
+        assert p.x_inside_in == pytest.approx(50.0)
+        assert p.y_inside_in == pytest.approx(50.0)
+
+    def test_y_exp_dims(self, p):
+        assert p.y_exp_ext_in == pytest.approx(96.0)    # fixed 8'-0" per D73A
+        assert p.y_exp_inside_in == pytest.approx(78.0) # 96 - 2*9
+
+    def test_h_adj(self, p):
+        assert p.h_adj == pytest.approx(64.0)  # 5'-4"
+
+    def test_gut_dim(self, p):
+        assert p.gut_dim == pytest.approx(30.0)  # 2'-6"
+
+    def test_notch_dims(self, p):
+        assert p.notch_dim == pytest.approx(25.0)    # E = 2'-1"
+        assert p.notch_c_dim == pytest.approx(23.0)  # C = E-2" = 1'-11"
+
+    def test_ab_bar_len_reg(self, p):
+        # B = x_inside + 1.5\" (past inside face) + 2*8\" tails = 67.5\"
+        assert p.ab_bar_len == pytest.approx(67.5)
+
+    def test_ab_bar_len_notch(self, p):
+        # B = y_exp_inside + 1.5\" + 2*8\" tails = 95.5\"
+        assert p.ab_bar_len_notch == pytest.approx(95.5)
+
+
+# ---------------------------------------------------------------------------
+# Verticals — V1 extra foot + V2 L-tail (Dane confirmed)
+# ---------------------------------------------------------------------------
+
+class TestG2ExpInletVerticals:
+    """
+    Dane-confirmed vertical bars for X=Y=5'-8\" T=9 H=5'-0\":
+      V1: shape=L, leg_a=h_adj+12\"=76\", leg_b=12\", total=88\" (7'-4\")
+      V2: shape=L, leg_a=h_adj=64\", leg_b=12\", total=76\" (6'-4\")
+      V1 qty = CEIL((x_inside*2 + y_inside + 6*T) / 5) = CEIL(198/5) = 40  [n/a — varies with X]
+      V2 qty = CEIL((y_inside + 2*T) / 5) = CEIL(68/5) = 14  [n/a — varies with Y]
+    """
+
+    @pytest.fixture
+    def p(self):
+        return _g2exp_params(x_dim_ft=68/12, y_dim_ft=68/12,
+                             wall_height_ft=5.0, wall_thick_in=9,
+                             grate_type="Type 24", num_structures=1)
+
+    def test_v1_shape_and_length(self, p, log):
+        """V1: L-shape, total = h_adj(64\") + 12\"(body extra) + 12\"(bend) = 88\"."""
+        bars = rule_g2exp_verticals(p, log)
+        v1 = next(b for b in bars if b.mark == "V1")
+        assert v1.shape == "L"
+        assert v1.length_in == pytest.approx(88.0)   # 7'-4"
+
+    def test_v1_legs(self, p, log):
+        """V1: leg_a = body = h_adj+12\" = 76\", leg_b = top bend = 12\"."""
+        bars = rule_g2exp_verticals(p, log)
+        v1 = next(b for b in bars if b.mark == "V1")
+        assert v1.leg_a_in == pytest.approx(76.0)    # 6'-4"
+        assert v1.leg_b_in == pytest.approx(12.0)    # 1'-0"
+
+    def test_v2_shape_and_length(self, p, log):
+        """V2: L-shape (grate side), total = h_adj(64\") + 12\"(tail) = 76\"."""
+        bars = rule_g2exp_verticals(p, log)
+        v2 = next(b for b in bars if b.mark == "V2")
+        assert v2.shape == "L"
+        assert v2.length_in == pytest.approx(76.0)   # 6'-4"
+
+    def test_v2_legs(self, p, log):
+        """V2: leg_a = h_adj = 64\", leg_b = 1'-0\" L-tail."""
+        bars = rule_g2exp_verticals(p, log)
+        v2 = next(b for b in bars if b.mark == "V2")
+        assert v2.leg_a_in == pytest.approx(64.0)    # 5'-4"
+        assert v2.leg_b_in == pytest.approx(12.0)    # 1'-0"
+
+    def test_v1_longer_than_v2(self, p, log):
+        """V1 is always 12\" longer than V2 (extra body foot)."""
+        bars = rule_g2exp_verticals(p, log)
+        v1 = next(b for b in bars if b.mark == "V1")
+        v2 = next(b for b in bars if b.mark == "V2")
+        assert v1.length_in - v2.length_in == pytest.approx(12.0)
+
+
+# ---------------------------------------------------------------------------
+# AB bars — B leg = interior clear + 1.5"
+# ---------------------------------------------------------------------------
+
+class TestG2ExpInletABBars:
+    """
+    AB bars for X=Y=5'-8\" T=9:
+      A1/B1 (reg):   leg_b = x_inside+1.5\" = 51.5\", tails 8\" each, total 67.5\"
+      A2/B2 (notch): leg_b = y_exp_inside+1.5\" = 79.5\", tails 8\" each, total 95.5\"
+    """
+
+    @pytest.fixture
+    def p(self):
+        return _g2exp_params(x_dim_ft=68/12, y_dim_ft=68/12,
+                             wall_height_ft=5.0, wall_thick_in=9,
+                             grate_type="Type 24", num_structures=1)
+
+    def test_a1_b_leg(self, p, log):
+        """A1 B leg = x_inside + 1.5\" = 50 + 1.5 = 51.5\"."""
+        bars = rule_g2exp_ab_bars(p, log)
+        a1 = next(b for b in bars if b.mark == "A1")
+        assert a1.leg_b_in == pytest.approx(51.5)
+
+    def test_a1_total_length(self, p, log):
+        """A1 total = 51.5 + 2*8\" tails = 67.5\"."""
+        bars = rule_g2exp_ab_bars(p, log)
+        a1 = next(b for b in bars if b.mark == "A1")
+        assert a1.length_in == pytest.approx(67.5)
+
+    def test_b1_same_length_as_a1(self, p, log):
+        """B1 shares the same B leg and total length as A1."""
+        bars = rule_g2exp_ab_bars(p, log)
+        a1 = next(b for b in bars if b.mark == "A1")
+        b1 = next(b for b in bars if b.mark == "B1")
+        assert b1.leg_b_in == pytest.approx(a1.leg_b_in)
+        assert b1.length_in == pytest.approx(a1.length_in)
+
+    def test_a2_b_leg_notch(self, p, log):
+        """A2 B leg = y_exp_inside + 1.5\" = 78 + 1.5 = 79.5\"."""
+        bars = rule_g2exp_ab_bars(p, log)
+        a2 = next(b for b in bars if b.mark == "A2")
+        assert a2.leg_b_in == pytest.approx(79.5)
+
+    def test_a2_total_length(self, p, log):
+        """A2 total = 79.5 + 2*8\" tails = 95.5\"."""
+        bars = rule_g2exp_ab_bars(p, log)
+        a2 = next(b for b in bars if b.mark == "A2")
+        assert a2.length_in == pytest.approx(95.5)
+
+    def test_tails_are_8in(self, p, log):
+        """All A/B bars: each tail (leg_a = leg_c) = 8\"."""
+        bars = rule_g2exp_ab_bars(p, log)
+        for b in bars:
+            assert b.leg_a_in == pytest.approx(8.0), f"{b.mark} tail wrong"
+            assert b.leg_c_in == pytest.approx(8.0), f"{b.mark} tail wrong"
+
+
+# ---------------------------------------------------------------------------
+# HP1 (S6 regular hoop) and HP2 (T14 notched hoop) — Dane confirmed
+# ---------------------------------------------------------------------------
+
+class TestG2ExpInletHoops:
+    """
+    Hoop bars for X=Y=5'-8\" T=9  (grate_type=Type 24):
+      HP1 (S6): gut=30\", stock=2*30+11.5=71.5\" (5'-11 4/8\"), qty=CEIL(96/5)=20
+      HP2 (T14 notched): E=25\", C=23\", stock=3*25+3=78\" (6'-6\"), qty=CEIL(68/5*2)=28
+        T14 fixed dims: B=4\"(step), D=8\"(side), G=5\"(end)
+        Leg mapping: leg_a=4\", leg_b=23\", leg_c=8\", leg_d=25\", leg_g=5\"
+
+    Reference: Dane Rios confirmed T14 formula and leg mapping.
+    """
+
+    @pytest.fixture
+    def p(self):
+        return _g2exp_params(x_dim_ft=68/12, y_dim_ft=68/12,
+                             wall_height_ft=5.0, wall_thick_in=9,
+                             grate_type="Type 24", num_structures=1)
+
+    # -- HP1 --
+    def test_hp1_shape(self, p, log):
+        bars = rule_g2exp_hoops(p, log)
+        hp1 = next(b for b in bars if b.mark == "HP1")
+        assert hp1.shape == "S6"
+
+    def test_hp1_stock(self, p, log):
+        """HP1 stock = 2*gut + 11.5\" = 71.5\"."""
+        bars = rule_g2exp_hoops(p, log)
+        hp1 = next(b for b in bars if b.mark == "HP1")
+        assert hp1.length_in == pytest.approx(71.5)
+
+    def test_hp1_qty(self, p, log):
+        """HP1 qty = CEIL(y_exp_ext / 5) = CEIL(96/5) = 20."""
+        bars = rule_g2exp_hoops(p, log)
+        hp1 = next(b for b in bars if b.mark == "HP1")
+        assert hp1.qty == 20
+
+    # -- HP2 --
+    def test_hp2_shape(self, p, log):
+        bars = rule_g2exp_hoops(p, log)
+        hp2 = next(b for b in bars if b.mark == "HP2")
+        assert hp2.shape == "T14"
+
+    def test_hp2_stock(self, p, log):
+        """HP2 stock = 3*E + 3\" = 3*25 + 3 = 78\" (6'-6\"). Dane confirmed."""
+        bars = rule_g2exp_hoops(p, log)
+        hp2 = next(b for b in bars if b.mark == "HP2")
+        assert hp2.length_in == pytest.approx(78.0)
+
+    def test_hp2_qty(self, p, log):
+        """HP2 qty = CEIL(x_ext / 5 * 2) = CEIL(68/5*2) = 28."""
+        bars = rule_g2exp_hoops(p, log)
+        hp2 = next(b for b in bars if b.mark == "HP2")
+        assert hp2.qty == 28
+
+    def test_hp2_leg_a_fixed_step(self, p, log):
+        """HP2 leg_a (T14 B) = 4\" fixed bottom step."""
+        bars = rule_g2exp_hoops(p, log)
+        hp2 = next(b for b in bars if b.mark == "HP2")
+        assert hp2.leg_a_in == pytest.approx(4.0)
+
+    def test_hp2_leg_b_notch_top(self, p, log):
+        """HP2 leg_b (T14 C) = E-2\" = 25-2 = 23\"."""
+        bars = rule_g2exp_hoops(p, log)
+        hp2 = next(b for b in bars if b.mark == "HP2")
+        assert hp2.leg_b_in == pytest.approx(23.0)
+
+    def test_hp2_leg_c_fixed_side(self, p, log):
+        """HP2 leg_c (T14 D) = 8\" fixed side."""
+        bars = rule_g2exp_hoops(p, log)
+        hp2 = next(b for b in bars if b.mark == "HP2")
+        assert hp2.leg_c_in == pytest.approx(8.0)
+
+    def test_hp2_leg_d_notch_depth(self, p, log):
+        """HP2 leg_d (T14 E) = notch_dim = 25\" = 2'-1\"."""
+        bars = rule_g2exp_hoops(p, log)
+        hp2 = next(b for b in bars if b.mark == "HP2")
+        assert hp2.leg_d_in == pytest.approx(25.0)
+
+    def test_hp2_leg_g_fixed_end(self, p, log):
+        """HP2 leg_g (T14 G) = 5\" fixed end."""
+        bars = rule_g2exp_hoops(p, log)
+        hp2 = next(b for b in bars if b.mark == "HP2")
+        assert hp2.leg_g_in == pytest.approx(5.0)
+
+    def test_hp2_e_varies_with_y_exp(self, p, log):
+        """E = y_exp_ext/2 - 18\" - 5\" = 48-18-5 = 25\" for standard grate."""
+        bars = rule_g2exp_hoops(p, log)
+        hp2 = next(b for b in bars if b.mark == "HP2")
+        assert hp2.leg_d_in == pytest.approx(25.0)
+
+
+# ---------------------------------------------------------------------------
+# G2 Expanded Inlet Top — verticals get L-tail, vert_height from wall_height_ft
+# ---------------------------------------------------------------------------
+
+class TestG2ExpInletTopVerticals:
+    """
+    G2 Expanded Inlet Top, X=Y=5'-8\" T=9 H=5'-11\" (71\"):
+      vert_height = H_in - h_adj_full + h_adj_top  ... from geometry rule
+      Confirmed vert_height = 30\" (2'-6\")
+      V1: shape=L, leg_a=vert_height=30\", leg_b=12\", total=42\" (3'-6\")
+      V2: shape=L, leg_a=vert_height=30\", leg_b=12\", total=42\" (3'-6\")
+    """
+
+    @pytest.fixture
+    def p(self):
+        return _g2exptop_params(x_dim_ft=68/12, y_dim_ft=68/12,
+                                wall_height_ft=71/12, wall_thick_in=9,
+                                grate_type="Type 24", num_structures=1)
+
+    def test_vert_height(self, p):
+        """vert_height = 30\" (2'-6\") for H=71\"."""
+        assert p.vert_height == pytest.approx(30.0)
+
+    def test_v1_shape_and_length(self, p, log):
+        """V1: L-shape, total = vert_height(30\") + 12\"(bend) = 42\"."""
+        bars = rule_g2exptop_verticals(p, log)
+        v1 = next(b for b in bars if b.mark == "V1")
+        assert v1.shape == "L"
+        assert v1.length_in == pytest.approx(42.0)   # 3'-6"
+
+    def test_v1_legs(self, p, log):
+        """V1: leg_a = vert_height = 30\", leg_b = 12\"."""
+        bars = rule_g2exptop_verticals(p, log)
+        v1 = next(b for b in bars if b.mark == "V1")
+        assert v1.leg_a_in == pytest.approx(30.0)
+        assert v1.leg_b_in == pytest.approx(12.0)
+
+    def test_v2_shape_and_length(self, p, log):
+        """V2: L-shape (1'-0\" tail), total = vert_height(30\") + 12\" = 42\"."""
+        bars = rule_g2exptop_verticals(p, log)
+        v2 = next(b for b in bars if b.mark == "V2")
+        assert v2.shape == "L"
+        assert v2.length_in == pytest.approx(42.0)   # 3'-6"
+
+    def test_v2_l_tail(self, p, log):
+        """V2 leg_b = 12\" (L-tail, not straight)."""
+        bars = rule_g2exptop_verticals(p, log)
+        v2 = next(b for b in bars if b.mark == "V2")
+        assert v2.leg_b_in == pytest.approx(12.0)
+
+    def test_top_shares_hp2_formula(self, p, log):
+        """HP2 T14 stock = 3*E+3 same formula regardless of top vs full unit."""
+        bars = rule_g2exp_hoops(p, log)
+        hp2 = next(b for b in bars if b.mark == "HP2")
+        E = p.notch_dim
+        assert hp2.length_in == pytest.approx(3 * E + 3)
+
+    def test_top_y_input_propagates(self, p):
+        """y_dim_ft input is read by geometry (not hardcoded)."""
+        assert p.y_ext_in == pytest.approx(68.0)   # from user input, not hardcoded
+        assert p.y_exp_ext_in == pytest.approx(96.0)  # 8'-0\" remains fixed per D73A

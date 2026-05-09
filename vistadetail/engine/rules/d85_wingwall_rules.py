@@ -166,7 +166,7 @@ def rule_d85_l_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     return [
         BarRow(mark="L1", size=size, qty=cnt,
                length_in=length, shape="Str",
-               notes=f"Concentrated L-bars per D85 table, {cnt}/wall, len incl 2'-0\" lap",
+               notes="Concentrated L-bars per D85 table, incl 2'-0\" lap",
                source_rule="rule_d85_l_bars"),
     ]
 

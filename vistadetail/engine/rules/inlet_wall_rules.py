@@ -872,11 +872,7 @@ def rule_g2exp_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
             leg_c_in=8.0,   # T14 D = 8" (fixed side)
             leg_d_in=e,     # T14 E = notch depth (variable)
             leg_g_in=5.0,   # T14 G = 5" (fixed end)
-            notes=(
-                f"Notched Hoops @5oc T14  "
-                f"B=4\"(fixed)  C=E-2\"={fmt_inches(c)}  D=8\"(fixed)  "
-                f"E={fmt_inches(e)}(Y_exp/2-18\"-5\")  F=6\"(fixed)  G=5\"(fixed)"
-            ),
+            notes="Notched hoops @5\" oc (T14)",
             source_rule="rule_g2exp_hoops",
         ))
 

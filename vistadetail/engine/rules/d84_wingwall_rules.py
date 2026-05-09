@@ -120,7 +120,7 @@ def rule_d84_parapet_face(p, log: ReasoningLogger) -> list[BarRow]:
     total = qty_per_face * 2   # both faces
     return [BarRow(
         mark="P1", size="#5", qty=total, length_in=lol_in, shape="Str",
-        notes=f"Parapet face bars @8\" oc EF  {_PARAPET_HT_IN:.0f}\" parapet zone  {qty_per_face}/face × 2",
+        notes="Parapet face bars @8\" oc EF",
         source_rule="rule_d84_parapet_face",
     )]
 
@@ -159,7 +159,7 @@ def rule_d84_lower_face(p, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="V1", size="#5", qty=total, length_in=lol_in, shape="Str",
-        notes=f"Lower zone face bars @6\" oc EF  {_LOWER_ZONE_HT_IN:.0f}\" zone near footing",
+        notes="Lower zone face bars @6\" oc EF",
         source_rule="rule_d84_lower_face",
     )]
 
@@ -260,10 +260,10 @@ def rule_d84_footing_mat(p, log: ReasoningLogger) -> list[BarRow]:
 
     return [
         BarRow(mark="B1", size="#6", qty=qty_trans, length_in=ftg_w_in, shape="Str",
-               notes=f"Footing transverse #6@4±\" oc  ftg width={fmt_inches(ftg_w_in)}",
+               notes="Footing transverse #6 @4±\" oc",
                source_rule="rule_d84_footing_mat"),
         BarRow(mark="B2", size="#6", qty=qty_long, length_in=lol_in, shape="Str",
-               notes=f"Footing longitudinal #6@4±\" oc  len=LOL={fmt_inches(lol_in)}",
+               notes="Footing longitudinal #6 @4±\" oc",
                source_rule="rule_d84_footing_mat"),
     ]
 
@@ -286,6 +286,8 @@ def rule_d84_box_ties(p, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="BO", size="#4", qty=qty, length_in=tie_len, shape="L",
+        leg_a_in=9.0,   # wall thickness (main body into box wall)
+        leg_b_in=12.0,  # hook development leg
         notes="Box wall connection ties #4 Tot 3  (Detail X, neoprene strip junction)",
         source_rule="rule_d84_box_ties",
     )]

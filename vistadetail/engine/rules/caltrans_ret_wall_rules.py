@@ -304,7 +304,7 @@ def rule_ct_rw_dowels(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="CW7", size=c_size, qty=qty, length_in=bar_len,
-        shape="Str", notes=f"stem-ftg dowels, {lap_db}db lap (B3-1)",
+        shape="Str", notes="Stem-footing dowels (B3-1)",
         source_rule="rule_ct_rw_dowels",
     )]
 

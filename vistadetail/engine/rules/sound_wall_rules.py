@@ -27,8 +27,40 @@ from __future__ import annotations
 
 import math
 
+from vistadetail.engine.hooks import development_length_tension
 from vistadetail.engine.reasoning_logger import ReasoningLogger
 from vistadetail.engine.schema import BarRow, Params, fmt_inches
+
+_MAX_STOCK_IN = 60 * 12  # 60'-0" max fabricated length
+
+
+def _split_bar(total_run_in: float, bar_size: str, qty_per_run: int,
+               mark: str, cover_in: float, label: str, log: ReasoningLogger,
+               source: str) -> tuple[int, float, str]:
+    """
+    Return (qty, bar_len_in, notes) for a bar that may need stock-length splicing.
+
+    If total_run_in <= 60'-0", returns a single bar.
+    Otherwise splits with Class B lap (1.3 × ld), multiplying qty accordingly.
+    """
+    if total_run_in <= _MAX_STOCK_IN:
+        notes = f"{label}"
+        log.step(f"{mark}: {fmt_inches(total_run_in)} <= 60' — single piece",
+                 source=source)
+        return qty_per_run, total_run_in, notes
+
+    ld_in = development_length_tension(bar_size, cover_in=cover_in)
+    lap_in = math.ceil(1.3 * ld_in)
+    effective = _MAX_STOCK_IN - lap_in
+    n_pieces = math.ceil(total_run_in / effective)
+    qty = qty_per_run * n_pieces
+    notes = f"{label} (spliced, {lap_in}\" Class B lap)"
+    log.step(
+        f"{mark}: {fmt_inches(total_run_in)} > 60' — {n_pieces} pieces × "
+        f"{qty_per_run} = {qty} bars @ 60'-0\" (lap={lap_in}\")",
+        source=source,
+    )
+    return qty, float(_MAX_STOCK_IN), notes
 
 
 # ---------------------------------------------------------------------------
@@ -231,24 +263,27 @@ def rule_sw_wall_horizontals(p: Params, log: ReasoningLogger) -> list[BarRow]:
     bond_beam_spacing = 48.0  # inches
     n_bond_beams = math.floor(wall_ht_in / bond_beam_spacing) + 1
 
-    # #5 continuous at each bond beam per B15-1/3
-    bar_len = wall_len_in - 2 * 2.0
-    # 2 bars per bond beam (continuous #5 at each bond beam)
-    qty = n_bond_beams * 2
-
+    # 2 bars per bond beam (continuous at each bond beam, B15-1/3)
     c_size = tbl["c_size"]
+    total_run = wall_len_in - 2 * 2.0
+    qty_per_beam_pair = n_bond_beams * 2
 
     log.step(
         f"Bond beams: top + every 4'-0\" = {n_bond_beams} beams, "
-        f"2x {c_size} per beam = {qty} bars",
+        f"2x {c_size} per beam = {qty_per_beam_pair} runs @ {fmt_inches(total_run)}",
         source="SoundWallRules",
+    )
+    qty, bar_len, notes = _split_bar(
+        total_run, c_size, qty_per_beam_pair, "WH1",
+        cover_in=2.0, label=f"bond beam c-bars {n_bond_beams} beams (B15-1)",
+        log=log, source="SoundWallRules",
     )
     log.result("WH1", f"{c_size} x {qty} @ {fmt_inches(bar_len)}",
                source="SoundWallRules")
 
     return [BarRow(
         mark="WH1", size=c_size, qty=qty, length_in=bar_len,
-        shape="Str", notes=f"bond beam c-bars, {n_bond_beams} beams (B15-1)",
+        shape="Str", notes=notes,
         source_rule="rule_sw_wall_horizontals",
     )]
 
@@ -334,16 +369,18 @@ def rule_sw_footing_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
             source_rule="rule_sw_footing_bars",
         ))
 
-        # Longitudinal bars: #4 Tot 2 top, #4 Tot 2 bottom = 4 total
-        long_len = wall_len_in - 2 * 2.0
-        long_qty = 4
-
-        log.step(f"FL1: #4 Tot 4 longitudinal @ {fmt_inches(long_len)}", source="SoundWallRules")
-        log.result("FL1", f"#4 x {long_qty} @ {fmt_inches(long_len)}", source="SoundWallRules")
+        # Longitudinal bars: #4 Tot 2 top, #4 Tot 2 bottom = 4 total (spliced if > 60')
+        fl1_run = wall_len_in - 2 * 2.0
+        fl1_qty, fl1_len, fl1_notes = _split_bar(
+            fl1_run, "#4", 4, "FL1",
+            cover_in=2.0, label="footing longitudinal (B15-1)",
+            log=log, source="SoundWallRules",
+        )
+        log.result("FL1", f"#4 x {fl1_qty} @ {fmt_inches(fl1_len)}", source="SoundWallRules")
 
         bars.append(BarRow(
-            mark="FL1", size="#4", qty=long_qty, length_in=long_len,
-            shape="Str", notes="footing longitudinal (B15-1)",
+            mark="FL1", size="#4", qty=fl1_qty, length_in=fl1_len,
+            shape="Str", notes=fl1_notes,
             source_rule="rule_sw_footing_bars",
         ))
 
@@ -352,24 +389,29 @@ def rule_sw_footing_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
         depth_in = _TRENCH_DEPTH.get(case, _TRENCH_DEPTH["case_1"]).get(h, 81)
 
         # Trench footing: #4 @ 12 max horizontally, #4 @ 12 max vertically
-        # Horizontal trench bars along wall length
-        horiz_qty = math.floor(depth_in / 12.0) + 1
-        horiz_len = wall_len_in - 2 * 2.0
+        # Horizontal trench bars along wall length (spliced if > 60')
+        horiz_per_run = math.floor(depth_in / 12.0) + 1
+        horiz_run = wall_len_in - 2 * 2.0
 
         log.step(
             f"Trench footing D = {fmt_inches(depth_in)} ({case}, H={h}')",
             source="SoundWallRules",
         )
         log.step(
-            f"FT1: #4 @ 12\" horizontal in trench, {horiz_qty} bars",
+            f"FT1: #4 @ 12\" horizontal in trench, {horiz_per_run} rows @ {fmt_inches(horiz_run)}",
             source="SoundWallRules",
         )
-        log.result("FT1", f"#4 x {horiz_qty} @ {fmt_inches(horiz_len)}",
+        ft1_qty, ft1_len, ft1_notes = _split_bar(
+            horiz_run, "#4", horiz_per_run, "FT1",
+            cover_in=2.0, label="trench horizontal @ 12\" oc (B15-1)",
+            log=log, source="SoundWallRules",
+        )
+        log.result("FT1", f"#4 x {ft1_qty} @ {fmt_inches(ft1_len)}",
                    source="SoundWallRules")
 
         bars.append(BarRow(
-            mark="FT1", size="#4", qty=horiz_qty, length_in=horiz_len,
-            shape="Str", notes=f"trench horizontal @ 12\" oc (B15-1)",
+            mark="FT1", size="#4", qty=ft1_qty, length_in=ft1_len,
+            shape="Str", notes=ft1_notes,
             source_rule="rule_sw_footing_bars",
         ))
 
@@ -435,7 +477,7 @@ def rule_sw_pile_cage(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     bars.append(BarRow(
         mark="PL1", size=pile_size, qty=total_long, length_in=pile_len_in,
-        shape="Str", notes=f"CIDH pile longitudinal, {n_piles} piles (B15-5)",
+        shape="Str", notes="CIDH pile longitudinal (B15-5)",
         source_rule="rule_sw_pile_cage",
     ))
 
