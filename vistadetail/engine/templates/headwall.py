@@ -20,7 +20,7 @@ class HeadwallTemplate(BaseTemplate):
 
         self.inputs = [
             InputField(
-                "wall_width_ft", float, label="Wall Width (ft)",
+                "wall_width_ft", float, label="Wall Length (ft)",
                 min=4.0, max=30.0, default=8.0,
                 group="Geometry",
                 hint="Total wall length (parallel to pipe axis)",
