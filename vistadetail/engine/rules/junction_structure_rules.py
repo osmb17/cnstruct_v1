@@ -191,10 +191,7 @@ def rule_junc_a_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
         BarRow(
             mark="JA2S", size=a_s, qty=qty_bs, length_in=body,
             shape="Str",
-            notes=(
-                f"Bottom slab 'a' bars @{a_sp}\" oc (straight)  "
-                f"floor({outer_bs}\"/{a_sp})={qty_bs}  B(={fmt_inches(body)})"
-            ),
+            notes=f"Bottom slab 'a' bars @{a_sp}\" oc (straight)",
             source_rule="rule_junc_a_bars",
         ),
         # --- Bottom slab U-bars ---
@@ -204,20 +201,14 @@ def rule_junc_a_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
             leg_a_in=leg,
             leg_b_in=body,
             leg_g_in=leg,
-            notes=(
-                f"Bottom slab 'a' bars @{a_sp}\" oc (U-bar, 1'-0\" tails)  "
-                f"A(={leg:.0f}\") + B(={fmt_inches(body)}) + G(={leg:.0f}\") − {deduct}\" = {fmt_inches(len_u)}"
-            ),
+            notes=f"Bottom slab 'a' bars @{a_sp}\" oc (U-bar, 1'-0\" tails)",
             source_rule="rule_junc_a_bars",
         ),
         # --- Top slab straight bars ---
         BarRow(
             mark="JA1S", size=a_s, qty=qty_ts, length_in=body,
             shape="Str",
-            notes=(
-                f"Top slab 'a' bars @{a_sp}\" oc (straight)  MH seat +{2*_MH_SEAT_EXT_IN}\"  "
-                f"floor({outer_ts}\"/{a_sp})={qty_ts}  B(={fmt_inches(body)})"
-            ),
+            notes=f"Top slab 'a' bars @{a_sp}\" oc (straight)",
             source_rule="rule_junc_a_bars",
         ),
         # --- Top slab U-bars ---
@@ -227,10 +218,7 @@ def rule_junc_a_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
             leg_a_in=leg,
             leg_b_in=body,
             leg_g_in=leg,
-            notes=(
-                f"Top slab 'a' bars @{a_sp}\" oc (U-bar, 1'-0\" tails)  MH seat +{2*_MH_SEAT_EXT_IN}\"  "
-                f"A(={leg:.0f}\") + B(={fmt_inches(body)}) + G(={leg:.0f}\") − {deduct}\" = {fmt_inches(len_u)}"
-            ),
+            notes=f"Top slab 'a' bars @{a_sp}\" oc (U-bar, 1'-0\" tails)",
             source_rule="rule_junc_a_bars",
         ),
     ]
@@ -278,10 +266,7 @@ def rule_junc_e_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="JE1", size=e_s, qty=qty, length_in=bar_len,
         shape="Str",
-        notes=(
-            f"Wall exterior 'e' bars @{e_sp}\" oc  "
-            f"floor((S+2t)/{e_sp})={qty}  len=ts+Hb+bs-6={fmt_inches(bar_len)}"
-        ),
+        notes=f"Wall exterior 'e' bars @{e_sp}\" oc",
         source_rule="rule_junc_e_bars",
     )]
 
@@ -340,12 +325,7 @@ def rule_junc_b_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
         leg_a_in=float(B),   # A dim — slab lap into bottom slab
         leg_b_in=body,       # B dim — vertical body (ts+Hb+bs-6)
         leg_g_in=float(B),   # G dim — slab lap into top slab
-        notes=(
-            f"Wall interior 'b' bars @{b_sp}\" oc  "
-            f"floor((S+2t)/{b_sp})={qty}  "
-            f"body=ts+Hb+bs-6={fmt_inches(body)}  B={fmt_inches(B)}  "
-            f"body+2B-deduct={fmt_inches(bar_len)}"
-        ),
+        notes=f"Wall interior 'b' bars @{b_sp}\" oc",
         source_rule="rule_junc_b_bars",
     )]
 
@@ -407,10 +387,7 @@ def rule_junc_add_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="JX1", size="#4", qty=qty, length_in=bar_len,
         shape="Str",
-        notes=(
-            f"Addl 'a' bars at pipe openings (Note 12)  "
-            + "  |  ".join(pipe_details)
-        ),
+        notes="Additional 'a' bars at pipe openings (Note 12)",
         source_rule="rule_junc_add_bars",
     )]
 
@@ -497,29 +474,19 @@ def rule_junc_slab_longs(p: Params, log: ReasoningLogger) -> list[BarRow]:
         BarRow(
             mark="JD1", size="#4", qty=qty_bs, length_in=long_len,
             shape="Str",
-            notes=(
-                f"Bottom slab long. bars EF @{_SLAB_LONG_SP_IN}\"oc  "
-                f"2×(floor({outer:.0f}/{_SLAB_LONG_SP_IN})+1)={qty_bs}  "
-                f"len=S-6\"={fmt_inches(long_len)}"
-            ),
+            notes=f"Bottom slab long. bars EF @{_SLAB_LONG_SP_IN}\" oc",
             source_rule="rule_junc_slab_longs",
         ),
         BarRow(
             mark="JL1", size="#4", qty=qty_ts_inner, length_in=long_len,
             shape="Str",
-            notes=(
-                f"Top slab inner-face long. @{_TS_INNER_SP_IN}\"oc  "
-                f"floor({outer:.0f}/{_TS_INNER_SP_IN})={qty_ts_inner}  len={fmt_inches(long_len)}"
-            ),
+            notes=f"Top slab inner-face long. @{_TS_INNER_SP_IN}\" oc",
             source_rule="rule_junc_slab_longs",
         ),
         BarRow(
             mark="JL2", size="#4", qty=qty_ts_outer, length_in=long_len,
             shape="Str",
-            notes=(
-                f"Top slab outer-face long. @{_TS_OUTER_SP_IN}\"oc  "
-                f"floor({outer:.0f}/{_TS_OUTER_SP_IN})+1={qty_ts_outer}  len={fmt_inches(long_len)}"
-            ),
+            notes=f"Top slab outer-face long. @{_TS_OUTER_SP_IN}\" oc",
             source_rule="rule_junc_slab_longs",
         ),
     ]
@@ -567,12 +534,7 @@ def rule_junc_wall_horiz(p: Params, log: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="JC1", size="#4", qty=qty_total, length_in=long_len,
         shape="Str",
-        notes=(
-            f"Wall horiz. bars @{_WALL_HORIZ_SP_IN}\"oc EF  "
-            f"span=Hb+2×{_WALL_HORIZ_EXT_IN}\"={horiz_span}\"  "
-            f"2 walls × 2 curtains × {qty_per_curtain}={qty_total}  "
-            f"len=S-6\"={fmt_inches(long_len)}"
-        ),
+        notes=f"Wall horiz. bars @{_WALL_HORIZ_SP_IN}\" oc EF",
         source_rule="rule_junc_wall_horiz",
     )]
 
@@ -638,25 +600,19 @@ def rule_junc_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
         BarRow(
             mark="JMH", size="#6", qty=2, length_in=mh_stock,
             shape="Rng",
-            notes=(
-                f"Manhole hoops — OD={fmt_inches(_MH_OD_IN)}  Lap={fmt_inches(_MH_LAP_IN)}  "
-                f"stock=π×OD+Lap={fmt_inches(mh_stock)}"
-            ),
+            notes="Manhole hoops",
             source_rule="rule_junc_hoops",
         ),
         BarRow(
             mark="JPH", size="#6", qty=2, length_in=pipe_stock,
             shape="Rng",
-            notes=(
-                f"Pipe-opening hoops — D_max={d_max}\"  OD={fmt_inches(pipe_od)}  Lap={fmt_inches(_MH_LAP_IN)}  "
-                f"stock=π×OD+Lap={fmt_inches(pipe_stock)}"
-            ),
+            notes="Pipe-opening hoops",
             source_rule="rule_junc_hoops",
         ),
         BarRow(
             mark="JME", size="#6", qty=4, length_in=long_len,
             shape="Str",
-            notes=f"Extra #6 bars flanking manhole in top slab — 4 bars @ {fmt_inches(long_len)}",
+            notes="Extra #6 bars flanking manhole in top slab",
             source_rule="rule_junc_hoops",
         ),
     ]

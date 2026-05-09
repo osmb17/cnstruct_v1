@@ -226,7 +226,7 @@ def rule_hw_trans_footing(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="TF", size="#4", qty=qty, length_in=length, shape="Str",
-        notes=f"Trans footing @12\" oc  B+F={fmt_inches(length)}",
+        notes="Transverse footing @12\" oc",
         source_rule="rule_hw_trans_footing",
     )]
 
@@ -265,7 +265,7 @@ def rule_hw_d_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="D1", size=d_size, qty=qty, length_in=length, shape="Str",
-        notes=f"D bars @8\" oc{'  no-pipe+1' if no_pipe else ''}  B+F={fmt_inches(length)}",
+        notes="Top invert D bars @8\" oc",
         source_rule="rule_hw_d_bars",
     )]
 
@@ -317,10 +317,9 @@ def rule_hw_long_invert(p: Params, log: ReasoningLogger) -> list[BarRow]:
     log.result("LI", f"#4 × {qty} @ {fmt_inches(length)}", source="HeadwallRules")
 
     if no_pipe:
-        li_notes = "Long footing  TABLE (no-pipe)"
+        li_notes = "Long footing bars (table)"
     else:
-        H1_str = fmt_inches(float(int(H) + 12))
-        li_notes = f'Long footing @6" oc  H1={H1_str}'
+        li_notes = "Long footing bars @6\" oc"
     return [BarRow(
         mark="LI", size="#4", qty=qty, length_in=length, shape="Str",
         notes=li_notes,
@@ -363,7 +362,7 @@ def rule_hw_pipe_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="PH", size="#6", qty=qty, length_in=length, shape="Rng",
-        notes=f"Pipe hoop mk600  OD={fmt_inches(float(OD_in))}  lap=3'-0\"",
+        notes="Pipe hoop mk600",
         source_rule="rule_hw_pipe_hoops",
     )]
 
@@ -446,14 +445,7 @@ def rule_hw_vert_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
              source="HeadwallRules")
     log.result("VW", f"#4 × {qty} @ {fmt_inches(length)}", source="HeadwallRules")
 
-    if no_pipe:
-        vw_notes = (
-            f"H(={H:.0f}\") + F(={row['F']}\") + 7\"(hook) = {fmt_inches(length)}"
-        )
-    else:
-        vw_notes = (
-            f"ceil((H(={H:.0f}\")+18)/6)×6 = {fmt_inches(length)}"
-        )
+    vw_notes = "Vertical wall bars"
     return [BarRow(
         mark="VW", size="#4", qty=qty, length_in=length, shape="Str",
         notes=vw_notes,
@@ -525,10 +517,7 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
             f"R={R}\"  stock={fmt_inches(stock)}  qty=L//12+1={qty}",
             source="HeadwallRules",
         )
-        notes = (
-            f"D(={fmt_inches(body)}) + B(=3\" hook) "
-            f"+ C(=F+3={fmt_inches(C_leg)}) + R(={fmt_inches(R)})  @{c_spc}\" oc"
-        )
+        notes = f"J-bar @{c_spc}\" oc"
     else:
         cnts  = _count_lookup(D_in, int(H))
         qty   = cnts["c_bar"]
@@ -542,10 +531,7 @@ def rule_hw_c_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
             f"R={R}\"  stock={fmt_inches(stock)}  qty=TABLE={qty}",
             source="HeadwallRules",
         )
-        notes = (
-            f"D(={fmt_inches(body)}) + B(=T+3={fmt_inches(B_leg)}) "
-            f"+ C(=T+3={fmt_inches(C_leg)}) + R(={fmt_inches(R)})  @{c_spc}\" oc"
-        )
+        notes = f"C-bar (hairpin) @{c_spc}\" oc"
 
     log.result("CB", f"{c_size} × {qty} @ {fmt_inches(stock)}  @{c_spc}\" oc",
                source="HeadwallRules")
@@ -592,7 +578,7 @@ def rule_hw_long_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="LW", size="#4", qty=qty, length_in=length, shape="Str",
-        notes=f"Long wall  TABLE  len=L-{'4' if no_pipe else '6'}={fmt_inches(length)}",
+        notes="Long wall bars (table)",
         source_rule="rule_hw_long_wall",
     )]
 
@@ -624,7 +610,7 @@ def rule_hw_top_wall(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
     return [BarRow(
         mark="TW", size="#5", qty=qty, length_in=length, shape="Str",
-        notes=f"Top of wall #5 Tot 3  L-{'4' if no_pipe else '6'}={fmt_inches(length)}",
+        notes="Top of wall #5 Tot 3",
         source_rule="rule_hw_top_wall",
     )]
 
@@ -687,11 +673,7 @@ def rule_hw_spreaders(p: Params, log: ReasoningLogger) -> list[BarRow]:
             mark="WS", size="#4", qty=qty, length_in=stock, shape="U",
             leg_a_in=None, leg_b_in=B_leg, leg_c_in=C_leg,
             leg_d_in=D_span, leg_g_in=C_leg,
-            notes=(
-                f"B(={fmt_inches(B_leg)}) + C(=T-5={fmt_inches(C_leg)}) "
-                f"+ D(={fmt_inches(D_span)}) + E(={fmt_inches(C_leg)}) "
-                f"+ F(={fmt_inches(B_leg)})  [sym]  mk401"
-            ),
+            notes="Wall spreader mk401",
             source_rule="rule_hw_spreaders",
         )]
     else:
@@ -709,7 +691,7 @@ def rule_hw_spreaders(p: Params, log: ReasoningLogger) -> list[BarRow]:
         return [BarRow(
             mark="WS", size="#4", qty=qty, length_in=stock, shape="U",
             leg_a_in=body, leg_b_in=leg, leg_c_in=leg,
-            notes=f"Wall spreader mk401  body={fmt_inches(body)}  legs={fmt_inches(leg)}",
+            notes="Wall spreader mk401",
             source_rule="rule_hw_spreaders",
         )]
 
@@ -790,11 +772,7 @@ def rule_hw_standees(p: Params, log: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="ST", size=size, qty=qty, length_in=stock, shape="S",
         leg_a_in=None, leg_b_in=seg_a, leg_c_in=seg_b, leg_d_in=seg_d, leg_g_in=seg_c,
-        notes=(
-            f"B(={fmt_inches(seg_a)}) + C(={fmt_inches(seg_b)}) "
-            f"+ D(={fmt_inches(seg_d)}) + E(={fmt_inches(seg_c)}) "
-            f"+ F(={fmt_inches(seg_a)})  [sym]  base={fmt_inches(seg_d)}"
-        ),
+        notes="Mat standee mk400",
         source_rule="rule_hw_standees",
     )]
 

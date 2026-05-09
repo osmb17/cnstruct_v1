@@ -88,7 +88,7 @@ def rule_cage_verticals(p: Params, log: ReasoningLogger) -> list[BarRow]:
         qty=qty,
         length_in=bar_len,
         shape="Str",
-        notes=f"cage verticals, {_EMBED_IN:.0f}in bot. embed",
+        notes="Cage verticals",
         source_rule="rule_cage_verticals",
     )]
 
@@ -144,7 +144,7 @@ def rule_cage_hoops_standard(p: Params, log: ReasoningLogger) -> list[BarRow]:
         qty=qty,
         length_in=ring_len,
         shape="Rng",
-        notes=f"hoops @{int(p.ring_spacing_in)}oc, OD={fmt_inches(OD_in)}, lap={fmt_inches(_LAP_FT*12)}",
+        notes=f"Hoops @{int(p.ring_spacing_in)}\" oc",
         source_rule="rule_cage_hoops_standard",
     )]
 
@@ -197,10 +197,7 @@ def rule_cage_hoops_confinement(p: Params, log: ReasoningLogger) -> list[BarRow]
         qty=qty,
         length_in=ring_len,
         shape="Rng",
-        notes=(
-            f"confinement hoops @{int(_CONF_SPC)}oc, "
-            f"top {fmt_inches(conf_in)}, OD={fmt_inches(OD_in)}"
-        ),
+        notes=f"Confinement hoops @{int(_CONF_SPC)}\" oc",
         source_rule="rule_cage_hoops_confinement",
     )]
 

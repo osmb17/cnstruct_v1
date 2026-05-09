@@ -334,14 +334,14 @@ def rule_bc_a_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
             mark="A1", size=a_size, qty=qty, length_in=len_inv,
             shape="C",
             leg_a_in=_J_INV, leg_b_in=_A_LEG, leg_c_in=B_flat,
-            notes=f"Invert a-bars @{a_sp}\" oc  J={_J_INV}\" A={fmt_inches(_A_LEG)} B={fmt_inches(B_flat)}",
+            notes=f"Invert a-bars @{a_sp}\" oc",
             source_rule="rule_bc_a_bars",
         ),
         BarRow(
             mark="A2", size=a_size, qty=qty, length_in=len_roof,
             shape="C",
             leg_a_in=_J_ROOF, leg_b_in=_A_LEG, leg_c_in=B_flat,
-            notes=f"Roof a-bars @{a_sp}\" oc  J={_J_ROOF}\" A={fmt_inches(_A_LEG)} B={fmt_inches(B_flat)}",
+            notes=f"Roof a-bars @{a_sp}\" oc",
             source_rule="rule_bc_a_bars",
         ),
     ]
@@ -385,7 +385,7 @@ def rule_bc_b_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
         mark="B1", size=b_size, qty=qty, length_in=bar_len,
         shape="L",
         leg_a_in=long_leg, leg_b_in=short_leg,
-        notes=f"Wall b-bars @{b_sp}\" oc  A={fmt_inches(long_leg)} B={fmt_inches(short_leg)}",
+        notes=f"Wall b-bars @{b_sp}\" oc",
         source_rule="rule_bc_b_bars",
     )]
 
@@ -423,7 +423,7 @@ def rule_bc_e_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="E1", size=e_size, qty=qty, length_in=bar_len,
         shape="Str",
-        notes=f"Vertical e-bars @{e_sp}\" oc  T1+H+T3-6={fmt_inches(bar_len)}",
+        notes=f"Vertical e-bars @{e_sp}\" oc",
         source_rule="rule_bc_e_bars",
     )]
 
@@ -475,7 +475,7 @@ def rule_bc_h_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     )
     logger.result("H1", f"#4 x {qty} @ {fmt_inches(bar_len)}", source="BoxCulvertRules")
 
-    notes = f"h-bars #4 @12\" vert  4 faces x {bars_per_face}/face  len={fmt_inches(bar_len)}"
+    notes = "h-bars #4 @12\" vert  4 faces"
     if n_notch:
         notes += f"  (2'-0\" ext. per D84, {n_notch} wingwall end(s))"
 
@@ -521,7 +521,7 @@ def rule_bc_f_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="F1", size="#4", qty=qty, length_in=bar_len,
         shape="Str",
-        notes=f"Roof f-bars #4 @12\" oc  S+2T2-6={fmt_inches(bar_len)}",
+        notes="Roof f-bars #4 @12\" oc",
         source_rule="rule_bc_f_bars",
     )]
 
@@ -660,10 +660,7 @@ def rule_bc_well_spreaders(p: Params, logger: ReasoningLogger) -> list[BarRow]:
         mark="WS1", size="#4", qty=qty, length_in=bar_len,
         shape="C",
         leg_a_in=top, leg_b_in=leg, leg_c_in=float(S_in),
-        notes=(
-            f"Wall spreader bars  body={fmt_inches(S_in)}  "
-            f"leg={leg}\" EF  top tab={top}\"  @≈7\" OC"
-        ),
+        notes="Wall spreader bars @≈7\" oc",
         review_flag="WS1 spacing (~7\" OC) derived from gold for L=20' only — verify for other lengths",
         source_rule="rule_bc_well_spreaders",
     )]
@@ -755,7 +752,7 @@ def rule_bc_haunch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
         mark="HC1", size="#5", qty=qty, length_in=length,
         shape="Rect",
         leg_a_in=leg, leg_b_in=leg,
-        notes=f"Haunch corner bars  4 corners x {qty_per_corner} @ 12\" oc  leg=9\" (est.)",
+        notes="Haunch corner bars @12\" oc  leg=9\" (est.)",
         review_flag="HC1 leg dim 9\" is ESTIMATE — verify per D80 Note 6 haunch detail with PE",
         source_rule="rule_bc_haunch_bars",
     )]
@@ -811,11 +808,7 @@ def rule_bc_notch_bars(p: Params, logger: ReasoningLogger) -> list[BarRow]:
         mark="G1", size="#4", qty=qty, length_in=bar_len,
         shape="U",
         leg_a_in=legs, leg_b_in=body,
-        notes=(
-            f"Barrel-end notch bars  {notch}  depth={depth}\"  "
-            f"#4 U-bar per D82  1 roof + 1 invert per end  "
-            f"body={fmt_inches(body)}  legs={legs}\""
-        ),
+        notes=f"Barrel-end notch bars  {notch}  #4 U-bar per D82",
         review_flag="Verify leg dimension and bar count per D82 CAST-IN-PLACE END ELEVATION",
         source_rule="rule_bc_notch_bars",
     )]
