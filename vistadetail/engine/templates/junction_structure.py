@@ -1,4 +1,4 @@
-"""Template: Junction Structure (v4.0) — Caltrans D91A/D91B CIP junction structure."""
+"""Template: Junction Structure (v5.0) — Caltrans D91A/D91B CIP junction structure."""
 
 from __future__ import annotations
 
@@ -13,11 +13,12 @@ class JunctionStructureTemplate(BaseTemplate):
     def __init__(self):
         super().__init__()
         self.name = "Junction Structure"
-        self.version = "4.0"
+        self.version = "5.0"
         self.description = (
             "Caltrans 2025 Standard Plan D91A/D91B — CIP Reinforced Concrete "
             "Junction Structure. Wall/slab thicknesses and bar data from D91B table. "
-            "Min Hb = 5'-6\". Standard Hb: 5.5, 6–12 ft (square plan)."
+            "Min Hb = 5'-6\". Span governs D91B structural design; Length is the "
+            "perpendicular plan dimension (may differ from Span for rectangular boxes)."
         )
 
         self.inputs = [
@@ -32,7 +33,11 @@ class JunctionStructureTemplate(BaseTemplate):
             InputField("span_ft", float, label="Inside Span (ft)",
                        min=4.0, max=12.0, default=5.0,
                        group="Box Geometry",
-                       hint="Clear inside span — D91B standard: 4' or 5' (Hb=5.5'), 6–12' (square)"),
+                       hint="Clear inside span — governs D91B table (4' or 5' at Hb=5.5', 6–12' otherwise)"),
+            InputField("length_ft", float, label="Length (ft)",
+                       min=4.0, max=20.0, default=5.0,
+                       group="Box Geometry",
+                       hint="Inside plan length perpendicular to Span. Use same value as Span for square box."),
             InputField("hb_ft", float, label="Height HB (ft)",
                        min=5.5, max=12.0, default=5.5,
                        group="Box Geometry",
@@ -41,6 +46,14 @@ class JunctionStructureTemplate(BaseTemplate):
                        choices=["10", "20"], default="10",
                        group="Loading",
                        hint="Maximum earth cover over top slab — governs D91B table row (10 or 20 ft)"),
+            InputField("has_manhole", str, label="Manhole",
+                       choices=["yes", "no"], default="yes",
+                       group="Openings",
+                       hint="Include manhole in top slab (adds circular hoops and extra bars)"),
+            InputField("side_pipe_dia_in", str, label="Side Pipe Diameter",
+                       choices=["None"] + _PIPE_SIZES, default="None",
+                       group="Openings",
+                       hint="Diameter of pipe entering through side wall, or 'None' if no side pipe"),
             InputField("num_structures", int, label="Number of Structures",
                        min=1, max=10, default=1,
                        group="Quantity",

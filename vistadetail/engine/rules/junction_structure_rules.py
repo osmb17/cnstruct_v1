@@ -137,39 +137,48 @@ def rule_junc_a_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Each slab gets TWO bar rows — one straight and one U-bar with 1'-0" tails:
       JA2S — bottom slab straight (body only)
       JA2U — bottom slab U-bar  (body + 1'-0" tails into wall each end)
-      JA1S — top slab straight   (body only; extends 1'-6" past box edge for MH seat)
-      JA1U — top slab U-bar      (body + 1'-0" tails into wall each end)
+      JA1S — top slab straight
+      JA1U — top slab U-bar
 
     Geometry (from D91A and gold barlist):
       body  = S_in + 2×t − 6"          (3" cover at each outer wall face)
       leg   = _A_BAR_LEG_IN = 12"      (1'-0" tail — confirmed from gold)
-      stock_straight = body
-      stock_u        = 2×leg + body − bend_reduce(shape_2, a_s)
+      stock_u = 2×leg + body − bend_reduce(shape_2, a_s)
 
-    Quantity (transverse direction only — longitudinal handled by JD1/JL1/JL2):
-      qty_bs = floor((S_in + 2t) / a_sp)                             (bottom slab)
-      qty_ts = floor((S_in + 2t + 2×_MH_SEAT_EXT_IN) / a_sp)        (top slab, extends for MH seat)
+    Quantity — bars run across SPAN, counted along LENGTH:
+      qty_bs = floor((L_in + 2t) / a_sp)
+      qty_ts = floor((L_in + 2t + 2×_MH_SEAT_EXT_IN) / a_sp)  [if manhole]
+               floor((L_in + 2t) / a_sp)                        [no manhole]
+
+    Confirmed: Dane gold May-2026 (Span=5', Length=6', Hb=5.5', Cover=10'):
+      body = 5'-10", qty = 14 each slab (no manhole).
     """
-    hb_ft   = p.hb_ft
-    span_ft = p.span_ft
-    cover   = getattr(p, "max_earth_cover_ft", 10.0)
+    hb_ft      = p.hb_ft
+    span_ft    = p.span_ft
+    length_ft  = float(getattr(p, "length_ft", span_ft))
+    cover      = getattr(p, "max_earth_cover_ft", 10.0)
+    no_manhole = str(getattr(p, "has_manhole", "yes")).lower() == "no"
 
     row  = _junc_lookup(hb_ft, span_ft, cover, log)
     a_s  = row["a_s"]
     a_sp = row["a_sp"]
     t    = row["t"]
-    S_in = span_ft * 12
+    S_in = span_ft  * 12
+    L_in = length_ft * 12
 
     body   = S_in + 2 * t - 6.0
     leg    = _A_BAR_LEG_IN                           # 12" = 1'-0"
     deduct = bend_reduce("shape_2", a_s)
     len_u  = 2 * leg + body - deduct                 # U-bar stock
 
-    outer_bs = S_in + 2 * t
-    outer_ts = S_in + 2 * t + 2 * _MH_SEAT_EXT_IN
-
-    qty_bs = math.floor(outer_bs / a_sp)             # bottom slab qty
-    qty_ts = math.floor(outer_ts / a_sp)             # top slab qty (wider due to MH seat)
+    outer_L = L_in + 2 * t                           # length dimension (qty direction)
+    qty_bs  = math.floor(outer_L / a_sp)
+    if no_manhole:
+        qty_ts = math.floor(outer_L / a_sp)          # same as bottom — no MH seat extension
+        mh_note = " (no MH seat)"
+    else:
+        qty_ts = math.floor((outer_L + 2 * _MH_SEAT_EXT_IN) / a_sp)
+        mh_note = f" (+2×{_MH_SEAT_EXT_IN}\" MH seat)"
 
     log.step(
         f"JA body=S+2t-6={S_in:.0f}+{2*t}-6={body:.1f}\"  "
@@ -177,8 +186,8 @@ def rule_junc_a_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
         source="JunctionRules",
     )
     log.step(
-        f"JA2 bottom: outer={outer_bs}\"  qty=floor({outer_bs}/{a_sp})={qty_bs}  "
-        f"JA1 top: outer={outer_ts}\" (+2×{_MH_SEAT_EXT_IN}\" MH seat)  qty=floor({outer_ts}/{a_sp})={qty_ts}",
+        f"JA2 bottom: outer_L={outer_L:.0f}\"  qty=floor({outer_L:.0f}/{a_sp})={qty_bs}  "
+        f"JA1 top: qty={qty_ts}{mh_note}",
         source="JunctionRules",
     )
     log.result("JA2S", f"{a_s} × {qty_bs} straight @ {fmt_inches(body)}", source="JunctionRules")
@@ -235,13 +244,18 @@ def rule_junc_e_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     Geometry (from D91A typical sections):
       len = ts + Hb_in + bs − 6"   (3" cover top and bottom)
 
-    Quantity:
-      qty_per_wall = floor(Span_in / e_sp) + 1
-      qty_total    = 4 walls × qty_per_wall
+    Quantity — counts both wall pairs for rectangular plan:
+      qty_span_walls   = floor((S_in + 2t) / e_sp)   (2 walls with outer width = S+2t)
+      qty_length_walls = floor((L_in + 2t) / e_sp)   (2 walls with outer width = L+2t)
+      qty_total        = qty_span_walls + qty_length_walls
+
+    Confirmed: Dane gold May-2026 (Span=5', Length=6', t=8", e_sp=6"):
+      floor(76/6) + floor(88/6) = 12 + 14 = 26 ✓
     """
-    hb_ft   = p.hb_ft
-    span_ft = p.span_ft
-    cover   = getattr(p, "max_earth_cover_ft", 10.0)
+    hb_ft     = p.hb_ft
+    span_ft   = p.span_ft
+    length_ft = float(getattr(p, "length_ft", span_ft))
+    cover     = getattr(p, "max_earth_cover_ft", 10.0)
 
     row   = _junc_lookup(hb_ft, span_ft, cover, log)
     e_s   = row["e_s"]
@@ -249,16 +263,20 @@ def rule_junc_e_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     ts    = row["ts"]
     bs    = row["bs"]
     t     = row["t"]
-    Hb_in = hb_ft * 12
+    Hb_in = hb_ft   * 12
     S_in  = span_ft * 12
+    L_in  = length_ft * 12
 
-    bar_len = ts + Hb_in + bs - 6.0
-    outer   = S_in + 2 * t
-    qty     = math.floor(outer / e_sp)
+    bar_len     = ts + Hb_in + bs - 6.0
+    outer_S     = S_in + 2 * t
+    outer_L     = L_in + 2 * t
+    qty_S       = math.floor(outer_S / e_sp)
+    qty_L       = math.floor(outer_L / e_sp)
+    qty         = qty_S + qty_L
 
     log.step(
         f"JE1 ({e_s}@{e_sp}\"): ts+Hb+bs-6={ts}+{Hb_in:.0f}+{bs}-6={bar_len:.1f}\"  "
-        f"qty=floor((S+2t)/{e_sp})=floor({outer:.0f}/{e_sp})={qty}",
+        f"qty=floor({outer_S:.0f}/{e_sp})+floor({outer_L:.0f}/{e_sp})={qty_S}+{qty_L}={qty}",
         source="JunctionRules",
     )
     log.result("JE1", f"{e_s} × {qty} @ {fmt_inches(bar_len)}", source="JunctionRules")
@@ -284,15 +302,21 @@ def rule_junc_b_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     "B" dimension visible at top AND bottom of each section).
 
     Geometry:
-      len = Hb_in + 2×B − bend_reduce(shape_2, b_size)
+      body    = ts + Hb_in + bs − 6"        (full height, same as E-bar)
+      bar_len = body + 2×B − bend_reduce(shape_2, b_size)
 
-    Quantity:
-      qty_per_wall = floor(Span_in / b_sp) + 1
-      qty_total    = 4 walls × qty_per_wall
+    Quantity — counts both wall pairs for rectangular plan:
+      qty_span_walls   = floor((S_in + 2t) / b_sp)
+      qty_length_walls = floor((L_in + 2t) / b_sp)
+      qty_total        = qty_span_walls + qty_length_walls
+
+    Confirmed: Dane gold May-2026 (Span=5', Length=6', t=8", b_sp=6", B=31"):
+      floor(76/6) + floor(88/6) = 12 + 14 = 26 ✓
     """
-    hb_ft   = p.hb_ft
-    span_ft = p.span_ft
-    cover   = getattr(p, "max_earth_cover_ft", 10.0)
+    hb_ft     = p.hb_ft
+    span_ft   = p.span_ft
+    length_ft = float(getattr(p, "length_ft", span_ft))
+    cover     = getattr(p, "max_earth_cover_ft", 10.0)
 
     row   = _junc_lookup(hb_ft, span_ft, cover, log)
     b_s   = row["b_s"]
@@ -301,20 +325,23 @@ def rule_junc_b_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     ts    = row["ts"]
     bs    = row["bs"]
     t     = row["t"]
-    Hb_in = hb_ft * 12
-    S_in  = span_ft * 12
+    Hb_in = hb_ft    * 12
+    S_in  = span_ft  * 12
+    L_in  = length_ft * 12
 
-    # body = full height from bottom cover to top cover (same as E-bar length)
-    body   = ts + Hb_in + bs - 6.0
-    deduct = bend_reduce("shape_2", b_s)
-    bar_len = body + 2 * B - deduct          # body + 2 slab-lap tails − bend deduction
-    outer  = S_in + 2 * t
-    qty    = math.floor(outer / b_sp)
+    body    = ts + Hb_in + bs - 6.0
+    deduct  = bend_reduce("shape_2", b_s)
+    bar_len = body + 2 * B - deduct
+    outer_S = S_in + 2 * t
+    outer_L = L_in + 2 * t
+    qty_S   = math.floor(outer_S / b_sp)
+    qty_L   = math.floor(outer_L / b_sp)
+    qty     = qty_S + qty_L
 
     log.step(
         f"JB1 ({b_s}@{b_sp}\"): body=ts+Hb+bs-6={ts}+{Hb_in:.0f}+{bs}-6={body:.1f}\"  "
         f"bar_len=body+2B-deduct={body:.1f}+2×{B}-{deduct}={bar_len:.1f}\"  "
-        f"qty=floor((S+2t)/{b_sp})=floor({outer:.0f}/{b_sp})={qty}",
+        f"qty=floor({outer_S:.0f}/{b_sp})+floor({outer_L:.0f}/{b_sp})={qty_S}+{qty_L}={qty}",
         source="JunctionRules",
     )
     log.result("JB1", f"{b_s} × {qty} @ {fmt_inches(bar_len)}", source="JunctionRules")
@@ -336,48 +363,51 @@ def rule_junc_b_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_junc_add_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    Additional "a" bars at pipe openings per D91A Note 12.
+    Additional "a" bars at side pipe openings per D91A Note 12.
 
     Note 12: provide additional bars equal to half the interrupted main
     reinforcement, one each side of the opening.
 
-    For each pipe of diameter D_in, "a" bars at spacing a_sp are interrupted
-    over the pipe width:
-      interrupted_per_slab = floor(D_in / a_sp) + 1
-      add_per_side         = ceil(interrupted_per_slab / 2)
-      qty_per_opening      = add_per_side × 2 sides × 2 slabs
+    Applies only when side_pipe_dia_in != "None".  When there is no side
+    pipe (or no manhole), these bars are not required (Dane gold May-2026).
 
-    Total JX1 = qty(D1) + qty(D2).
-    Length = "a" bar body = Span + 2×t − 6".
+    For the side pipe of diameter D_in:
+      interrupted = floor(D_in / a_sp) + 1
+      add_per_side = ceil(interrupted / 2)
+      qty = add_per_side × 2 sides × 2 slabs
+
+    Length = "a" bar body = S_in + 2×t − 6".
     """
-    hb_ft   = p.hb_ft
-    span_ft = p.span_ft
-    cover   = getattr(p, "max_earth_cover_ft", 10.0)
+    hb_ft    = p.hb_ft
+    span_ft  = p.span_ft
+    cover    = getattr(p, "max_earth_cover_ft", 10.0)
+    side_pipe = str(getattr(p, "side_pipe_dia_in", "None")).strip()
+    has_side  = side_pipe.lower() != "none" and side_pipe != "0"
 
-    row   = _junc_lookup(hb_ft, span_ft, cover, log)
-    t     = row["t"]
-    a_sp  = row["a_sp"]
-    S_in  = span_ft * 12
-
-    bar_len = S_in + 2 * t - 6.0
-
-    qty = 0
-    pipe_details: list[str] = []
-    for pipe_name, D_in in [("D1", int(p.d1_in)), ("D2", int(p.d2_in))]:
-        interrupted   = math.floor(D_in / a_sp) + 1
-        add_per_side  = math.ceil(interrupted / 2)
-        qty_pipe      = add_per_side * 2 * 2   # 2 sides × 2 slabs
-        qty          += qty_pipe
-        pipe_details.append(
-            f"{pipe_name}={D_in}\" → interrupted={interrupted}  "
-            f"add/side={add_per_side}  ×2sides×2slabs={qty_pipe}"
-        )
-        log.step(
-            f"JX1 {pipe_name}: floor({D_in}/{a_sp})+1={interrupted} interrupted  "
-            f"ceil({interrupted}/2)={add_per_side}/side × 2 sides × 2 slabs = {qty_pipe}",
+    if not has_side:
+        log.ok(
+            "No side pipe — JX1 additional bars omitted (Note 12 n/a).",
             source="JunctionRules",
         )
+        return []
 
+    row  = _junc_lookup(hb_ft, span_ft, cover, log)
+    t    = row["t"]
+    a_sp = row["a_sp"]
+    S_in = span_ft * 12
+
+    bar_len   = S_in + 2 * t - 6.0
+    D_in      = float(side_pipe)
+
+    interrupted  = math.floor(D_in / a_sp) + 1
+    add_per_side = math.ceil(interrupted / 2)
+    qty          = add_per_side * 2 * 2   # 2 sides × 2 slabs
+
+    log.step(
+        f"JX1 side pipe D={fmt_inches(D_in)}: floor({D_in:.0f}/{a_sp})+1={interrupted} interrupted  "
+        f"ceil({interrupted}/2)={add_per_side}/side × 2 sides × 2 slabs = {qty}",
+        source="JunctionRules",
+    )
     log.step(
         f"JX1 body=S+2t-6={S_in:.0f}+{2*t}-6={bar_len:.1f}\"",
         source="JunctionRules",
@@ -387,7 +417,7 @@ def rule_junc_add_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
     return [BarRow(
         mark="JX1", size="#4", qty=qty, length_in=bar_len,
         shape="Str",
-        notes="Additional 'a' bars at pipe openings (Note 12)",
+        notes=f"Additional 'a' bars at side pipe opening D={fmt_inches(D_in)} (Note 12)",
         source_rule="rule_junc_add_bars",
     )]
 
@@ -398,8 +428,8 @@ def rule_junc_add_bars(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 _WALL_HORIZ_SP_IN  = 12   # vertical spacing of horizontal wall bars (@12" per gold/D91A)
 _WALL_HORIZ_EXT_IN = 12   # wall horiz bars extend this far into top AND bottom slab (1'-0")
-_TS_INNER_SP_IN    = 9    # top-slab inner-face longitudinal spacing (#4@9 per D91A)
-_TS_OUTER_SP_IN    = 12   # top-slab outer-face longitudinal spacing (#4@12 per D91A)
+_TS_INNER_SP_IN    = 6    # top-slab inner-face longitudinal spacing (@6" oc — Dane gold May-2026)
+_TS_OUTER_SP_IN    = 6    # top-slab outer-face longitudinal spacing (@6" oc — Dane gold May-2026)
 _SLAB_LONG_SP_IN   = 12   # bottom-slab longitudinal bar spacing, EF (@12" per D91A)
 _MH_SEAT_EXT_IN    = 18   # manhole seat extends 1'-6" each side of box on top slab
 _MH_OD_IN          = 42.0 # manhole hoop OD = 36" manhole + 3" each side (D91A)
@@ -414,56 +444,60 @@ _A_BAR_LEG_IN      = 12.0 # A-bar U-bar tail = 1'-0" (per gold barlist)
 
 def rule_junc_slab_longs(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    Longitudinal distribution bars running along the structure LENGTH
-    (perpendicular to the transverse 'a' bars) in both slabs.
+    Longitudinal distribution bars running along the LENGTH dimension in both slabs.
 
-    From D91A Section C-C:
-      '#4@9'  = inner face of top slab
-      '#4@12' = outer face of both slabs
+    Bottom slab (JD1) — EF @12" oc:
+      bar_len = L_in − 6"               (3" cover each end)
+      qty     = 2 faces × (floor((L_in + 2t) / 12) + 1)
 
-    Bottom slab (JD1) — EF (inner @a_sp + outer @12"):
-      inner qty = floor(S_in / a_sp) + 1
-      outer qty = floor((S_in + 2t) / 12) + 1
-      total qty  = inner + outer
+    Top slab inner (JL1) — @6" oc across outer span width:
+      bar_len = L_in − 6"
+      qty     = floor((S_in + 2t) / _TS_INNER_SP_IN)
 
-    Top slab inner (JL1) — '#4@9' across outer box width:
-      qty = floor((S_in + 2t) / _TS_INNER_SP_IN)
+    Top slab outer (JL2) — @6" oc across clear span:
+      bar_len = L_in − 6"
+      qty     = floor(S_in / _TS_OUTER_SP_IN)
 
-    Top slab outer (JL2) — '#4@12' across outer box width:
-      qty = floor((S_in + 2t) / _TS_OUTER_SP_IN) + 1
-
-    Length for all = S_in - 6"  (3" cover at each end of the run).
+    Confirmed: Dane gold May-2026 (Span=5', Length=6', t=8"):
+      JD1: 2×(floor(88/12)+1)=16, len=5'-6" ✓
+      JL1: floor(76/6)=12, len=5'-6" ✓
+      JL2: floor(60/6)=10, len=5'-6" ✓
     """
-    hb_ft   = p.hb_ft
-    span_ft = p.span_ft
-    cover   = getattr(p, "max_earth_cover_ft", 10.0)
+    hb_ft     = p.hb_ft
+    span_ft   = p.span_ft
+    length_ft = float(getattr(p, "length_ft", span_ft))
+    cover     = getattr(p, "max_earth_cover_ft", 10.0)
 
     row  = _junc_lookup(hb_ft, span_ft, cover, log)
     t    = row["t"]
-    S_in = span_ft * 12
-    outer = S_in + 2 * t     # outer box width = S + 2 walls
+    S_in = span_ft   * 12
+    L_in = length_ft * 12
 
-    long_len = S_in - 6.0   # 3" cover each end along structure length
+    outer_S  = S_in + 2 * t   # outer span dimension
+    outer_L  = L_in + 2 * t   # outer length dimension
 
-    # Bottom slab — EF @12" oc across outer box width
-    # qty = 2 faces × (floor(outer/12) + 1)
-    qty_bs = 2 * (math.floor(outer / _SLAB_LONG_SP_IN) + 1)
+    long_len = L_in - 6.0     # 3" cover each end along LENGTH
 
-    # Top slab inner face @9" oc
-    qty_ts_inner = math.floor(outer / _TS_INNER_SP_IN)
+    # Bottom slab EF @12" — qty counted across the LENGTH span
+    qty_bs = 2 * (math.floor(outer_L / _SLAB_LONG_SP_IN) + 1)
 
-    # Top slab outer face @12" oc
-    qty_ts_outer = math.floor(outer / _TS_OUTER_SP_IN) + 1
+    # Top slab inner face @6" — qty counted across the SPAN (outer_S)
+    qty_ts_inner = math.floor(outer_S / _TS_INNER_SP_IN)
+
+    # Top slab outer face @6" — qty counted across clear SPAN (S_in)
+    qty_ts_outer = math.floor(S_in / _TS_OUTER_SP_IN)
 
     log.step(
-        f"JD1 bottom slab longs EF @{_SLAB_LONG_SP_IN}\"oc: "
-        f"2×(floor({outer:.0f}/{_SLAB_LONG_SP_IN})+1)={qty_bs}  len={fmt_inches(long_len)}",
+        f"Slab longs: L={L_in:.0f}\" S={S_in:.0f}\" t={t}\"  long_len=L-6={long_len:.1f}\"",
         source="JunctionRules",
     )
     log.step(
-        f"JL1 top slab inner@{_TS_INNER_SP_IN}\": floor({outer:.0f}/{_TS_INNER_SP_IN})={qty_ts_inner}  "
-        f"JL2 top slab outer@{_TS_OUTER_SP_IN}\": floor({outer:.0f}/{_TS_OUTER_SP_IN})+1={qty_ts_outer}  "
-        f"len={fmt_inches(long_len)}",
+        f"JD1 EF@{_SLAB_LONG_SP_IN}\": 2×(floor({outer_L:.0f}/{_SLAB_LONG_SP_IN})+1)={qty_bs}",
+        source="JunctionRules",
+    )
+    log.step(
+        f"JL1 inner@{_TS_INNER_SP_IN}\": floor({outer_S:.0f}/{_TS_INNER_SP_IN})={qty_ts_inner}  "
+        f"JL2 outer@{_TS_OUTER_SP_IN}\": floor({S_in:.0f}/{_TS_OUTER_SP_IN})={qty_ts_outer}",
         source="JunctionRules",
     )
     log.result("JD1", f"#4 × {qty_bs} @ {fmt_inches(long_len)}", source="JunctionRules")
@@ -498,35 +532,45 @@ def rule_junc_slab_longs(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_junc_wall_horiz(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    Horizontal bars running longitudinally (along the structure length)
-    on both faces of the two SOLID side walls (the walls without pipe
-    openings — confirmed for 'no side pipes' case in gold barlist).
+    Horizontal bars running along the LENGTH on the span-facing walls,
+    and along the SPAN on the length-facing walls.  Listed as one row
+    using the longer bar (L − 6") per Dane's gold (May-2026).
 
-    From D91A plan analysis:
-      Spacing = 9" oc vertically along the wall height
-      Double curtain = inside face + outside face of each solid wall
-      2 solid side walls × 2 curtains × (floor(Hb_in/9) + 1) = 44  [gold ✓]
+    Quantity formula (Dane gold May-2026, rectangular 5'×6' box, Hb=5'-6"):
+      qty = floor((L+2t)/_WALL_HORIZ_SP_IN)+1 × 2 walls  (span walls, bars run along L)
+          + floor((S+2t)/_WALL_HORIZ_SP_IN)+1 × 2 walls  (length walls, bars run along S)
+      = (7+1)×2 + (6+1)×2 = 16+14 = 30 ✓
 
-    Length = S_in - 6"  (3" cover at each end of the run).
+    NOTE: For the rectangular case, bars on length-facing walls are slightly
+    shorter (S − 6") but are combined into a single row at L − 6" as
+    Dane listed them.  This is conservative (uses the longer bar for all).
     """
-    hb_ft   = p.hb_ft
-    span_ft = p.span_ft
-    cover   = getattr(p, "max_earth_cover_ft", 10.0)
+    hb_ft     = p.hb_ft
+    span_ft   = p.span_ft
+    length_ft = float(getattr(p, "length_ft", span_ft))
+    cover     = getattr(p, "max_earth_cover_ft", 10.0)
 
-    _junc_lookup(hb_ft, span_ft, cover, log)   # validate / log table row
-    S_in  = span_ft * 12
+    row   = _junc_lookup(hb_ft, span_ft, cover, log)
+    t     = row["t"]
+    S_in  = span_ft   * 12
+    L_in  = length_ft * 12
     Hb_in = hb_ft * 12
 
-    long_len         = S_in - 6.0
-    # Bars extend _WALL_HORIZ_EXT_IN (12") into both top and bottom slabs
-    horiz_span       = Hb_in + 2 * _WALL_HORIZ_EXT_IN
-    qty_per_curtain  = math.floor(horiz_span / _WALL_HORIZ_SP_IN) + 1
-    qty_total        = 2 * 2 * qty_per_curtain   # 2 solid walls × 2 curtains
+    long_len   = L_in - 6.0
+    outer_S    = S_in + 2 * t
+    outer_L    = L_in + 2 * t
+
+    # Bars extend into top and bottom slabs; count using outer plan dimension of
+    # the adjacent wall pair.
+    qty_span_walls   = (math.floor(outer_L / _WALL_HORIZ_SP_IN) + 1) * 2
+    qty_length_walls = (math.floor(outer_S / _WALL_HORIZ_SP_IN) + 1) * 2
+    qty_total        = qty_span_walls + qty_length_walls
 
     log.step(
-        f"JC1 wall horiz: span=Hb+2×{_WALL_HORIZ_EXT_IN}\"={horiz_span}\"  "
-        f"@{_WALL_HORIZ_SP_IN}\"oc → floor({horiz_span}/{_WALL_HORIZ_SP_IN})+1={qty_per_curtain}/curtain  "
-        f"×4 (2 walls EF) = {qty_total}  len={fmt_inches(long_len)}",
+        f"JC1 wall horiz @{_WALL_HORIZ_SP_IN}\": "
+        f"span walls=(floor({outer_L:.0f}/{_WALL_HORIZ_SP_IN})+1)×2={qty_span_walls}  "
+        f"length walls=(floor({outer_S:.0f}/{_WALL_HORIZ_SP_IN})+1)×2={qty_length_walls}  "
+        f"total={qty_total}  len=L-6={fmt_inches(long_len)}",
         source="JunctionRules",
     )
     log.result("JC1", f"#4 × {qty_total} @ {fmt_inches(long_len)}", source="JunctionRules")
@@ -545,77 +589,95 @@ def rule_junc_wall_horiz(p: Params, log: ReasoningLogger) -> list[BarRow]:
 
 def rule_junc_hoops(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
-    Circular hoops and extra straight bars per D91A details:
+    Circular hoops and extra straight bars per D91A details.
 
     JMH — Manhole hoops (#6 circular):
       OD = 42" (36" MH cover + 3" each side)
       Qty = 2 (top and bottom of manhole seat per D91A plan)
       Stock = π × OD + 3'-0" lap
+      Generated only when has_manhole = "yes".
 
     JPH — Pipe-opening hoops (#6 circular):
-      OD = max(D1, D2) + 6" (3" clearance each side per D91A)
-      Qty = 2 (one ring per pipe opening, or two at each if D1=D2)
+      OD = side_pipe_dia_in + 6" (3" clearance each side per D91A)
+      Qty = 2
       Stock = π × OD + 3'-0" lap
+      Generated only when side_pipe_dia_in != "None".
 
     JME — Extra bars adjacent to manhole at top slab (#6 straight):
-      Qty = 4 (from D91A plan — two pairs flanking the 36" MH opening)
-      Length = S_in - 6" (same run as top-slab longs)
+      Qty = 4 (from D91A plan)
+      Length = L_in − 6"
+      Generated only when has_manhole = "yes".
+
+    When has_manhole="no" and side_pipe_dia_in="None": returns [] (no hoops).
     """
-    hb_ft   = p.hb_ft
-    span_ft = p.span_ft
-    cover   = getattr(p, "max_earth_cover_ft", 10.0)
+    hb_ft      = p.hb_ft
+    span_ft    = p.span_ft
+    length_ft  = float(getattr(p, "length_ft", span_ft))
+    cover      = getattr(p, "max_earth_cover_ft", 10.0)
+    has_mh     = str(getattr(p, "has_manhole",      "yes")).lower() == "yes"
+    side_pipe  = str(getattr(p, "side_pipe_dia_in", "None")).strip()
+    has_side   = side_pipe.lower() != "none" and side_pipe != "0"
 
     _junc_lookup(hb_ft, span_ft, cover, log)
-    S_in = span_ft * 12
+    L_in     = length_ft * 12
+    long_len = L_in - 6.0
 
-    long_len = S_in - 6.0   # JME length
+    rows: list[BarRow] = []
 
-    # Manhole hoop
-    mh_stock = math.pi * _MH_OD_IN + _MH_LAP_IN
-
-    # Pipe opening hoop
-    d_max    = max(int(p.d1_in), int(p.d2_in))
-    pipe_od  = float(d_max) + _PIPE_HOO_CLEAR_IN
-    pipe_stock = math.pi * pipe_od + _MH_LAP_IN
-
-    log.step(
-        f"JMH manhole hoop: OD={fmt_inches(_MH_OD_IN)} Lap={fmt_inches(_MH_LAP_IN)}  "
-        f"stock=π×{_MH_OD_IN:.0f}+{_MH_LAP_IN:.0f}={mh_stock:.1f}\" = {fmt_inches(mh_stock)}",
-        source="JunctionRules",
-    )
-    log.step(
-        f"JPH pipe hoop: OD={fmt_inches(pipe_od)} (D_max={d_max}+6)  "
-        f"stock=π×{pipe_od:.0f}+{_MH_LAP_IN:.0f}={pipe_stock:.1f}\" = {fmt_inches(pipe_stock)}",
-        source="JunctionRules",
-    )
-    log.step(
-        f"JME extra top-slab bars at manhole: 4 #6 × {fmt_inches(long_len)}",
-        source="JunctionRules",
-    )
-    log.result("JMH", f"#6 × 2 @ {fmt_inches(mh_stock)} (OD={fmt_inches(_MH_OD_IN)})", source="JunctionRules")
-    log.result("JPH", f"#6 × 2 @ {fmt_inches(pipe_stock)} (OD={fmt_inches(pipe_od)})", source="JunctionRules")
-    log.result("JME", f"#6 × 4 @ {fmt_inches(long_len)}", source="JunctionRules")
-
-    return [
-        BarRow(
+    if has_mh:
+        mh_stock = math.pi * _MH_OD_IN + _MH_LAP_IN
+        log.step(
+            f"JMH manhole hoop: OD={fmt_inches(_MH_OD_IN)} Lap={fmt_inches(_MH_LAP_IN)}  "
+            f"stock=π×{_MH_OD_IN:.0f}+{_MH_LAP_IN:.0f}={mh_stock:.1f}\" = {fmt_inches(mh_stock)}",
+            source="JunctionRules",
+        )
+        log.result("JMH", f"#6 × 2 @ {fmt_inches(mh_stock)} (OD={fmt_inches(_MH_OD_IN)})",
+                   source="JunctionRules")
+        rows.append(BarRow(
             mark="JMH", size="#6", qty=2, length_in=mh_stock,
             shape="Rng",
             notes="Manhole hoops",
             source_rule="rule_junc_hoops",
-        ),
-        BarRow(
+        ))
+
+    if has_side:
+        pipe_d     = float(side_pipe)
+        pipe_od    = pipe_d + _PIPE_HOO_CLEAR_IN
+        pipe_stock = math.pi * pipe_od + _MH_LAP_IN
+        log.step(
+            f"JPH side pipe hoop: D={fmt_inches(pipe_d)} OD={fmt_inches(pipe_od)}  "
+            f"stock=π×{pipe_od:.0f}+{_MH_LAP_IN:.0f}={pipe_stock:.1f}\" = {fmt_inches(pipe_stock)}",
+            source="JunctionRules",
+        )
+        log.result("JPH", f"#6 × 2 @ {fmt_inches(pipe_stock)} (OD={fmt_inches(pipe_od)})",
+                   source="JunctionRules")
+        rows.append(BarRow(
             mark="JPH", size="#6", qty=2, length_in=pipe_stock,
             shape="Rng",
-            notes="Pipe-opening hoops",
+            notes=f"Side pipe-opening hoops (D={fmt_inches(pipe_d)})",
             source_rule="rule_junc_hoops",
-        ),
-        BarRow(
+        ))
+
+    if has_mh:
+        log.step(
+            f"JME extra top-slab bars at manhole: 4 #6 × {fmt_inches(long_len)}",
+            source="JunctionRules",
+        )
+        log.result("JME", f"#6 × 4 @ {fmt_inches(long_len)}", source="JunctionRules")
+        rows.append(BarRow(
             mark="JME", size="#6", qty=4, length_in=long_len,
             shape="Str",
             notes="Extra #6 bars flanking manhole in top slab",
             source_rule="rule_junc_hoops",
-        ),
-    ]
+        ))
+
+    if not has_mh and not has_side:
+        log.ok(
+            "No manhole and no side pipe — JMH/JPH/JME omitted. Use Dobies for concrete cover.",
+            source="JunctionRules",
+        )
+
+    return rows
 
 
 # ---------------------------------------------------------------------------
