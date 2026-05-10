@@ -75,9 +75,13 @@ class JunctionStructureTemplate(BaseTemplate):
         triggers: list[str] = []
         if params.hb_ft < 5.5:
             triggers.append("height_below_minimum")
+        length_ft = float(getattr(params, "length_ft", params.span_ft))
         d_max = max(int(params.d1_in), int(params.d2_in))
+        # Pipe must fit within both horizontal plan dimensions
         if d_max / 12.0 > params.span_ft - 2.0:
             triggers.append("pipe_too_large_for_span")
+        if d_max / 12.0 > length_ft - 2.0:
+            triggers.append("pipe_too_large_for_length")
         return triggers
 
 

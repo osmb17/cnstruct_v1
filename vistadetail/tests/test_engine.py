@@ -2362,3 +2362,249 @@ class TestG2ExpInletTopVerticals:
         """y_dim_ft input is read by geometry (not hardcoded)."""
         assert p.y_ext_in == pytest.approx(68.0)   # from user input, not hardcoded
         assert p.y_exp_ext_in == pytest.approx(96.0)  # 8'-0\" remains fixed per D73A
+
+
+# ===========================================================================
+# Junction Structure tests — Dane gold May-2026
+#
+# Parameters: D1=D2=48", Span=5', Length=6', Hb=5'-6", Cover=10 ft,
+#             has_manhole="no", side_pipe_dia_in="None"
+# D91B table row: ts=8, t=8, bs=8, a_sp=6, e_sp=6, b_sp=6, B=31
+# ===========================================================================
+
+from vistadetail.engine.rules.junction_structure_rules import (
+    rule_junc_a_bars,
+    rule_junc_e_bars,
+    rule_junc_b_bars,
+    rule_junc_slab_longs,
+    rule_junc_wall_horiz,
+    rule_junc_hoops,
+    rule_junc_add_bars,
+)
+from vistadetail.engine.templates.junction_structure import TEMPLATE as _JS_TMPL
+
+
+def _js_params(overrides: dict | None = None):
+    """Parse validated Params for the Dane May-2026 gold case."""
+    raw = {
+        "d1_in": "48", "d2_in": "48",
+        "span_ft": "5.0", "length_ft": "6.0", "hb_ft": "5.5",
+        "max_earth_cover_ft": "10",
+        "has_manhole": "no", "side_pipe_dia_in": "None",
+        "num_structures": "1",
+    }
+    if overrides:
+        raw.update(overrides)
+    return _JS_TMPL.parse_and_validate(raw)
+
+
+class TestJuncABars:
+    """JA2S/JA2U (bottom slab) and JA1S/JA1U (top slab) — Dane gold."""
+
+    @pytest.fixture()
+    def p(self): return _js_params()
+
+    def test_body_length(self, p, log):
+        """body = S+2t-6 = 60+16-6 = 70\" = 5'-10\"."""
+        bars = rule_junc_a_bars(p, log)
+        straights = [b for b in bars if b.shape == "Str"]
+        for b in straights:
+            assert b.length_in == pytest.approx(70.0)
+
+    def test_u_bar_length(self, p, log):
+        """U-bar stock = 2×12+70-2 = 92\" = 7'-8\"."""
+        bars = rule_junc_a_bars(p, log)
+        ubars = [b for b in bars if b.shape == "U"]
+        for b in ubars:
+            assert b.length_in == pytest.approx(92.0)
+
+    def test_u_bar_legs(self, p, log):
+        """A=G=12\" (1'-0\" tail)."""
+        bars = rule_junc_a_bars(p, log)
+        ubars = [b for b in bars if b.shape == "U"]
+        for b in ubars:
+            assert b.leg_a_in == pytest.approx(12.0)
+            assert b.leg_g_in == pytest.approx(12.0)
+
+    def test_qty_no_manhole(self, p, log):
+        """qty = floor((L+2t)/a_sp) = floor(88/6) = 14 for both slabs."""
+        bars = rule_junc_a_bars(p, log)
+        for b in bars:
+            assert b.qty == 14
+
+    def test_qty_with_manhole_extends(self, log):
+        """Top slab qty increases when has_manhole=yes (MH seat extension)."""
+        p_mh = _js_params({"has_manhole": "yes"})
+        bars = rule_junc_a_bars(p_mh, log)
+        straights = [b for b in bars if b.shape == "Str"]
+        qty_bot = straights[0].qty  # bottom slab
+        qty_top = straights[1].qty  # top slab (extended by MH seat)
+        assert qty_top > qty_bot
+
+
+class TestJuncEBars:
+    """JE1 — wall exterior vertical bars."""
+
+    @pytest.fixture()
+    def p(self): return _js_params()
+
+    def test_length(self, p, log):
+        """len = ts+Hb+bs-6 = 8+66+8-6 = 76\" = 6'-4\"."""
+        bars = rule_junc_e_bars(p, log)
+        assert bars[0].length_in == pytest.approx(76.0)
+
+    def test_qty_two_wall_pairs(self, p, log):
+        """qty = floor(76/6)+floor(88/6) = 12+14 = 26 (Dane gold)."""
+        bars = rule_junc_e_bars(p, log)
+        assert bars[0].qty == 26
+
+    def test_qty_square_plan(self, log):
+        """Square plan (L=S): qty = 2×floor((S+2t)/e_sp)."""
+        p = _js_params({"span_ft": "5.0", "length_ft": "5.0"})
+        bars = rule_junc_e_bars(p, log)
+        # floor(76/6)×2 = 12×2 = 24
+        assert bars[0].qty == 24
+
+
+class TestJuncBBars:
+    """JB1 — wall interior U-bars."""
+
+    @pytest.fixture()
+    def p(self): return _js_params()
+
+    def test_length(self, p, log):
+        """stock = body+2B-deduct = 76+62-2 = 136\" = 11'-4\"."""
+        bars = rule_junc_b_bars(p, log)
+        assert bars[0].length_in == pytest.approx(136.0)
+
+    def test_legs(self, p, log):
+        """A=G=B(table)=31\" = 2'-7\"."""
+        bars = rule_junc_b_bars(p, log)
+        assert bars[0].leg_a_in == pytest.approx(31.0)
+        assert bars[0].leg_g_in == pytest.approx(31.0)
+
+    def test_qty_two_wall_pairs(self, p, log):
+        """qty = floor(76/6)+floor(88/6) = 26 (Dane gold)."""
+        bars = rule_junc_b_bars(p, log)
+        assert bars[0].qty == 26
+
+
+class TestJuncSlabLongs:
+    """JD1/JL1/JL2 — longitudinal slab bars."""
+
+    @pytest.fixture()
+    def p(self): return _js_params()
+
+    def test_long_len_uses_length_input(self, p, log):
+        """bar_len = L_in-6 = 72-6 = 66\" = 5'-6\"."""
+        bars = rule_junc_slab_longs(p, log)
+        for b in bars:
+            assert b.length_in == pytest.approx(66.0)
+
+    def test_jd1_qty(self, p, log):
+        """JD1 qty = 2×(floor((L+2t)/12)+1) = 2×(floor(88/12)+1) = 16."""
+        bars = rule_junc_slab_longs(p, log)
+        jd1 = next(b for b in bars if "Bottom" in (b.notes or ""))
+        assert jd1.qty == 16
+
+    def test_jl1_qty(self, p, log):
+        """JL1 inner qty = floor((S+2t)/6) = floor(76/6) = 12."""
+        bars = rule_junc_slab_longs(p, log)
+        jl1 = next(b for b in bars if "inner" in (b.notes or ""))
+        assert jl1.qty == 12
+
+    def test_jl2_qty(self, p, log):
+        """JL2 outer qty = floor(S_in/6) = floor(60/6) = 10."""
+        bars = rule_junc_slab_longs(p, log)
+        jl2 = next(b for b in bars if "outer" in (b.notes or ""))
+        assert jl2.qty == 10
+
+
+class TestJuncWallHoriz:
+    """JC1 — horizontal wall bars."""
+
+    @pytest.fixture()
+    def p(self): return _js_params()
+
+    def test_length_uses_length_input(self, p, log):
+        """bar_len = L_in-6 = 66\"."""
+        bars = rule_junc_wall_horiz(p, log)
+        assert bars[0].length_in == pytest.approx(66.0)
+
+    def test_qty_rectangular(self, p, log):
+        """qty = (floor(88/12)+1)×2 + (floor(76/12)+1)×2 = 16+14 = 30."""
+        bars = rule_junc_wall_horiz(p, log)
+        assert bars[0].qty == 30
+
+    def test_qty_square_plan(self, log):
+        """Square plan (L=S=5'): both wall pairs use same outer dimension."""
+        p = _js_params({"span_ft": "5.0", "length_ft": "5.0"})
+        bars = rule_junc_wall_horiz(p, log)
+        # (floor(76/12)+1)×2 + (floor(76/12)+1)×2 = 7×2+7×2 = 28
+        assert bars[0].qty == 28
+
+
+class TestJuncHoops:
+    """JMH/JPH/JME — conditional on has_manhole and side_pipe_dia_in."""
+
+    def test_no_manhole_no_pipe_returns_empty(self, log):
+        """No hoops when has_manhole=no and no side pipe."""
+        p = _js_params({"has_manhole": "no", "side_pipe_dia_in": "None"})
+        bars = rule_junc_hoops(p, log)
+        assert bars == []
+
+    def test_manhole_generates_jmh_and_jme(self, log):
+        """has_manhole=yes produces JMH and JME."""
+        p = _js_params({"has_manhole": "yes", "side_pipe_dia_in": "None"})
+        bars = rule_junc_hoops(p, log)
+        marks = [b.mark for b in bars]
+        assert "JMH" in marks
+        assert "JME" in marks
+        assert "JPH" not in marks
+
+    def test_side_pipe_generates_jph(self, log):
+        """side_pipe_dia_in=48 produces JPH."""
+        p = _js_params({"has_manhole": "no", "side_pipe_dia_in": "48"})
+        bars = rule_junc_hoops(p, log)
+        marks = [b.mark for b in bars]
+        assert "JPH" in marks
+        assert "JMH" not in marks
+
+    def test_jmh_stock(self, log):
+        """JMH stock = pi×42+36."""
+        import math as _math
+        p = _js_params({"has_manhole": "yes", "side_pipe_dia_in": "None"})
+        bars = rule_junc_hoops(p, log)
+        jmh = next(b for b in bars if b.mark == "JMH")
+        assert jmh.length_in == pytest.approx(_math.pi * 42.0 + 36.0)
+
+    def test_jph_od_uses_side_pipe_dia(self, log):
+        """JPH OD = side_pipe_dia_in + 6\"."""
+        import math as _math
+        p = _js_params({"has_manhole": "no", "side_pipe_dia_in": "36"})
+        bars = rule_junc_hoops(p, log)
+        jph = next(b for b in bars if b.mark == "JPH")
+        assert jph.length_in == pytest.approx(_math.pi * 42.0 + 36.0)  # OD=36+6=42
+
+
+class TestJuncAddBars:
+    """JX1 — additional a-bars at side pipe opening."""
+
+    def test_no_side_pipe_returns_empty(self, log):
+        """No JX1 when side_pipe_dia_in=None."""
+        p = _js_params({"side_pipe_dia_in": "None"})
+        bars = rule_junc_add_bars(p, log)
+        assert bars == []
+
+    def test_side_pipe_generates_jx1(self, log):
+        """side_pipe_dia_in=48 generates JX1."""
+        p = _js_params({"side_pipe_dia_in": "48"})
+        bars = rule_junc_add_bars(p, log)
+        assert len(bars) == 1
+        assert "Note 12" in bars[0].notes
+
+    def test_jx1_bar_len(self, log):
+        """JX1 bar_len = S+2t-6 = 70\"."""
+        p = _js_params({"side_pipe_dia_in": "48"})
+        bars = rule_junc_add_bars(p, log)
+        assert bars[0].length_in == pytest.approx(70.0)
