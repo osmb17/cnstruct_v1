@@ -317,15 +317,13 @@ def _inlet_defaults() -> dict:
 
 class TestGenerateInletBarlist:
     def test_returns_expected_marks(self, log):
-        """Default inlet: straight bars keep letter marks; all bent bars get numeric marks."""
+        """Default inlet: straight bars have no mark; bent bars get numeric marks."""
         bars = generate_barlist(INLET_TEMPLATE, _inlet_defaults(), log, call_ai=False)
-        marks = {b.mark for b in bars}
-        # Straight bars always keep their names
-        for m in ("BM1", "BM2", "V2"):
-            assert m in marks, f"Straight mark {m} missing"
-        # All non-straight bars must be numeric
+        assert len(bars) == 12
         for b in bars:
-            if b.shape != "Str":
+            if b.shape == "Str":
+                assert b.mark == "", f"Straight bar should have no mark, got '{b.mark}'"
+            else:
                 assert b.mark.isdigit(), f"Non-straight bar '{b.mark}' not numbered"
 
     def test_returns_12_barrow_objects(self, log):
@@ -336,7 +334,7 @@ class TestGenerateInletBarlist:
         """After generate_barlist, every bar must have a non-empty ref."""
         bars = generate_barlist(INLET_TEMPLATE, _inlet_defaults(), log, call_ai=False)
         for bar in bars:
-            assert bar.ref, f"Bar {bar.mark} has empty ref"
+            assert bar.ref, f"Bar source={bar.source_rule} has empty ref"
 
     def test_generate_validates_bad_input(self, log):
         """Passing an out-of-range value should raise ValueError."""
@@ -346,16 +344,12 @@ class TestGenerateInletBarlist:
             generate_barlist(INLET_TEMPLATE, bad_params, log, call_ai=False)
 
     def test_corner_bars_no_excludes_C1(self, log):
-        """With corner_bars='no', no extra corner bar rows should appear."""
-        params = _inlet_defaults()
-        params["corner_bars"] = "no"
-        bars = generate_barlist(INLET_TEMPLATE, params, log, call_ai=False)
-        marks = {b.mark for b in bars}
-        # Straight bars still present
-        assert "BM1" in marks
-        assert "V2" in marks
-        # All non-straight bars numeric (no leftover letter marks like C1)
-        for b in bars:
+        """With corner_bars='no', fewer bars than with corner_bars='yes'."""
+        params_no = _inlet_defaults()
+        params_no["corner_bars"] = "no"
+        bars_no = generate_barlist(INLET_TEMPLATE, params_no, log, call_ai=False)
+        # All non-straight bars still numeric; no leftover letter marks
+        for b in bars_no:
             if b.shape != "Str":
                 assert b.mark.isdigit(), f"Non-straight bar '{b.mark}' not numbered"
 
@@ -729,19 +723,19 @@ class TestCageHoopsConfinement:
 
 class TestGenerateCageBarlist:
     def test_standard_cage_returns_V1_H1(self, log):
-        """No confinement → V1 (straight) + one #4 hoop (400)."""
+        """No confinement → 1 straight vert (mark='') + one #4 hoop (400)."""
         bars = generate_barlist(CAGE_TEMPLATE, CAGE_TEMPLATE.input_defaults(),
                                 log, call_ai=False)
         marks = {b.mark for b in bars}
-        assert marks == {"V1", "400"}
+        assert marks == {"", "400"}
 
     def test_confinement_cage_returns_V1_H1_H2(self, log):
-        """With confinement → V1 + two #4 hoops (400, 401)."""
+        """With confinement → straight vert ('') + two #4 hoops (400, 401)."""
         params = CAGE_TEMPLATE.input_defaults()
         params["has_confinement_zone"] = 1.0
         bars = generate_barlist(CAGE_TEMPLATE, params, log, call_ai=False)
         marks = {b.mark for b in bars}
-        assert marks == {"V1", "400", "401"}
+        assert marks == {"", "400", "401"}
 
     def test_all_bars_have_ref(self, log):
         """All cage bars must have a non-empty ref (ACI / SDC clause)."""
@@ -761,11 +755,11 @@ class TestGenerateCageBarlist:
             "confinement_depth_in": 6.0,
         }
         bars = generate_barlist(CAGE_TEMPLATE, params, log, call_ai=False)
-        bar_map = {b.mark: b for b in bars}
-        assert bar_map["V1"].qty == 4
-        assert bar_map["V1"].length_in == pytest.approx(66.0)
-        assert bar_map["400"].qty == 4       # H1 → 400 (first #4 hoop)
-        assert bar_map["400"].length_in == pytest.approx(_math.pi * 30 + 36, abs=0.01)
+        rule_map = {b.source_rule: b for b in bars}
+        assert rule_map["rule_cage_verticals"].qty == 4
+        assert rule_map["rule_cage_verticals"].length_in == pytest.approx(66.0)
+        assert rule_map["rule_cage_hoops_standard"].qty == 4
+        assert rule_map["rule_cage_hoops_standard"].length_in == pytest.approx(_math.pi * 30 + 36, abs=0.01)
 
 
 # ===========================================================================
@@ -851,11 +845,11 @@ class TestPadTopMat:
 
 class TestGenerateEquipmentPadBarlist:
     def test_single_mat_marks(self, log):
-        """Equipment pad hardcodes single mat → only P1 and P2."""
+        """Equipment pad single mat → 2 bar rows (straight, mark='')."""
         params = EPAD_TEMPLATE.input_defaults()
         bars = generate_barlist(EPAD_TEMPLATE, params, log, call_ai=False)
-        marks = {b.mark for b in bars}
-        assert marks == {"P1", "P2"}
+        assert len(bars) == 2
+        assert all(b.shape == "Str" for b in bars)
 
     def test_all_bars_have_ref(self, log):
         """All generated bars must have a populated ref field."""
@@ -878,15 +872,15 @@ class TestGenerateEquipmentPadBarlist:
             "pad_thickness_in": 6.0,
         }
         bars = generate_barlist(EPAD_TEMPLATE, params, log, call_ai=False)
-        bar_map = {b.mark: b for b in bars}
+        rule_map = {b.source_rule: b for b in bars}
 
         # P1 long bars
-        assert bar_map["P1"].length_in == pytest.approx(96.0, abs=0.1)
-        assert bar_map["P1"].qty == 4
+        assert rule_map["rule_pad_bottom_long"].length_in == pytest.approx(96.0, abs=0.1)
+        assert rule_map["rule_pad_bottom_long"].qty == 4
 
         # P2 short bars (4'-1" = 49in, 49-6=43in)
-        assert bar_map["P2"].length_in == pytest.approx(43.0, abs=0.2)
-        assert bar_map["P2"].qty == 8
+        assert rule_map["rule_pad_bottom_short"].length_in == pytest.approx(43.0, abs=0.2)
+        assert rule_map["rule_pad_bottom_short"].qty == 8
 
 
 # ===========================================================================
@@ -931,25 +925,27 @@ class TestPadVerticalDowels:
 
 class TestGenerateSwitchboardPadBarlist:
     def test_always_double_mat(self, log):
-        """Switchboard pad always generates P1–P4 (double mat fixed)."""
+        """Switchboard pad always generates double mat (P1-P4), all straight."""
         bars = generate_barlist(SWBD_TEMPLATE, SWBD_TEMPLATE.input_defaults(),
                                 log, call_ai=False)
-        marks = {b.mark for b in bars}
-        assert {"P1", "P2", "P3", "P4"}.issubset(marks)
+        rules = {b.source_rule for b in bars}
+        for r in ("rule_pad_bottom_long", "rule_pad_bottom_short",
+                  "rule_swbd_top_long", "rule_swbd_top_short"):
+            assert r in rules, f"Missing rule {r}"
 
     def test_with_dowels_adds_D1(self, log):
+        """With dowels → 5 bars total (4 mat + 1 dowel row)."""
         params = SWBD_TEMPLATE.input_defaults()
         params["has_vertical_dowels"] = 1.0
         bars = generate_barlist(SWBD_TEMPLATE, params, log, call_ai=False)
-        marks = {b.mark for b in bars}
-        assert "D1" in marks
+        assert len(bars) == 5
 
     def test_without_dowels_no_D1(self, log):
+        """Without dowels → 4 bars (mat only)."""
         params = SWBD_TEMPLATE.input_defaults()
         params["has_vertical_dowels"] = 0.0
         bars = generate_barlist(SWBD_TEMPLATE, params, log, call_ai=False)
-        marks = {b.mark for b in bars}
-        assert "D1" not in marks
+        assert len(bars) == 4
 
     def test_gold_9ft6_by_4ft_double_mat(self, log):
         """
@@ -967,14 +963,14 @@ class TestGenerateSwitchboardPadBarlist:
             "has_vertical_dowels": 1.0,
         }
         bars = generate_barlist(SWBD_TEMPLATE, params, log, call_ai=False)
-        bar_map = {b.mark: b for b in bars}
+        rule_map = {b.source_rule: b for b in bars}
 
-        assert bar_map["P1"].qty == 4
-        assert bar_map["P1"].length_in == pytest.approx(9.6 * 12 - 6, abs=0.1)
-        assert bar_map["P2"].qty == 9
-        assert bar_map["P2"].length_in == pytest.approx(4.0 * 12 - 6, abs=0.1)
-        assert bar_map["D1"].qty == 4 * 9   # 36 total dowels
-        assert bar_map["D1"].length_in == pytest.approx(30.0)
+        assert rule_map["rule_pad_bottom_long"].qty == 4
+        assert rule_map["rule_pad_bottom_long"].length_in == pytest.approx(9.6 * 12 - 6, abs=0.1)
+        assert rule_map["rule_pad_bottom_short"].qty == 9
+        assert rule_map["rule_pad_bottom_short"].length_in == pytest.approx(4.0 * 12 - 6, abs=0.1)
+        assert rule_map["rule_pad_vertical_dowels"].qty == 36
+        assert rule_map["rule_pad_vertical_dowels"].length_in == pytest.approx(30.0)
 
 
 # ===========================================================================
@@ -1048,10 +1044,11 @@ class TestSeatwallTransverse:
 
 class TestGenerateSeatwallBarlist:
     def test_marks_present(self, log):
+        """Seatwall → 3 bar rows, all straight (mark='')."""
         bars = generate_barlist(SW_TEMPLATE, SW_TEMPLATE.input_defaults(),
                                 log, call_ai=False)
-        marks = {b.mark for b in bars}
-        assert marks == {"S1", "S2", "S3"}
+        assert len(bars) == 3
+        assert all(b.shape == "Str" for b in bars)
 
     def test_all_bars_have_ref(self, log):
         bars = generate_barlist(SW_TEMPLATE, SW_TEMPLATE.input_defaults(),
@@ -1073,12 +1070,12 @@ class TestGenerateSeatwallBarlist:
             "tie_bar_size": "#3", "tie_spacing_in": 18.0, "cover_in": 1.5,
         }
         bars = generate_barlist(SW_TEMPLATE, params, log, call_ai=False)
-        bar_map = {b.mark: b for b in bars}
-        assert bar_map["S1"].qty == 2
-        assert bar_map["S1"].length_in == pytest.approx(369.0)
-        assert bar_map["S2"].qty == 2
-        assert bar_map["S3"].qty == _sw_math.floor(372 / 18)
-        assert bar_map["S3"].length_in == pytest.approx(11.0)
+        rule_map = {b.source_rule: b for b in bars}
+        assert rule_map["rule_seatwall_top_long"].qty == 2
+        assert rule_map["rule_seatwall_top_long"].length_in == pytest.approx(369.0)
+        assert rule_map["rule_seatwall_bottom_long"].qty == 2
+        assert rule_map["rule_seatwall_transverse"].qty == _sw_math.floor(372 / 18)
+        assert rule_map["rule_seatwall_transverse"].length_in == pytest.approx(11.0)
 
 
 # ===========================================================================
@@ -1115,7 +1112,8 @@ class TestPipeEncasement:
         bars = generate_barlist(PE_TEMPLATE, PE_TEMPLATE.input_defaults(),
                                 log, call_ai=False)
         marks = {b.mark for b in bars}
-        assert {"500", "E2"}.issubset(marks)   # E1→500 (#5 bent), E2 straight
+        assert "500" in marks          # E1 → 500 (#5 Rect, bent)
+        assert "" in marks             # E2 longitudinals (straight, no mark)
 
     def test_all_bars_have_ref(self, log):
         bars = generate_barlist(PE_TEMPLATE, PE_TEMPLATE.input_defaults(),
@@ -1138,19 +1136,19 @@ class TestPipeEncasement:
             "long_bar_size": "#4", "n_long_bars": 12.0, "cover_in": 2.0,
         }
         bars = generate_barlist(PE_TEMPLATE, params, log, call_ai=False)
-        bar_map = {b.mark: b for b in bars}
-        assert bar_map["500"].qty == _m3.floor(2808 / 9)   # E1 → 500 (#5 bent)
-        assert bar_map["E2"].qty == 48          # 12 positions x 4 pieces (spliced run)
-        assert bar_map["E2"].length_in == 720.0 # 60ft stock bar per piece
+        rule_map = {b.source_rule: b for b in bars}
+        assert rule_map["rule_encasement_hoops"].qty == _m3.floor(2808 / 9)
+        assert rule_map["rule_encasement_longitudinals"].qty == 48
+        assert rule_map["rule_encasement_longitudinals"].length_in == 720.0
 
 
 class TestFuelFoundation:
     def test_double_mat_marks(self, log):
-        """Fuel foundation always double mat (has_top_mat hardcoded 1.0)."""
+        """Fuel foundation always double mat → 4 bar rows, all straight."""
         params = FF_TEMPLATE.input_defaults()
         bars = generate_barlist(FF_TEMPLATE, params, log, call_ai=False)
-        marks = {b.mark for b in bars}
-        assert {"F1", "F2", "F3", "F4"}.issubset(marks)
+        assert len(bars) == 4
+        assert all(b.shape == "Str" for b in bars)
 
     def test_all_bars_have_ref(self, log):
         bars = generate_barlist(FF_TEMPLATE, FF_TEMPLATE.input_defaults(),
@@ -1161,10 +1159,11 @@ class TestFuelFoundation:
 
 class TestDualSlab:
     def test_marks_A_and_B_present(self, log):
+        """Dual slab → 4 bar rows, all straight (mark='')."""
         bars = generate_barlist(DS_TEMPLATE, DS_TEMPLATE.input_defaults(),
                                 log, call_ai=False)
-        marks = {b.mark for b in bars}
-        assert marks == {"A1", "A2", "B1", "B2"}
+        assert len(bars) == 4
+        assert all(b.shape == "Str" for b in bars)
 
     def test_all_bars_have_ref(self, log):
         bars = generate_barlist(DS_TEMPLATE, DS_TEMPLATE.input_defaults(),
@@ -1295,9 +1294,9 @@ class TestHeadwallD89A:
         assert bars[0].length_in == pytest.approx(90.0)
 
     def test_cb_gold(self, log):
-        """CB no-pipe J-bar (Type 11) — Dane D89B confirmed asymmetric shape.
-        H=71 → c_s="#5", F=12, qty=9, body=ceil((71+9)/2)*2=80",
-        B=3\" (fixed hook), C=F+3=15\",  stock=80+3+15-3=95\".
+        """CB no-pipe J-bar (Type 11) — Dane confirmed 2025-05-10.
+        H=71 → c_s="#5", T=10, qty=9, body=ceil((71+9)/2)*2=80",
+        B=T+3=13\", C=T+5=15\", stock=80+13+15-3=105\".
         Pipe case (symmetric) tested separately in test_cb_pipe_symmetric."""
         p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
         bars = rule_hw_c_bars(p, log)
@@ -1305,39 +1304,40 @@ class TestHeadwallD89A:
         assert bars[0].size == "#5"
         assert bars[0].shape == "C"
         assert bars[0].qty == 9
-        assert bars[0].length_in == pytest.approx(95.0)   # 80 + 3 + 15 - 3
+        assert bars[0].length_in == pytest.approx(105.0)  # 80 + 13 + 15 - 3
         assert bars[0].leg_a_in is None                   # A unused
-        assert bars[0].leg_b_in == pytest.approx(3.0)     # B = fixed top hook
-        assert bars[0].leg_c_in == pytest.approx(15.0)    # C = F+3 = 12+3
+        assert bars[0].leg_b_in == pytest.approx(13.0)    # B = T+3 = 10+3
+        assert bars[0].leg_c_in == pytest.approx(15.0)    # C = T+5 = 10+5
         assert bars[0].leg_d_in == pytest.approx(80.0)    # D = body span
         assert bars[0].leg_g_in == pytest.approx(9.0)     # R = bend radius
 
     def test_ws_gold(self, log):
-        """WS no-pipe D89A Type 27 — Dane confirmed H=6'-11\" T=12, H=2'-11\" T=10.
-        H=71 → T=10: B=F=18\", C=E=T-5=5\", D=5\",
-        stock=18+5+5+5+18-shape_4(#4)=51-4=47\", qty=L//12+1=96//12+1=9."""
+        """WS Type 2 — Dane confirmed 2025-05-10: A=G=6\", B=T-2-dia_c-dia_vert.
+        H=71 → T=10, c_s=#5: dia_c=0.625\", dia_vert=0.5\",
+        B=10-2-0.625-0.5=6.875\", stock=6+6.875+6-shape_2(#4)=18.875-2=16.875\",
+        qty=L//12+1=96//12+1=9."""
         p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
         bars = rule_hw_spreaders(p, log)
         assert bars[0].mark == "WS"
         assert bars[0].qty == 9
-        assert bars[0].leg_b_in == pytest.approx(18.0)   # B=F outer leg
-        assert bars[0].leg_c_in == pytest.approx(5.0)    # C=E = T-5 = 10-5
-        assert bars[0].leg_d_in == pytest.approx(5.0)    # D center span
-        assert bars[0].length_in == pytest.approx(47.0)  # 51-4
+        assert bars[0].leg_a_in == pytest.approx(6.0)      # A = 6" always
+        assert bars[0].leg_b_in == pytest.approx(6.875)    # B = T-2-0.625-0.5
+        assert bars[0].leg_g_in == pytest.approx(6.0)      # G = 6" always
+        assert bars[0].length_in == pytest.approx(16.875)  # 6+6.875+6-2
 
     def test_st_gold(self, log):
-        """ST no-pipe — Dane confirmed #4 for both D89A (T=12) and D89B (T=10).
-        H=71 → T=10: B=F=T/2=5\", C=E=6\" (const), D=18\" (base),
-        stock=5+6+18+6-shape_3(#4)=35-3=32\", qty=⌊96/18⌋+1=6."""
+        """ST Type 27 — Dane confirmed 2025-05-10: B=F=18\" always, D=5\" always.
+        H=71 → T=10: B=F=18\", C=E=T-5=5\", D=5\",
+        stock=2×18+2×5+5-shape_4(#4)=51-4=47\", qty=⌊96/18⌋+1=6."""
         p = _hw_params(wall_width_ft=8.0, wall_height_ft=5 + 11/12)
         bars = rule_hw_standees(p, log)
         assert bars[0].mark == "ST"
         assert bars[0].size == "#4"
         assert bars[0].qty == 6
-        assert bars[0].leg_b_in == pytest.approx(5.0)    # B=F = T/2 = 10/2
-        assert bars[0].leg_c_in == pytest.approx(6.0)    # C=E legs (constant)
-        assert bars[0].leg_d_in == pytest.approx(18.0)   # D base
-        assert bars[0].length_in == pytest.approx(32.0)  # 5+6+18+6-3
+        assert bars[0].leg_b_in == pytest.approx(18.0)   # B=F = 18" always
+        assert bars[0].leg_c_in == pytest.approx(5.0)    # C=E = T-5 = 10-5
+        assert bars[0].leg_d_in == pytest.approx(5.0)    # D = 5" always
+        assert bars[0].length_in == pytest.approx(47.0)  # 2×18+2×5+5-4
 
     def test_d89_rounds_up(self, log):
         """H=5'-0\" (60\") rounds up to row H=62\", W=64\" → D1 len=60\"."""
@@ -1397,19 +1397,19 @@ class TestHeadwallTableCoverage:
 
     @pytest.mark.parametrize("H_in,W,T,F,B", _TABLE_ROWS)
     def test_cb_body_inner_all_rows(self, log, H_in, W, T, F, B):
-        """CB no-pipe J-bar (Type 11) — Dane D89B confirmed asymmetric shape.
-        D (leg_d_in) = ceil((H+9)/2)*2; B (leg_b_in) = 3\" fixed hook;
-        C (leg_c_in) = F+3 footing development leg; R (leg_g_in) = 9\"."""
+        """CB no-pipe J-bar (Type 11) — Dane confirmed 2025-05-10.
+        D (leg_d_in) = ceil((H+9)/2)*2; B (leg_b_in) = T+3; C (leg_c_in) = T+5."""
         p = _hw_params(wall_width_ft=8.0, wall_height_ft=H_in / 12.0)
         bars = rule_hw_c_bars(p, log)
         expected_body = math.ceil((H_in + 9) / 2) * 2
-        expected_C    = float(F) + 3.0
+        expected_B    = float(T) + 3.0
+        expected_C    = float(T) + 5.0
         assert bars[0].leg_d_in == pytest.approx(expected_body), \
             f"H={H_in}\" → CB body (D) expected ceil(({H_in}+9)/2)*2={expected_body}\""
-        assert bars[0].leg_b_in == pytest.approx(3.0), \
-            f"CB top hook (B) expected 3.0\" fixed (got {bars[0].leg_b_in})"
+        assert bars[0].leg_b_in == pytest.approx(expected_B), \
+            f"T={T}\" → CB B expected T+3={expected_B}\" (got {bars[0].leg_b_in})"
         assert bars[0].leg_c_in == pytest.approx(expected_C), \
-            f"F={F}\" → CB footing leg (C) expected F+3={expected_C}\" (got {bars[0].leg_c_in})"
+            f"T={T}\" → CB C expected T+5={expected_C}\" (got {bars[0].leg_c_in})"
         assert bars[0].leg_g_in == pytest.approx(9.0), \
             "CB radius (R) expected 9.0\""
 
@@ -1538,17 +1538,15 @@ class TestHeadwallEndToEnd:
                   "pipe_qty": 0, "pipe_dia_in": "24\""}
         from vistadetail.engine.templates.headwall import TEMPLATE as HW
         bars = generate_barlist(HW, params, log, call_ai=False)
-        marks = {b.mark for b in bars}
-        # Straight bars keep letter marks
-        for mark in ("D1", "TF", "LI", "LW", "TW", "VW"):
-            assert mark in marks, \
-                f"Straight mark {mark} missing from barlist h={h_ft:.2f} w={w_ft}"
-        # All non-straight bars must have numeric marks (e.g. "400", "500")
+        # Straight bars have empty mark; non-straight bars have numeric marks
+        straight = [b for b in bars if b.shape == "Str"]
         non_straight = [b for b in bars if b.shape != "Str"]
+        assert len(straight) >= 6, "Expected at least TF D1 LI LW TW VW"
+        assert all(b.mark == "" for b in straight), "Straight bars must have no mark"
         assert len(non_straight) >= 2, "Expected at least WS and ST bent bars"
         for b in non_straight:
             assert b.mark.isdigit(), \
-                f"Non-straight bar still has letter mark '{b.mark}' (shape={b.shape})"
+                f"Non-straight bar has non-numeric mark '{b.mark}' (shape={b.shape})"
 
     def test_no_zero_qty_bars(self, log):
         """No bar row should have qty <= 0 for any valid input."""

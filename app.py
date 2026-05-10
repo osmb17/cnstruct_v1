@@ -1683,8 +1683,6 @@ if generate_btn:
                 st.session_state._gen_params_hash = hashlib.md5(
                     json.dumps(params_raw, sort_keys=True, default=str).encode()
                 ).hexdigest()[:12]
-                hist.save_run(template_name, job_name, job_number, detailer,
-                              params_raw, b, barlist_total_weight_lb(b), 0.0)
                 _template_stats.clear()
                 # Pre-compute PDF so download_button always serves a stable blob
                 # (avoids the first-click-wrong-file issue caused by render-time recompute)
@@ -1703,6 +1701,15 @@ if generate_btn:
                 st.session_state.error     = str(exc)
                 st.session_state.bars      = None
                 st.session_state._pdf_bytes = None
+
+        # ── Save to history (isolated — never kills a successful barlist) ──
+        if st.session_state.get("bars"):
+            try:
+                hist.save_run(template_name, job_name, job_number, detailer,
+                              params_raw, st.session_state.bars,
+                              barlist_total_weight_lb(st.session_state.bars), 0.0)
+            except Exception:
+                pass   # DB failure is non-fatal
 
     # AI explanation disabled (paused to save API usage — re-enable when needed)
     # if st.session_state.get("bars") and _api_key_available():

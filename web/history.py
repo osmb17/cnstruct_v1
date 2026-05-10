@@ -59,7 +59,10 @@ def _connect() -> sqlite3.Connection:
         conn.execute("SELECT name FROM sqlite_master LIMIT 1").fetchone()
         return conn
     except sqlite3.DatabaseError:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
         _reset_db()
         conn = sqlite3.connect(DB_PATH)
         _create_tables(conn)

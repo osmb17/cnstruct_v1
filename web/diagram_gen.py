@@ -2249,6 +2249,8 @@ def get_diagram_live(template_name: str, params_dict: dict | None) -> bytes | No
     try:
         fn = _DIAGRAM_FN.get(template_name)
         return fn() if fn else None
+    except Exception:
+        return None   # diagram failure is always non-fatal
     finally:
         _DIM_VALUES  = {}
         _LIVE_PARAMS = {}
