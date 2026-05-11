@@ -212,7 +212,7 @@ def _gt_top_slab(p: Params, log: ReasoningLogger, label: str) -> list[BarRow]:
                source=f"{label}TopSlab")
 
     return [
-        BarRow(mark="A1", size="#5", qty=qty_a,
+        BarRow(mark="Blank", size="#5", qty=qty_a,
                length_in=len_a, shape="Str",
                notes="Top slab A bars @5oc", source_rule=f"rule_{label.lower()}_top_slab"),
         BarRow(mark="B1", size="#5", qty=qty_b,

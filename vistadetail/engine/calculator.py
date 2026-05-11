@@ -289,6 +289,7 @@ def _apply_numeric_marks(bars: list[BarRow]) -> None:
     counters: dict[int, int] = {}
     for bar in bars:
         if bar.shape == "Str":
+            bar.mark = ""   # straight bars and verticals — no mark shown
             continue
         try:
             size_num = int(bar.size.lstrip("#"))

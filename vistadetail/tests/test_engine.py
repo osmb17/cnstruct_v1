@@ -2608,3 +2608,447 @@ class TestJuncAddBars:
         p = _js_params({"side_pipe_dia_in": "48"})
         bars = rule_junc_add_bars(p, log)
         assert bars[0].length_in == pytest.approx(70.0)
+
+
+# ===========================================================================
+# D84 Wingwall — gold formula tests (H=6', LOL=10')
+# ===========================================================================
+
+from vistadetail.engine.rules.d84_wingwall_rules import (
+    rule_d84_face_horiz,
+    rule_d84_parapet_face,
+    rule_d84_lower_face,
+    rule_d84_longitudinals,
+    rule_d84_top_bars,
+    rule_d84_footing_mat,
+    rule_d84_box_ties,
+    rule_d84_cutoff_wall,
+)
+from vistadetail.engine.templates.d84_wingwall import TEMPLATE as D84_TEMPLATE
+
+
+def _d84_params(**overrides):
+    raw = D84_TEMPLATE.input_defaults()
+    raw.update(overrides)
+    return D84_TEMPLATE.parse_and_validate(raw)
+
+
+class TestD84WingwallGoldH6LOL10:
+    """
+    Gold: H=6', LOL=10' (default inputs).
+    h_in=72", lol_in=120"
+    main zone = 72 - 36(par) - 30(lower) = 6"  [h_in=72 > 66 → lower zone present]
+    """
+
+    @pytest.fixture()
+    def p(self): return _d84_params(wall_height_ft=6.0, wall_length_ft=10.0)
+
+    # -- F-bars (main wall body, #4@12 EF) --
+
+    def test_f_bars_qty_per_face(self, p, log):
+        """Main zone=6\" → floor(6/12)+1=1 per face."""
+        bars = rule_d84_face_horiz(p, log)
+        assert bars[0].qty == 1   # F1
+        assert bars[1].qty == 1   # F2
+
+    def test_f_bars_length(self, p, log):
+        """F1/F2 length = LOL = 120\"."""
+        bars = rule_d84_face_horiz(p, log)
+        for b in bars:
+            assert b.length_in == pytest.approx(120.0)
+
+    def test_f_bars_size(self, p, log):
+        bars = rule_d84_face_horiz(p, log)
+        for b in bars:
+            assert b.size == "#4"
+
+    # -- P-bars (parapet #5@8 EF) --
+
+    def test_p1_total_qty(self, p, log):
+        """Parapet 36\" @8\": floor(36/8)+1=5/face → total=10."""
+        bars = rule_d84_parapet_face(p, log)
+        assert bars[0].qty == 10
+
+    def test_p1_length(self, p, log):
+        """P1 length = LOL = 120\"."""
+        bars = rule_d84_parapet_face(p, log)
+        assert bars[0].length_in == pytest.approx(120.0)
+
+    def test_p1_size(self, p, log):
+        bars = rule_d84_parapet_face(p, log)
+        assert bars[0].size == "#5"
+
+    # -- V-bars (lower zone #5@6 EF) --
+
+    def test_v1_present_at_h6(self, p, log):
+        """H=72\" > 66\" (par+lower) → V1 present."""
+        bars = rule_d84_lower_face(p, log)
+        assert len(bars) == 1
+        assert bars[0].mark == "V1"
+
+    def test_v1_total_qty(self, p, log):
+        """Lower zone 30\" @6\": floor(30/6)+1=6/face → total=12."""
+        bars = rule_d84_lower_face(p, log)
+        assert bars[0].qty == 12
+
+    def test_v1_length(self, p, log):
+        bars = rule_d84_lower_face(p, log)
+        assert bars[0].length_in == pytest.approx(120.0)
+
+    def test_v1_absent_short_wall(self, log):
+        """H=5' (60\") ≤ 66\" → no separate lower zone."""
+        p = _d84_params(wall_height_ft=5.0, wall_length_ft=10.0)
+        bars = rule_d84_lower_face(p, log)
+        assert bars == []
+
+    # -- L-bars (longitudinal #5 Cont Tot 4) --
+
+    def test_l_bars_qty(self, p, log):
+        """L1 qty=2, L2 qty=2 (2 per face)."""
+        bars = rule_d84_longitudinals(p, log)
+        l1 = next(b for b in bars if b.mark == "L1")
+        l2 = next(b for b in bars if b.mark == "L2")
+        assert l1.qty == 2
+        assert l2.qty == 2
+
+    def test_l_bars_length(self, p, log):
+        """L1/L2 length = LOL + 24\" = 144\"."""
+        bars = rule_d84_longitudinals(p, log)
+        for b in bars:
+            assert b.length_in == pytest.approx(144.0)
+
+    def test_l_bars_size(self, p, log):
+        bars = rule_d84_longitudinals(p, log)
+        for b in bars:
+            assert b.size == "#5"
+
+    # -- T-bars (top/parapet heavy) --
+
+    def test_t1_qty_and_size(self, p, log):
+        """T1: #4 Tot 2 (End Elevation)."""
+        bars = rule_d84_top_bars(p, log)
+        t1 = next(b for b in bars if b.mark == "T1")
+        assert t1.qty == 2
+        assert t1.size == "#4"
+
+    def test_t2_qty_and_size(self, p, log):
+        """T2: #8 Tot 7 (Section A-A)."""
+        bars = rule_d84_top_bars(p, log)
+        t2 = next(b for b in bars if b.mark == "T2")
+        assert t2.qty == 7
+        assert t2.size == "#8"
+
+    def test_top_bars_length(self, p, log):
+        """T1/T2 length = LOL = 120\"."""
+        bars = rule_d84_top_bars(p, log)
+        for b in bars:
+            assert b.length_in == pytest.approx(120.0)
+
+    # -- B-bars (footing mat #6@4.5) --
+
+    def test_b1_trans_qty(self, p, log):
+        """B1: floor(120/4.5)+1 = 26+1 = 27 transverse bars."""
+        bars = rule_d84_footing_mat(p, log)
+        b1 = next(b for b in bars if b.mark == "B1")
+        assert b1.qty == 27
+
+    def test_b1_length_is_footing_width(self, p, log):
+        """B1 len = T(9) + 2*B(36) = 81\"."""
+        bars = rule_d84_footing_mat(p, log)
+        b1 = next(b for b in bars if b.mark == "B1")
+        assert b1.length_in == pytest.approx(81.0)
+
+    def test_b2_long_qty(self, p, log):
+        """B2: floor(81/4.5)+1 = 18+1 = 19 longitudinal bars."""
+        bars = rule_d84_footing_mat(p, log)
+        b2 = next(b for b in bars if b.mark == "B2")
+        assert b2.qty == 19
+
+    def test_b2_length_is_lol(self, p, log):
+        bars = rule_d84_footing_mat(p, log)
+        b2 = next(b for b in bars if b.mark == "B2")
+        assert b2.length_in == pytest.approx(120.0)
+
+    # -- BO bars (box wall ties, Detail X) --
+
+    def test_bo_qty(self, p, log):
+        """BO: #4 Tot 3 (Detail X)."""
+        bars = rule_d84_box_ties(p, log)
+        assert bars[0].qty == 3
+        assert bars[0].size == "#4"
+
+    def test_bo_length(self, p, log):
+        """BO len = 9\" (wall t) + 12\" (hook) = 21\"."""
+        bars = rule_d84_box_ties(p, log)
+        assert bars[0].length_in == pytest.approx(21.0)
+
+    def test_bo_legs(self, p, log):
+        bars = rule_d84_box_ties(p, log)
+        assert bars[0].leg_a_in == pytest.approx(9.0)
+        assert bars[0].leg_b_in == pytest.approx(12.0)
+
+    # -- CW bars (cutoff wall) --
+
+    def test_cw_qty_and_size(self, p, log):
+        """CW: #4 Tot 3."""
+        bars = rule_d84_cutoff_wall(p, log)
+        assert bars[0].qty == 3
+        assert bars[0].size == "#4"
+
+    def test_cw_length(self, p, log):
+        """CW len = footing width = 81\"."""
+        bars = rule_d84_cutoff_wall(p, log)
+        assert bars[0].length_in == pytest.approx(81.0)
+
+
+# ===========================================================================
+# D85 Wingwall — gold formula tests (H=6', LOL=10')
+# ===========================================================================
+
+from vistadetail.engine.rules.d85_wingwall_rules import (
+    rule_d85_k_bars,
+    rule_d85_l_bars,
+    rule_d85_hoops,
+    rule_d85_top_bars,
+    rule_d85_footing_mat,
+)
+from vistadetail.engine.templates.d85_wingwall import TEMPLATE as D85_TEMPLATE
+
+
+def _d85_params(**overrides):
+    raw = D85_TEMPLATE.input_defaults()
+    raw.update(overrides)
+    return D85_TEMPLATE.parse_and_validate(raw)
+
+
+class TestD85WingwallGoldH6LOL10:
+    """
+    Gold: H=6', LOL=10'.
+    D85 table H=6: k-bars #5@10, L-bars #6×3.
+    h_in=72", lol_in=120", lap=24".
+    """
+
+    @pytest.fixture()
+    def p(self): return _d85_params(wall_height_ft=6.0, wall_length_ft=10.0)
+
+    # -- k-bars (primary outside face) --
+
+    def test_k1_size(self, p, log):
+        """H=6 → k-bar size = #5 per D85 table."""
+        bars = rule_d85_k_bars(p, log)
+        assert bars[0].size == "#5"
+
+    def test_k1_qty(self, p, log):
+        """H=6 → spacing=10\": qty = floor(72/10)+1 = 8."""
+        bars = rule_d85_k_bars(p, log)
+        assert bars[0].qty == 8
+
+    def test_k1_length(self, p, log):
+        """k1 len = LOL + 24\" = 144\"."""
+        bars = rule_d85_k_bars(p, log)
+        assert bars[0].length_in == pytest.approx(144.0)
+
+    @pytest.mark.parametrize("h_ft,expected_qty", [
+        (3,  math.floor(36 / 12) + 1),   # @12: floor(36/12)+1 = 4
+        (4,  math.floor(48 / 12) + 1),   # @12: floor(48/12)+1 = 5
+        (6,  math.floor(72 / 10) + 1),   # @10: floor(72/10)+1 = 8
+        (8,  math.floor(96 / 8)  + 1),   # @ 8: floor(96/8) +1 = 13
+        (10, math.floor(120 / 7) + 1),   # @ 7: floor(120/7)+1 = 18
+    ])
+    def test_k1_qty_parametric(self, log, h_ft, expected_qty):
+        """k-bar qty = floor(H_in/spacing)+1 for each table row."""
+        p = _d85_params(wall_height_ft=h_ft, wall_length_ft=10.0)
+        bars = rule_d85_k_bars(p, log)
+        assert bars[0].qty == expected_qty, f"H={h_ft}ft → k1 qty expected {expected_qty}"
+
+    # -- L-bars (concentrated) --
+
+    def test_l1_size(self, p, log):
+        """H=6 → L-bar size = #6 per D85 table."""
+        bars = rule_d85_l_bars(p, log)
+        assert bars[0].size == "#6"
+
+    def test_l1_qty(self, p, log):
+        """H=6 → L-bar count = 3/wall per D85 table."""
+        bars = rule_d85_l_bars(p, log)
+        assert bars[0].qty == 3
+
+    def test_l1_length(self, p, log):
+        """L1 len = LOL + 24\" = 144\"."""
+        bars = rule_d85_l_bars(p, log)
+        assert bars[0].length_in == pytest.approx(144.0)
+
+    @pytest.mark.parametrize("h_ft,expected_size,expected_cnt", [
+        (3,  "#5", 2),
+        (4,  "#5", 2),
+        (5,  "#6", 3),
+        (6,  "#6", 3),
+        (7,  "#7", 3),
+        (12, "#7", 3),
+    ])
+    def test_l1_table_lookup(self, log, h_ft, expected_size, expected_cnt):
+        p = _d85_params(wall_height_ft=h_ft, wall_length_ft=10.0)
+        bars = rule_d85_l_bars(p, log)
+        assert bars[0].size == expected_size, f"H={h_ft} → L-bar size"
+        assert bars[0].qty == expected_cnt, f"H={h_ft} → L-bar qty"
+
+    # -- H1 (hoops) --
+
+    def test_h1_qty(self, p, log):
+        """H1 hoops: qty = floor(120/12)+1 = 11."""
+        bars = rule_d85_hoops(p, log)
+        assert bars[0].qty == 11
+
+    def test_h1_hoop_length(self, p, log):
+        """H1 perimeter = 2*(h_in+t) = 2*(72+9) = 162\"."""
+        bars = rule_d85_hoops(p, log)
+        assert bars[0].length_in == pytest.approx(162.0)
+
+    def test_h1_shape_rect(self, p, log):
+        bars = rule_d85_hoops(p, log)
+        assert bars[0].shape == "Rect"
+
+    # -- T-bars (top bars #4@9 both faces) --
+
+    def test_top_bars_qty(self, p, log):
+        """T1/T2: qty = floor(120/9)+1 = 14."""
+        bars = rule_d85_top_bars(p, log)
+        for b in bars:
+            assert b.qty == 14
+
+    def test_top_bars_length(self, p, log):
+        bars = rule_d85_top_bars(p, log)
+        for b in bars:
+            assert b.length_in == pytest.approx(120.0)
+
+    def test_top_bars_size(self, p, log):
+        bars = rule_d85_top_bars(p, log)
+        for b in bars:
+            assert b.size == "#4"
+
+    # -- B-bars (footing mat #4@12) --
+
+    def test_b1_trans_qty(self, p, log):
+        """B1: ceil(lol/12)+1 = ceil(120/12)+1 = 11."""
+        bars = rule_d85_footing_mat(p, log)
+        b1 = next(b for b in bars if b.mark == "B1")
+        assert b1.qty == 11
+
+    def test_b1_size(self, p, log):
+        bars = rule_d85_footing_mat(p, log)
+        b1 = next(b for b in bars if b.mark == "B1")
+        assert b1.size == "#4"
+
+
+# ===========================================================================
+# Caltrans Retaining Wall (B3-1A) — gold formula tests (H=10', L=50')
+# ===========================================================================
+
+from vistadetail.engine.rules.caltrans_ret_wall_rules import (
+    rule_ct_rw_stem_vert,
+    rule_ct_rw_stem_horiz,
+)
+from vistadetail.engine.templates.caltrans_ret_wall import TEMPLATE as CRW_TEMPLATE
+
+
+def _crw_params(**overrides):
+    raw = CRW_TEMPLATE.input_defaults()
+    raw.update(overrides)
+    return CRW_TEMPLATE.parse_and_validate(raw)
+
+
+class TestCaltransRetWallH10L50:
+    """
+    Gold: design_h_ft=10', wall_length_ft=50'.
+    B3-1A table row H=10: T=10, W=78, B=46, C=22, F=15, c=#6@10, d=#5@10.
+    wall_len_in=600", stem_thick=10", stem_cover=2", ftg_cover=3".
+    """
+
+    @pytest.fixture()
+    def p(self): return _crw_params(design_h_ft=10.0, wall_length_ft=50.0)
+
+    # -- CW1 (c-bars, primary vertical) --
+
+    def test_cw1_size(self, p, log):
+        """B3-1A H=10: c-bar size = #6."""
+        bars = rule_ct_rw_stem_vert(p, log)
+        cw1 = next(b for b in bars if b.mark == "CW1")
+        assert cw1.size == "#6"
+
+    def test_cw1_qty(self, p, log):
+        """qty = floor((600 - 2×2) / 10) + 1 = floor(596/10)+1 = 60."""
+        bars = rule_ct_rw_stem_vert(p, log)
+        cw1 = next(b for b in bars if b.mark == "CW1")
+        assert cw1.qty == 60
+
+    def test_cw1_length(self, p, log):
+        """bar_len = stem_ht + (ftg_depth - ftg_cover) = 120 + (15-3) = 132\"."""
+        bars = rule_ct_rw_stem_vert(p, log)
+        cw1 = next(b for b in bars if b.mark == "CW1")
+        assert cw1.length_in == pytest.approx(132.0)
+
+    def test_cw1_shape_straight(self, p, log):
+        bars = rule_ct_rw_stem_vert(p, log)
+        cw1 = next(b for b in bars if b.mark == "CW1")
+        assert cw1.shape == "Str"
+
+    # -- CW2/CW3 (horizontal distribution #5@12 both faces) --
+
+    def test_cw2_size(self, p, log):
+        """CW2 a-bars (back face): #5 per B3-1."""
+        bars = rule_ct_rw_stem_horiz(p, log)
+        cw2 = next(b for b in bars if b.mark == "CW2")
+        assert cw2.size == "#5"
+
+    def test_cw2_qty_per_face(self, p, log):
+        """H=10': qty = floor((120-4)/12)+1 = floor(116/12)+1 = 9+1 = 10."""
+        bars = rule_ct_rw_stem_horiz(p, log)
+        cw2 = next(b for b in bars if b.mark == "CW2")
+        assert cw2.qty == 10
+
+    def test_cw3_qty_matches_cw2(self, p, log):
+        """CW3 (front face) qty = CW2 qty (same spacing, same height)."""
+        bars = rule_ct_rw_stem_horiz(p, log)
+        cw2 = next(b for b in bars if b.mark == "CW2")
+        cw3 = next(b for b in bars if b.mark == "CW3")
+        assert cw3.qty == cw2.qty
+
+    def test_cw2_length(self, p, log):
+        """CW2 len = wall_len - 2×stem_cover = 600 - 4 = 596\"."""
+        bars = rule_ct_rw_stem_horiz(p, log)
+        cw2 = next(b for b in bars if b.mark == "CW2")
+        assert cw2.length_in == pytest.approx(596.0)
+
+    # -- Table lookup coverage --
+
+    @pytest.mark.parametrize("h_ft,expected_c_size,expected_c_sp", [
+        (4,  "#4", 12),
+        (6,  "#5", 12),
+        (8,  "#5", 10),
+        (10, "#6", 10),
+        (12, "#6",  8),
+        (14, "#7",  8),
+        (16, "#7",  6),
+    ])
+    def test_cw1_table_lookup_parametric(self, log, h_ft, expected_c_size, expected_c_sp):
+        """c-bar size and qty vary correctly with design height."""
+        p = _crw_params(design_h_ft=h_ft, wall_length_ft=20.0)
+        bars = rule_ct_rw_stem_vert(p, log)
+        cw1 = next(b for b in bars if b.mark == "CW1")
+        wall_in = 20.0 * 12
+        expected_qty = math.floor((wall_in - 2 * 2.0) / expected_c_sp) + 1
+        assert cw1.size == expected_c_size, f"H={h_ft} → c-bar size"
+        assert cw1.qty == expected_qty, f"H={h_ft} → c-bar qty"
+
+    def test_no_zone2_for_short_wall(self, p, log):
+        """H=10' → no s-bars (Zone 2 only for H≥18')."""
+        bars = rule_ct_rw_stem_vert(p, log)
+        marks = [b.mark for b in bars]
+        assert "CW8" not in marks
+
+    def test_zone2_present_for_tall_wall(self, log):
+        """H=18' → s-bars (CW8) present."""
+        p = _crw_params(design_h_ft=18.0, wall_length_ft=20.0)
+        bars = rule_ct_rw_stem_vert(p, log)
+        marks = [b.mark for b in bars]
+        assert "CW8" in marks

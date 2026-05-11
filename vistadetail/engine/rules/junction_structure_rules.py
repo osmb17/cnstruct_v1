@@ -688,12 +688,13 @@ def rule_validate_junction(p: Params, log: ReasoningLogger) -> list[BarRow]:
     """
     Validate geometry against D91B table limits and log the table row used.
     """
-    cover     = float(getattr(p, "max_earth_cover_ft", 10.0))
-    cover_key = 20 if cover > 10 else 10
+    cover      = float(getattr(p, "max_earth_cover_ft", 10.0))
+    cover_key  = 20 if cover > 10 else 10
+    length_ft  = float(getattr(p, "length_ft", p.span_ft))
 
     row = _junc_lookup(p.hb_ft, p.span_ft, cover, log)
     log.ok(
-        f"D91B table row: Hb={p.hb_ft}' Span={p.span_ft}' Cover={cover_key}'  "
+        f"D91B table row: Hb={p.hb_ft}' Span={p.span_ft}' Length={length_ft}' Cover={cover_key}'  "
         f"ts={row['ts']}\" t={row['t']}\" bs={row['bs']}\"",
         source="JunctionRules",
     )
@@ -713,6 +714,21 @@ def rule_validate_junction(p: Params, log: ReasoningLogger) -> list[BarRow]:
         log.warn(
             f"Span={p.span_ft}' exceeds the D91B table maximum of 12' — "
             "structural analysis required.",
+            source="JunctionRules",
+        )
+
+    # Caltrans Standard Plan D91B (2025) lists only square plan configurations
+    # (Span = Hb for Hb ≥ 6').  A rectangular plan (Length ≠ Span) is not
+    # explicitly covered by the table.  Bar quantities are proportioned from
+    # both plan dimensions but structural thicknesses and bar sizes are based
+    # on the Span row only.  Verify with project engineer for non-square plans.
+    if abs(length_ft - p.span_ft) > 0.01:
+        log.warn(
+            f"Length={length_ft}' ≠ Span={p.span_ft}': Caltrans Standard Plan D91B (2025) "
+            "tabulates reinforcement for square plan configurations only.  "
+            "Slab/wall thicknesses and bar sizes are taken from the Span row; "
+            "bar quantities are scaled to the Length dimension.  "
+            "Verify with the project engineer for non-square geometry.",
             source="JunctionRules",
         )
 
